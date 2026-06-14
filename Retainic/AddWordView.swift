@@ -21,12 +21,14 @@ struct AddWordView: View {
     @State private var term: String
     @State private var translation: String
     @State private var notes: String
+    @State private var partOfSpeech: PartOfSpeech
 
     init(word: Word? = nil) {
         self.existingWord = word
         _term = State(initialValue: word?.term ?? "")
         _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
+        _partOfSpeech = State(initialValue: PartOfSpeech(rawValue: word?.partOfSpeech ?? "") ?? .unspecified)
     }
 
     private var isEditing: Bool { existingWord != nil }
@@ -45,6 +47,16 @@ struct AddWordView: View {
 
             Section(Language.named(nativeLanguage)?.displayName ?? "Translation") {
                 TextField("Translation", text: $translation)
+            }
+
+            Section("Part of speech") {
+                Picker("Part of speech", selection: $partOfSpeech) {
+                    ForEach(PartOfSpeech.allCases) { pos in
+                        Text(pos.label(for: nativeLanguage)).tag(pos)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
             }
 
             Section("Notes (optional)") {
@@ -76,8 +88,9 @@ struct AddWordView: View {
             word.term = trimmedTerm
             word.translation = trimmedTranslation
             word.notes = trimmedNotes
+            word.partOfSpeech = partOfSpeech.rawValue
         } else {
-            let word = Word(term: trimmedTerm, translation: trimmedTranslation, notes: trimmedNotes)
+            let word = Word(term: trimmedTerm, translation: trimmedTranslation, notes: trimmedNotes, partOfSpeech: partOfSpeech)
             modelContext.insert(word)
         }
         dismiss()

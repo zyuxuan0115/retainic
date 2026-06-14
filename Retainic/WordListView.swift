@@ -89,12 +89,28 @@ struct WordListView: View {
 }
 
 private struct WordRow: View {
+    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
     let word: Word
+
+    private var partOfSpeech: PartOfSpeech? {
+        let pos = PartOfSpeech(rawValue: word.partOfSpeech) ?? .unspecified
+        return pos == .unspecified ? nil : pos
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(word.term)
-                .font(.headline)
+            HStack(spacing: 8) {
+                Text(word.term)
+                    .font(.headline)
+                if let partOfSpeech {
+                    Text(partOfSpeech.label(for: nativeLanguage))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tint)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }
+            }
             Text(word.translation)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

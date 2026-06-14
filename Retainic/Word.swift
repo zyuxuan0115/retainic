@@ -16,6 +16,8 @@ final class Word {
     var translation: String
     /// Optional context, example sentence, or memory hint.
     var notes: String
+    /// Grammatical category, stored as a `PartOfSpeech` raw value.
+    var partOfSpeech: String = PartOfSpeech.unspecified.rawValue
     var createdAt: Date
 
     // MARK: Spaced-repetition tracking (Leitner system)
@@ -26,10 +28,11 @@ final class Word {
     var timesSeen: Int
     var timesCorrect: Int
 
-    init(term: String, translation: String, notes: String = "") {
+    init(term: String, translation: String, notes: String = "", partOfSpeech: PartOfSpeech = .unspecified) {
         self.term = term
         self.translation = translation
         self.notes = notes
+        self.partOfSpeech = partOfSpeech.rawValue
         self.createdAt = Date()
         self.box = 1
         self.lastReviewed = nil
