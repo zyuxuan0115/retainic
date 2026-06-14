@@ -2,60 +2,31 @@
 //  ContentView.swift
 //  Retainic
 //
-//  Created by Yuxuan Zhang on 6/13/26.
+//  Root view: shows onboarding until languages are chosen, then the main app.
 //
 
 import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.targetLanguage) private var targetLanguage = ""
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+        if nativeLanguage.isEmpty || targetLanguage.isEmpty {
+            OnboardingView()
+        } else {
+            MainTabView()
         }
     }
 }
 
+enum AppStorageKey {
+    static let nativeLanguage = "nativeLanguage"
+    static let targetLanguage = "targetLanguage"
+}
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: Word.self, inMemory: true)
 }
