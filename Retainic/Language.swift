@@ -10,21 +10,20 @@ import Foundation
 struct Language: Identifiable, Hashable {
     let code: String
     let name: String
-    let flag: String
 
     var id: String { code }
 
     static let all: [Language] = [
-        Language(code: "en", name: "English", flag: "🇬🇧"),
-        Language(code: "es", name: "Spanish", flag: "🇪🇸"),
-        Language(code: "zh", name: "Chinese", flag: "🇨🇳"),
-        Language(code: "ja", name: "Japanese", flag: "🇯🇵"),
-        Language(code: "ko", name: "Korean", flag: "🇰🇷"),
+        Language(code: "en", name: "English"),
+        Language(code: "es", name: "Spanish"),
+        Language(code: "zh", name: "Chinese"),
+        Language(code: "ja", name: "Japanese"),
+        Language(code: "ko", name: "Korean"),
     ]
 
     static func named(_ code: String) -> Language? {
         all.first { $0.code == code }
     }
 
-    var displayName: String { "\(flag) \(name)" }
+    var displayName: String { name }
 }
