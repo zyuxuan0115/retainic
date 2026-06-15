@@ -14,6 +14,7 @@ struct FlashcardView: View {
     let words: [VocabWord]
 
     @EnvironmentObject private var auth: AuthService
+    @ObservedObject private var playback = AudioPlaybackStore.shared
 
     @State private var session: [VocabWord] = []
     @State private var index = 0
@@ -117,6 +118,8 @@ struct FlashcardView: View {
             CardView(
                 front: showFrontIsTerm ? card.term : card.translation,
                 back: showFrontIsTerm ? card.translation : card.term,
+                frontReading: showFrontIsTerm ? card.reading : nil,
+                backReading: showFrontIsTerm ? nil : card.reading,
                 notes: card.notes,
                 isFlipped: isFlipped
             )
@@ -124,6 +127,16 @@ struct FlashcardView: View {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isFlipped.toggle()
                 }
+            }
+
+            if let path = card.audioPath {
+                Button {
+                    playback.toggle(path: path)
+                } label: {
+                    Label(playback.playingPath == path ? "Stop" : "Play pronunciation",
+                          systemImage: playback.playingPath == path ? "stop.fill" : "speaker.wave.2.fill")
+                }
+                .buttonStyle(.bordered)
             }
 
             Spacer()
@@ -251,8 +264,16 @@ struct FlashcardView: View {
 private struct CardView: View {
     let front: String
     let back: String
+    var frontReading: String?
+    var backReading: String?
     let notes: String
     let isFlipped: Bool
+
+    private var reading: String? {
+        let value = isFlipped ? backReading : frontReading
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
 
     var body: some View {
         ZStack {
@@ -265,6 +286,12 @@ private struct CardView: View {
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.5)
+
+                if let reading {
+                    Text(reading)
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
 
                 if isFlipped && !notes.isEmpty {
                     Text(notes)

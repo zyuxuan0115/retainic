@@ -35,6 +35,14 @@ struct VocabWord: Codable, Identifiable {
     var translation: String
     var notes: String
     var partOfSpeech: String
+    /// Optional hiragana reading, used when learning Japanese.
+    /// Optional so existing documents without the field still decode.
+    var hiragana: String?
+    /// Pinyin reading, required when learning Chinese.
+    /// Optional on the type so existing documents without the field still decode.
+    var pinyin: String?
+    /// Firebase Storage path of the pronunciation recording, if any.
+    var audioPath: String?
     var createdAt: Date
 
     // Spaced-repetition tracking (Leitner system).
@@ -49,6 +57,9 @@ struct VocabWord: Codable, Identifiable {
         translation: String,
         notes: String = "",
         partOfSpeech: PartOfSpeech = .unspecified,
+        hiragana: String? = nil,
+        pinyin: String? = nil,
+        audioPath: String? = nil,
         createdAt: Date = Date(),
         box: Int = 1,
         lastReviewed: Date? = nil,
@@ -60,6 +71,9 @@ struct VocabWord: Codable, Identifiable {
         self.translation = translation
         self.notes = notes
         self.partOfSpeech = partOfSpeech.rawValue
+        self.hiragana = hiragana
+        self.pinyin = pinyin
+        self.audioPath = audioPath
         self.createdAt = createdAt
         self.box = box
         self.lastReviewed = lastReviewed
@@ -73,6 +87,15 @@ struct VocabWord: Codable, Identifiable {
 extension VocabWord {
     var partOfSpeechValue: PartOfSpeech {
         PartOfSpeech(rawValue: partOfSpeech) ?? .unspecified
+    }
+
+    /// The phonetic reading to display (hiragana for Japanese, pinyin for
+    /// Chinese), if any.
+    var reading: String? {
+        for value in [hiragana, pinyin] {
+            if let value, !value.isEmpty { return value }
+        }
+        return nil
     }
 
     /// Whether this card is due for review based on its Leitner box.

@@ -86,6 +86,14 @@ struct VocabListsView: View {
             } message: {
                 Text("Name your new vocabulary list.")
             }
+            .alert("Something went wrong", isPresented: Binding(
+                get: { vm.errorMessage != nil },
+                set: { if !$0 { vm.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { vm.errorMessage = nil }
+            } message: {
+                Text(vm.errorMessage ?? "")
+            }
         }
     }
 

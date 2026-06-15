@@ -22,8 +22,11 @@ struct AddWordView: View {
     @State private var translation: String
     @State private var notes: String
     @State private var partOfSpeech: PartOfSpeech
+    @State private var hiragana: String
+    @State private var pinyin: String
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @StateObject private var recorder = PronunciationRecorder()
 
     init(listId: String, word: VocabWord? = nil) {
         self.listId = listId
@@ -32,14 +35,26 @@ struct AddWordView: View {
         _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
         _partOfSpeech = State(initialValue: word?.partOfSpeechValue ?? .unspecified)
+        _hiragana = State(initialValue: word?.hiragana ?? "")
+        _pinyin = State(initialValue: word?.pinyin ?? "")
     }
 
     private var isEditing: Bool { existingWord != nil }
 
+    /// Hiragana is only relevant when the target language is Japanese.
+    private var isLearningJapanese: Bool { targetLanguage == "ja" }
+    /// Pinyin is shown — and required — when the target language is Chinese.
+    private var isLearningChinese: Bool { targetLanguage == "zh" }
+
     private var canSave: Bool {
-        !term.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !translation.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !isSaving
+        guard !term.trimmingCharacters(in: .whitespaces).isEmpty,
+              !translation.trimmingCharacters(in: .whitespaces).isEmpty,
+              !isSaving else { return false }
+        // Pinyin is mandatory for Chinese.
+        if isLearningChinese && pinyin.trimmingCharacters(in: .whitespaces).isEmpty {
+            return false
+        }
+        return true
     }
 
     var body: some View {
@@ -47,6 +62,27 @@ struct AddWordView: View {
             Section(Language.named(targetLanguage)?.displayName ?? "Word") {
                 TextField("Word you're learning", text: $term)
                     .textInputAutocapitalization(.never)
+            }
+
+            if isLearningJapanese {
+                Section("Hiragana (optional)") {
+                    TextField("ひらがな reading", text: $hiragana)
+                        .textInputAutocapitalization(.never)
+                }
+            }
+
+            if isLearningChinese {
+                Section {
+                    TextField("pīnyīn reading", text: $pinyin)
+                        .textInputAutocapitalization(.never)
+                } header: {
+                    Text("Pinyin (required)")
+                } footer: {
+                    if pinyin.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Text("Pinyin is required for Chinese words.")
+                            .foregroundStyle(.red)
+                    }
+                }
             }
 
             Section(Language.named(nativeLanguage)?.displayName ?? "Translation") {
@@ -63,6 +99,8 @@ struct AddWordView: View {
                 .pickerStyle(.menu)
             }
 
+            pronunciationSection
+
             Section("Notes (optional)") {
                 TextField("Example sentence or memory hint", text: $notes, axis: .vertical)
                     .lineLimit(2...5)
@@ -76,6 +114,8 @@ struct AddWordView: View {
         }
         .navigationTitle(isEditing ? "Edit Word" : "New Word")
         .navigationBarTitleDisplayMode(.inline)
+        .task { recorder.configure(existingAudioPath: existingWord?.audioPath) }
+        .onDisappear { recorder.stopPlayback() }
         .toolbar {
             if !isEditing {
                 ToolbarItem(placement: .cancellationAction) {
@@ -89,11 +129,54 @@ struct AddWordView: View {
         }
     }
 
+    @ViewBuilder
+    private var pronunciationSection: some View {
+        Section {
+            Button {
+                recorder.toggleRecording()
+            } label: {
+                Label(
+                    recorder.isRecording ? "Stop Recording" : (recorder.hasAudio ? "Re-record" : "Record"),
+                    systemImage: recorder.isRecording ? "stop.circle.fill" : "mic.fill"
+                )
+                .foregroundStyle(recorder.isRecording ? .red : .accentColor)
+            }
+
+            if recorder.hasAudio && !recorder.isRecording {
+                Button {
+                    recorder.isPlaying ? recorder.stopPlayback() : recorder.play()
+                } label: {
+                    Label(recorder.isPlaying ? "Stop" : "Play", systemImage: recorder.isPlaying ? "stop.fill" : "play.fill")
+                }
+                Button(role: .destructive) {
+                    recorder.clear()
+                } label: {
+                    Label("Delete Recording", systemImage: "trash")
+                }
+            }
+        } header: {
+            Text("Pronunciation (optional)")
+        } footer: {
+            if recorder.permissionDenied {
+                Text("Microphone access is off. Enable it in Settings to record.")
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
     private func save() {
         guard let uid = auth.uid else { return }
         let trimmedTerm = term.trimmingCharacters(in: .whitespaces)
         let trimmedTranslation = translation.trimmingCharacters(in: .whitespaces)
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
+        let trimmedHiragana = hiragana.trimmingCharacters(in: .whitespaces)
+        let hiraganaValue = trimmedHiragana.isEmpty ? nil : trimmedHiragana
+        let trimmedPinyin = pinyin.trimmingCharacters(in: .whitespaces)
+        let pinyinValue = trimmedPinyin.isEmpty ? nil : trimmedPinyin
+
+        // Audio: a freshly recorded clip to upload, or removal of an existing one.
+        let newAudioURL = recorder.recordedURL
+        let removeAudio = isEditing && existingWord?.audioPath != nil && !recorder.hasAudio
 
         isSaving = true
         errorMessage = nil
@@ -105,15 +188,22 @@ struct AddWordView: View {
                     word.translation = trimmedTranslation
                     word.notes = trimmedNotes
                     word.partOfSpeech = partOfSpeech.rawValue
-                    try await VocabRepository.updateWord(uid: uid, listId: listId, word: word)
+                    word.hiragana = hiraganaValue
+                    word.pinyin = pinyinValue
+                    try await VocabRepository.updateWord(
+                        uid: uid, listId: listId, word: word,
+                        newAudioFileURL: newAudioURL, removeAudio: removeAudio
+                    )
                 } else {
                     let word = VocabWord(
                         term: trimmedTerm,
                         translation: trimmedTranslation,
                         notes: trimmedNotes,
-                        partOfSpeech: partOfSpeech
+                        partOfSpeech: partOfSpeech,
+                        hiragana: hiraganaValue,
+                        pinyin: pinyinValue
                     )
-                    try await VocabRepository.addWord(uid: uid, listId: listId, word: word)
+                    try await VocabRepository.addWord(uid: uid, listId: listId, word: word, audioFileURL: newAudioURL)
                 }
                 dismiss()
             } catch {

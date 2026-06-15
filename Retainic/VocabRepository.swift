@@ -7,6 +7,7 @@
 
 import Foundation
 import FirebaseFirestore
+import FirebaseStorage
 
 enum VocabRepository {
     private static var db: Firestore { Firestore.firestore() }
@@ -44,9 +45,11 @@ enum VocabRepository {
     }
 
     static func deleteList(uid: String, listId: String) async throws {
-        // Remove the words subcollection first, then the list document.
+        // Remove the words subcollection (and any pronunciation audio) first,
+        // then the list document.
         let words = try await wordsRef(uid, listId).getDocuments()
         for doc in words.documents {
+            await deleteAudio(path: audioStoragePath(uid: uid, listId: listId, wordId: doc.documentID))
             try await doc.reference.delete()
         }
         try await listsRef(uid).document(listId).delete()
@@ -61,20 +64,68 @@ enum VocabRepository {
         return snapshot.documents.compactMap { try? $0.data(as: VocabWord.self) }
     }
 
-    static func addWord(uid: String, listId: String, word: VocabWord) async throws {
-        _ = try wordsRef(uid, listId).addDocument(from: word)
+    static func addWord(uid: String, listId: String, word: VocabWord, audioFileURL: URL? = nil) async throws {
+        let ref = wordsRef(uid, listId).document()
+        var word = word
+        if let audioFileURL {
+            let path = audioStoragePath(uid: uid, listId: listId, wordId: ref.documentID)
+            try await uploadAudio(localURL: audioFileURL, to: path)
+            word.audioPath = path
+        }
+        try ref.setData(from: word)
         try await listsRef(uid).document(listId)
             .updateData(["wordCount": FieldValue.increment(Int64(1))])
     }
 
-    static func updateWord(uid: String, listId: String, word: VocabWord) async throws {
+    /// Updates a word. Pass `newAudioFileURL` to (re)upload a recording, or
+    /// `removeAudio: true` to delete the existing recording. With neither, the
+    /// existing `audioPath` is preserved (used for spaced-repetition updates).
+    static func updateWord(
+        uid: String,
+        listId: String,
+        word: VocabWord,
+        newAudioFileURL: URL? = nil,
+        removeAudio: Bool = false
+    ) async throws {
         guard let id = word.id else { return }
-        try wordsRef(uid, listId).document(id).setData(from: word, merge: true)
+        var word = word
+        let path = audioStoragePath(uid: uid, listId: listId, wordId: id)
+        if let newAudioFileURL {
+            try await uploadAudio(localURL: newAudioFileURL, to: path)
+            word.audioPath = path
+        } else if removeAudio {
+            await deleteAudio(path: path)
+            word.audioPath = nil
+        }
+        // Full overwrite (no merge) so a cleared audioPath is actually removed.
+        try wordsRef(uid, listId).document(id).setData(from: word)
     }
 
     static func deleteWord(uid: String, listId: String, wordId: String) async throws {
+        await deleteAudio(path: audioStoragePath(uid: uid, listId: listId, wordId: wordId))
         try await wordsRef(uid, listId).document(wordId).delete()
         try await listsRef(uid).document(listId)
             .updateData(["wordCount": FieldValue.increment(Int64(-1))])
+    }
+
+    // MARK: - Pronunciation audio (Firebase Storage)
+
+    static func audioStoragePath(uid: String, listId: String, wordId: String) -> String {
+        "users/\(uid)/lists/\(listId)/words/\(wordId)/pronunciation.m4a"
+    }
+
+    private static func uploadAudio(localURL: URL, to path: String) async throws {
+        let metadata = StorageMetadata()
+        metadata.contentType = "audio/mp4"
+        _ = try await Storage.storage().reference(withPath: path)
+            .putFileAsync(from: localURL, metadata: metadata)
+    }
+
+    static func downloadAudioData(path: String) async throws -> Data {
+        try await Storage.storage().reference(withPath: path).data(maxSize: 10 * 1024 * 1024)
+    }
+
+    private static func deleteAudio(path: String) async {
+        try? await Storage.storage().reference(withPath: path).delete()
     }
 }

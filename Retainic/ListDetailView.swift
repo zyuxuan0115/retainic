@@ -95,6 +95,14 @@ struct ListDetailView: View {
                 AddWordView(listId: listId)
             }
         }
+        .alert("Something went wrong", isPresented: Binding(
+            get: { vm.errorMessage != nil },
+            set: { if !$0 { vm.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { vm.errorMessage = nil }
+        } message: {
+            Text(vm.errorMessage ?? "")
+        }
     }
 
     private var wordsList: some View {
@@ -138,6 +146,7 @@ struct ListDetailView: View {
 
 private struct WordRow: View {
     @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @ObservedObject private var playback = AudioPlaybackStore.shared
     let word: VocabWord
 
     private var partOfSpeech: PartOfSpeech? {
@@ -146,22 +155,39 @@ private struct WordRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(word.term)
-                    .font(.headline)
-                if let partOfSpeech {
-                    Text(partOfSpeech.label(for: nativeLanguage))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tint)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(word.term)
+                        .font(.headline)
+                    if let reading = word.reading {
+                        Text(reading)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let partOfSpeech {
+                        Text(partOfSpeech.label(for: nativeLanguage))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tint)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                    }
                 }
+                Text(word.translation)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            Text(word.translation)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            if let path = word.audioPath {
+                Spacer()
+                Button {
+                    playback.toggle(path: path)
+                } label: {
+                    Image(systemName: playback.playingPath == path ? "stop.circle.fill" : "speaker.wave.2.fill")
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.borderless)
+            }
         }
         .padding(.vertical, 2)
     }

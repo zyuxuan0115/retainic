@@ -60,6 +60,7 @@ final class AuthService: ObservableObject {
             try VocabRepository.userDoc(result.user.uid).setData(from: profile)
             self.profile = profile
         } catch {
+            logAuthError("register", error)
             errorMessage = friendlyMessage(error)
         }
     }
@@ -71,6 +72,7 @@ final class AuthService: ObservableObject {
         do {
             try await Auth.auth().signIn(withEmail: email, password: password)
         } catch {
+            logAuthError("signIn", error)
             errorMessage = friendlyMessage(error)
         }
     }
@@ -94,6 +96,25 @@ final class AuthService: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    /// Dumps the full error so the real cause behind "An internal error has
+    /// occurred" is visible in the Xcode console.
+    private func logAuthError(_ context: String, _ error: Error) {
+        let nsError = error as NSError
+        print("🔥 Auth.\(context) failed")
+        print("   domain: \(nsError.domain)  code: \(nsError.code)")
+        print("   localizedDescription: \(nsError.localizedDescription)")
+
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            print("   underlying: domain=\(underlying.domain) code=\(underlying.code) — \(underlying.localizedDescription)")
+            print("   underlying.userInfo: \(underlying.userInfo)")
+        }
+        // FirebaseAuth stashes the parsed server response here when available.
+        if let response = nsError.userInfo["FIRAuthErrorUserInfoDeserializedResponseKey"] {
+            print("   server response: \(response)")
+        }
+        print("   full userInfo: \(nsError.userInfo)")
+    }
 
     private func friendlyMessage(_ error: Error) -> String {
         // FirebaseAuth error codes (stable public values), mapped to friendly copy.
