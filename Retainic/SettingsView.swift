@@ -2,21 +2,26 @@
 //  SettingsView.swift
 //  Retainic
 //
-//  Change languages and view progress.
+//  Account info, language preferences, and sign out.
 //
 
 import SwiftUI
-import SwiftData
 
 struct SettingsView: View {
     @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
     @AppStorage(AppStorageKey.targetLanguage) private var targetLanguage = ""
 
-    @Query private var words: [Word]
+    @EnvironmentObject private var auth: AuthService
+    @State private var showingSignOut = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Account") {
+                    LabeledContent("Username", value: auth.profile?.username ?? auth.displayName ?? "—")
+                    LabeledContent("Email", value: auth.profile?.email ?? auth.email ?? "—")
+                }
+
                 Section("Languages") {
                     Picker("I speak", selection: $nativeLanguage) {
                         ForEach(Language.all) { language in
@@ -30,18 +35,22 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Progress") {
-                    LabeledContent("Total words", value: "\(words.count)")
-                    LabeledContent("Due for review", value: "\(words.filter(\.isDue).count)")
-                    LabeledContent("Mastered", value: "\(words.filter { $0.box >= 5 }.count)")
+                Section {
+                    Button("Sign Out", role: .destructive) {
+                        showingSignOut = true
+                    }
                 }
             }
             .navigationTitle("Settings")
+            .confirmationDialog("Sign out of Retainic?", isPresented: $showingSignOut, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) { auth.signOut() }
+                Button("Cancel", role: .cancel) {}
+            }
         }
     }
 }
 
 #Preview {
     SettingsView()
-        .modelContainer(for: Word.self, inMemory: true)
+        .environmentObject(AuthService())
 }

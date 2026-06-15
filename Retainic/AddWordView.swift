@@ -2,40 +2,44 @@
 //  AddWordView.swift
 //  Retainic
 //
-//  Create a new word or edit an existing one.
+//  Create a new word in a list, or edit an existing one. Backed by Firestore.
 //
 
 import SwiftUI
-import SwiftData
 
 struct AddWordView: View {
+    let listId: String
+    /// Existing word when editing; nil when creating.
+    private let existingWord: VocabWord?
+
     @AppStorage(AppStorageKey.targetLanguage) private var targetLanguage = ""
     @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
 
-    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var auth: AuthService
     @Environment(\.dismiss) private var dismiss
-
-    /// Existing word when editing; nil when creating.
-    private let existingWord: Word?
 
     @State private var term: String
     @State private var translation: String
     @State private var notes: String
     @State private var partOfSpeech: PartOfSpeech
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
-    init(word: Word? = nil) {
+    init(listId: String, word: VocabWord? = nil) {
+        self.listId = listId
         self.existingWord = word
         _term = State(initialValue: word?.term ?? "")
         _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
-        _partOfSpeech = State(initialValue: PartOfSpeech(rawValue: word?.partOfSpeech ?? "") ?? .unspecified)
+        _partOfSpeech = State(initialValue: word?.partOfSpeechValue ?? .unspecified)
     }
 
     private var isEditing: Bool { existingWord != nil }
 
     private var canSave: Bool {
         !term.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !translation.trimmingCharacters(in: .whitespaces).isEmpty
+        !translation.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !isSaving
     }
 
     var body: some View {
@@ -63,6 +67,12 @@ struct AddWordView: View {
                 TextField("Example sentence or memory hint", text: $notes, axis: .vertical)
                     .lineLimit(2...5)
             }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
         }
         .navigationTitle(isEditing ? "Edit Word" : "New Word")
         .navigationBarTitleDisplayMode(.inline)
@@ -73,31 +83,43 @@ struct AddWordView: View {
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save)
+                Button("Save") { save() }
                     .disabled(!canSave)
             }
         }
     }
 
     private func save() {
+        guard let uid = auth.uid else { return }
         let trimmedTerm = term.trimmingCharacters(in: .whitespaces)
         let trimmedTranslation = translation.trimmingCharacters(in: .whitespaces)
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
 
-        if let word = existingWord {
-            word.term = trimmedTerm
-            word.translation = trimmedTranslation
-            word.notes = trimmedNotes
-            word.partOfSpeech = partOfSpeech.rawValue
-        } else {
-            let word = Word(term: trimmedTerm, translation: trimmedTranslation, notes: trimmedNotes, partOfSpeech: partOfSpeech)
-            modelContext.insert(word)
-        }
-        dismiss()
-    }
-}
+        isSaving = true
+        errorMessage = nil
 
-#Preview {
-    AddWordView()
-        .modelContainer(for: Word.self, inMemory: true)
+        Task {
+            do {
+                if var word = existingWord {
+                    word.term = trimmedTerm
+                    word.translation = trimmedTranslation
+                    word.notes = trimmedNotes
+                    word.partOfSpeech = partOfSpeech.rawValue
+                    try await VocabRepository.updateWord(uid: uid, listId: listId, word: word)
+                } else {
+                    let word = VocabWord(
+                        term: trimmedTerm,
+                        translation: trimmedTranslation,
+                        notes: trimmedNotes,
+                        partOfSpeech: partOfSpeech
+                    )
+                    try await VocabRepository.addWord(uid: uid, listId: listId, word: word)
+                }
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+                isSaving = false
+            }
+        }
+    }
 }

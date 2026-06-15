@@ -2,17 +2,20 @@
 //  FlashcardView.swift
 //  Retainic
 //
-//  Flip-card practice session driven by the Leitner spaced-repetition boxes.
+//  Flip-card practice for one list, driven by the Leitner boxes.
+//  Review results are persisted back to Firestore.
 //
 
 import SwiftUI
-import SwiftData
 
 struct FlashcardView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var words: [Word]
+    let listName: String
+    let listId: String
+    let words: [VocabWord]
 
-    @State private var session: [Word] = []
+    @EnvironmentObject private var auth: AuthService
+
+    @State private var session: [VocabWord] = []
     @State private var index = 0
     @State private var isFlipped = false
     @State private var showFrontIsTerm = true
@@ -21,24 +24,23 @@ struct FlashcardView: View {
     @State private var dueOnly = true
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if words.isEmpty {
-                    emptyState
-                } else if session.isEmpty {
-                    setupView
-                } else if isFinished {
-                    summaryView
-                } else {
-                    practiceView
-                }
+        Group {
+            if words.isEmpty {
+                emptyState
+            } else if session.isEmpty {
+                setupView
+            } else if isFinished {
+                summaryView
+            } else {
+                practiceView
             }
-            .navigationTitle("Practice")
-            .toolbar {
-                if !session.isEmpty && !isFinished {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("End", role: .cancel) { endSession() }
-                    }
+        }
+        .navigationTitle("Practice")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !session.isEmpty && !isFinished {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("End", role: .cancel) { endSession() }
                 }
             }
         }
@@ -50,7 +52,7 @@ struct FlashcardView: View {
         ContentUnavailableView(
             "Nothing to Practice",
             systemImage: "rectangle.on.rectangle.angled",
-            description: Text("Add some words first, then come back to review them as flashcards.")
+            description: Text("Add some words to this list first, then come back to review them.")
         )
     }
 
@@ -68,7 +70,7 @@ struct FlashcardView: View {
                 Text("Ready to practice?")
                     .font(.title2.bold())
                 Text(dueCount > 0
-                     ? "\(dueCount) card\(dueCount == 1 ? "" : "s") due for review."
+                     ? "\(dueCount) card\(dueCount == 1 ? "" : "s") due in “\(listName)”."
                      : "No cards due right now — but you can review everything.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -129,13 +131,10 @@ struct FlashcardView: View {
             if isFlipped {
                 HStack(spacing: 16) {
                     answerButton(title: "Practice Again", systemImage: "arrow.counterclockwise", tint: .orange) {
-                        card.markIncorrect()
-                        advance()
+                        handleAnswer(correct: false)
                     }
                     answerButton(title: "Got It", systemImage: "checkmark", tint: .green) {
-                        card.markCorrect()
-                        correctCount += 1
-                        advance()
+                        handleAnswer(correct: true)
                     }
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -191,7 +190,7 @@ struct FlashcardView: View {
 
     // MARK: - Session logic
 
-    private func deck() -> [Word] {
+    private func deck() -> [VocabWord] {
         let pool = dueOnly ? words.filter(\.isDue) : words
         // Prioritise lower Leitner boxes, then shuffle within the selection.
         return pool.shuffled().sorted { $0.box < $1.box }
@@ -205,6 +204,24 @@ struct FlashcardView: View {
         correctCount = 0
         isFlipped = false
         isFinished = false
+    }
+
+    private func handleAnswer(correct: Bool) {
+        var card = session[index]
+        if correct {
+            card.markCorrect()
+            correctCount += 1
+        } else {
+            card.markIncorrect()
+        }
+        session[index] = card
+        persist(card)
+        advance()
+    }
+
+    private func persist(_ card: VocabWord) {
+        guard let uid = auth.uid else { return }
+        Task { try? await VocabRepository.updateWord(uid: uid, listId: listId, word: card) }
     }
 
     private func advance() {
@@ -266,9 +283,4 @@ private struct CardView: View {
                 .padding(8)
         }
     }
-}
-
-#Preview {
-    FlashcardView()
-        .modelContainer(for: Word.self, inMemory: true)
 }

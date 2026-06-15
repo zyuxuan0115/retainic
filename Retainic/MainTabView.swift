@@ -2,23 +2,17 @@
 //  MainTabView.swift
 //  Retainic
 //
-//  Top-level navigation once onboarding is complete.
+//  Top-level navigation once signed in.
 //
 
 import SwiftUI
-import SwiftData
 
 struct MainTabView: View {
     var body: some View {
         TabView {
-            WordListView()
+            VocabListsView()
                 .tabItem {
-                    Label("Words", systemImage: "character.book.closed")
-                }
-
-            FlashcardView()
-                .tabItem {
-                    Label("Practice", systemImage: "rectangle.on.rectangle.angled")
+                    Label("My Lists", systemImage: "rectangle.stack")
                 }
 
             SettingsView()
@@ -31,5 +25,5 @@ struct MainTabView: View {
 
 #Preview {
     MainTabView()
-        .modelContainer(for: Word.self, inMemory: true)
+        .environmentObject(AuthService())
 }
