@@ -149,11 +149,6 @@ private struct WordRow: View {
     @ObservedObject private var playback = AudioPlaybackStore.shared
     let word: VocabWord
 
-    private var partOfSpeech: PartOfSpeech? {
-        let pos = word.partOfSpeechValue
-        return pos == .unspecified ? nil : pos
-    }
-
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -165,8 +160,8 @@ private struct WordRow: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    if let partOfSpeech {
-                        Text(partOfSpeech.label(for: nativeLanguage))
+                    ForEach(word.partOfSpeechValues) { pos in
+                        Text(pos.label(for: nativeLanguage))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.tint)
                             .padding(.horizontal, 6)

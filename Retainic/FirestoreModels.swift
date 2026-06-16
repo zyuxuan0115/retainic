@@ -34,7 +34,10 @@ struct VocabWord: Codable, Identifiable {
     var term: String
     var translation: String
     var notes: String
-    var partOfSpeech: String
+    /// Parts of speech (raw values). A word may have several.
+    var partsOfSpeech: [String]?
+    /// Legacy single part of speech, kept so older documents still decode.
+    var partOfSpeech: String?
     /// Optional hiragana reading, used when learning Japanese.
     /// Optional so existing documents without the field still decode.
     var hiragana: String?
@@ -56,7 +59,7 @@ struct VocabWord: Codable, Identifiable {
         term: String,
         translation: String,
         notes: String = "",
-        partOfSpeech: PartOfSpeech = .unspecified,
+        partsOfSpeech: [PartOfSpeech] = [],
         hiragana: String? = nil,
         pinyin: String? = nil,
         audioPath: String? = nil,
@@ -70,7 +73,8 @@ struct VocabWord: Codable, Identifiable {
         self.term = term
         self.translation = translation
         self.notes = notes
-        self.partOfSpeech = partOfSpeech.rawValue
+        self.partsOfSpeech = partsOfSpeech.map(\.rawValue)
+        self.partOfSpeech = nil
         self.hiragana = hiragana
         self.pinyin = pinyin
         self.audioPath = audioPath
@@ -85,8 +89,16 @@ struct VocabWord: Codable, Identifiable {
 // MARK: - Leitner spaced-repetition helpers
 
 extension VocabWord {
-    var partOfSpeechValue: PartOfSpeech {
-        PartOfSpeech(rawValue: partOfSpeech) ?? .unspecified
+    /// The selected parts of speech, reading the new array field and falling
+    /// back to the legacy single value. Excludes `.unspecified`.
+    var partOfSpeechValues: [PartOfSpeech] {
+        if let raw = partsOfSpeech, !raw.isEmpty {
+            return raw.compactMap { PartOfSpeech(rawValue: $0) }.filter { $0 != .unspecified }
+        }
+        if let single = partOfSpeech, let pos = PartOfSpeech(rawValue: single), pos != .unspecified {
+            return [pos]
+        }
+        return []
     }
 
     /// The phonetic reading to display (hiragana for Japanese, pinyin for

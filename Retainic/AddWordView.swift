@@ -21,7 +21,7 @@ struct AddWordView: View {
     @State private var term: String
     @State private var translation: String
     @State private var notes: String
-    @State private var partOfSpeech: PartOfSpeech
+    @State private var selectedPOS: Set<PartOfSpeech>
     @State private var hiragana: String
     @State private var pinyin: String
     @State private var isSaving = false
@@ -34,7 +34,7 @@ struct AddWordView: View {
         _term = State(initialValue: word?.term ?? "")
         _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
-        _partOfSpeech = State(initialValue: word?.partOfSpeechValue ?? .unspecified)
+        _selectedPOS = State(initialValue: Set(word?.partOfSpeechValues ?? []))
         _hiragana = State(initialValue: word?.hiragana ?? "")
         _pinyin = State(initialValue: word?.pinyin ?? "")
     }
@@ -89,14 +89,27 @@ struct AddWordView: View {
                 TextField("Translation", text: $translation)
             }
 
-            Section("Part of speech") {
-                Picker("Part of speech", selection: $partOfSpeech) {
-                    ForEach(PartOfSpeech.allCases) { pos in
-                        Text(pos.label(for: nativeLanguage)).tag(pos)
+            Section {
+                ForEach(PartOfSpeech.allCases.filter { $0 != .unspecified }) { pos in
+                    Button {
+                        toggle(pos)
+                    } label: {
+                        HStack {
+                            Text(pos.label(for: nativeLanguage))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if selectedPOS.contains(pos) {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.tint)
+                                    .fontWeight(.semibold)
+                            }
+                        }
                     }
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
+            } header: {
+                Text("Part of speech")
+            } footer: {
+                Text("Select all that apply.")
             }
 
             pronunciationSection
@@ -164,6 +177,14 @@ struct AddWordView: View {
         }
     }
 
+    private func toggle(_ pos: PartOfSpeech) {
+        if selectedPOS.contains(pos) {
+            selectedPOS.remove(pos)
+        } else {
+            selectedPOS.insert(pos)
+        }
+    }
+
     private func save() {
         guard let uid = auth.uid else { return }
         let trimmedTerm = term.trimmingCharacters(in: .whitespaces)
@@ -173,6 +194,8 @@ struct AddWordView: View {
         let hiraganaValue = trimmedHiragana.isEmpty ? nil : trimmedHiragana
         let trimmedPinyin = pinyin.trimmingCharacters(in: .whitespaces)
         let pinyinValue = trimmedPinyin.isEmpty ? nil : trimmedPinyin
+        // Keep a stable order matching the enum's declaration order.
+        let posList = PartOfSpeech.allCases.filter { selectedPOS.contains($0) }
 
         // Audio: a freshly recorded clip to upload, or removal of an existing one.
         let newAudioURL = recorder.recordedURL
@@ -187,7 +210,8 @@ struct AddWordView: View {
                     word.term = trimmedTerm
                     word.translation = trimmedTranslation
                     word.notes = trimmedNotes
-                    word.partOfSpeech = partOfSpeech.rawValue
+                    word.partsOfSpeech = posList.map(\.rawValue)
+                    word.partOfSpeech = nil
                     word.hiragana = hiraganaValue
                     word.pinyin = pinyinValue
                     try await VocabRepository.updateWord(
@@ -199,7 +223,7 @@ struct AddWordView: View {
                         term: trimmedTerm,
                         translation: trimmedTranslation,
                         notes: trimmedNotes,
-                        partOfSpeech: partOfSpeech,
+                        partsOfSpeech: posList,
                         hiragana: hiraganaValue,
                         pinyin: pinyinValue
                     )
