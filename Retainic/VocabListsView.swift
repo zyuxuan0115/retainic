@@ -24,9 +24,14 @@ final class ListsViewModel: ObservableObject {
         }
     }
 
-    func create(uid: String, name: String) async {
+    func create(uid: String, name: String, learningLanguage: String, originalLanguage: String) async {
         do {
-            try await VocabRepository.createList(uid: uid, name: name)
+            try await VocabRepository.createList(
+                uid: uid,
+                name: name,
+                learningLanguage: learningLanguage,
+                originalLanguage: originalLanguage
+            )
             await load(uid: uid)
         } catch {
             errorMessage = error.localizedDescription
@@ -49,7 +54,6 @@ struct VocabListsView: View {
     @StateObject private var vm = ListsViewModel()
 
     @State private var showingNewList = false
-    @State private var newListName = ""
 
     var body: some View {
         NavigationStack {
@@ -66,7 +70,6 @@ struct VocabListsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        newListName = ""
                         showingNewList = true
                     } label: {
                         Label("New List", systemImage: "plus")
@@ -79,12 +82,10 @@ struct VocabListsView: View {
             .refreshable {
                 if let uid = auth.uid { await vm.load(uid: uid) }
             }
-            .alert("New List", isPresented: $showingNewList) {
-                TextField("List name", text: $newListName)
-                Button("Cancel", role: .cancel) {}
-                Button("Create") { createList() }
-            } message: {
-                Text("Name your new vocabulary list.")
+            .sheet(isPresented: $showingNewList) {
+                NewListSheet { name, learning, original in
+                    createList(name: name, learningLanguage: learning, originalLanguage: original)
+                }
             }
             .alert("Something went wrong", isPresented: Binding(
                 get: { vm.errorMessage != nil },
@@ -117,17 +118,23 @@ struct VocabListsView: View {
             Text("Create your first vocabulary list to start adding words.")
         } actions: {
             Button("Create a List") {
-                newListName = ""
                 showingNewList = true
             }
             .buttonStyle(.borderedProminent)
         }
     }
 
-    private func createList() {
-        let name = newListName.trimmingCharacters(in: .whitespaces)
+    private func createList(name: String, learningLanguage: String, originalLanguage: String) {
+        let name = name.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty, let uid = auth.uid else { return }
-        Task { await vm.create(uid: uid, name: name) }
+        Task {
+            await vm.create(
+                uid: uid,
+                name: name,
+                learningLanguage: learningLanguage,
+                originalLanguage: originalLanguage
+            )
+        }
     }
 
     private func deleteLists(at offsets: IndexSet) {
@@ -135,6 +142,75 @@ struct VocabListsView: View {
         let toDelete = offsets.map { vm.lists[$0] }
         Task {
             for list in toDelete { await vm.delete(uid: uid, list: list) }
+        }
+    }
+}
+
+/// New-list form: name plus the language pair the list bridges. The original
+/// (translation) language defaults to the user's native language.
+private struct NewListSheet: View {
+    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @Environment(\.dismiss) private var dismiss
+
+    let onCreate: (_ name: String, _ learningLanguage: String, _ originalLanguage: String) -> Void
+
+    @State private var name = ""
+    @State private var learningLanguage = ""
+    @State private var originalLanguage = ""
+
+    private var canCreate: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+        && !learningLanguage.isEmpty
+        && !originalLanguage.isEmpty
+        && learningLanguage != originalLanguage
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("List name") {
+                    TextField("e.g. Kitchen vocabulary", text: $name)
+                }
+
+                Section {
+                    Picker("I'm learning", selection: $learningLanguage) {
+                        Text("Select…").tag("")
+                        ForEach(Language.all) { language in
+                            Text(language.displayName).tag(language.code)
+                        }
+                    }
+                    Picker("Translated into", selection: $originalLanguage) {
+                        Text("Select…").tag("")
+                        ForEach(Language.all) { language in
+                            Text(language.displayName).tag(language.code)
+                        }
+                    }
+                } header: {
+                    Text("Languages")
+                } footer: {
+                    if learningLanguage != "" && learningLanguage == originalLanguage {
+                        Text("The two languages must be different.")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("New List")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if originalLanguage.isEmpty { originalLanguage = nativeLanguage }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onCreate(name, learningLanguage, originalLanguage)
+                        dismiss()
+                    }
+                    .disabled(!canCreate)
+                }
+            }
         }
     }
 }

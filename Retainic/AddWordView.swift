@@ -9,10 +9,13 @@ import SwiftUI
 
 struct AddWordView: View {
     let listId: String
+    /// Language of the word being studied (the `term`), from the list.
+    let learningLanguage: String
+    /// Language the word is translated into (the `translation`), from the list.
+    let originalLanguage: String
     /// Existing word when editing; nil when creating.
     private let existingWord: VocabWord?
 
-    @AppStorage(AppStorageKey.targetLanguage) private var targetLanguage = ""
     @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
 
     @EnvironmentObject private var auth: AuthService
@@ -28,8 +31,10 @@ struct AddWordView: View {
     @State private var errorMessage: String?
     @StateObject private var recorder = PronunciationRecorder()
 
-    init(listId: String, word: VocabWord? = nil) {
+    init(listId: String, learningLanguage: String, originalLanguage: String, word: VocabWord? = nil) {
         self.listId = listId
+        self.learningLanguage = learningLanguage
+        self.originalLanguage = originalLanguage
         self.existingWord = word
         _term = State(initialValue: word?.term ?? "")
         _translation = State(initialValue: word?.translation ?? "")
@@ -41,10 +46,10 @@ struct AddWordView: View {
 
     private var isEditing: Bool { existingWord != nil }
 
-    /// Hiragana is only relevant when the target language is Japanese.
-    private var isLearningJapanese: Bool { targetLanguage == "ja" }
-    /// Pinyin is shown — and required — when the target language is Chinese.
-    private var isLearningChinese: Bool { targetLanguage == "zh" }
+    /// Hiragana is only relevant when the list's learning language is Japanese.
+    private var isLearningJapanese: Bool { learningLanguage == "ja" }
+    /// Pinyin is shown — and required — when the list's learning language is Chinese.
+    private var isLearningChinese: Bool { learningLanguage == "zh" }
 
     private var canSave: Bool {
         guard !term.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -59,7 +64,7 @@ struct AddWordView: View {
 
     var body: some View {
         Form {
-            Section(Language.named(targetLanguage)?.displayName ?? "Word") {
+            Section(Language.named(learningLanguage)?.displayName ?? "Word") {
                 TextField("Word you're learning", text: $term)
                     .textInputAutocapitalization(.never)
             }
@@ -85,7 +90,7 @@ struct AddWordView: View {
                 }
             }
 
-            Section(Language.named(nativeLanguage)?.displayName ?? "Translation") {
+            Section(Language.named(originalLanguage)?.displayName ?? "Translation") {
                 TextField("Translation", text: $translation)
             }
 
@@ -172,6 +177,9 @@ struct AddWordView: View {
         } footer: {
             if recorder.permissionDenied {
                 Text("Microphone access is off. Enable it in Settings to record.")
+                    .foregroundStyle(.red)
+            } else if recorder.recordingWasEmpty {
+                Text("No audio was captured. On the Simulator, enable I/O ▸ Audio Input; otherwise try recording on a real device.")
                     .foregroundStyle(.red)
             }
         }

@@ -26,6 +26,36 @@ struct VocabularyList: Codable, Identifiable {
     var name: String
     var createdAt: Date
     var wordCount: Int
+    /// Language of the words being studied (the `term` side). Drives the
+    /// pinyin/hiragana reading. Optional so older documents still decode.
+    var learningLanguage: String?
+    /// Language the words are translated into (the `translation` side).
+    /// Optional so older documents still decode.
+    var originalLanguage: String?
+
+    init(
+        id: String? = nil,
+        name: String,
+        createdAt: Date,
+        wordCount: Int,
+        learningLanguage: String? = nil,
+        originalLanguage: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+        self.wordCount = wordCount
+        self.learningLanguage = learningLanguage
+        self.originalLanguage = originalLanguage
+    }
+}
+
+/// A word paired with the list it belongs to, for practice sessions that may
+/// span multiple lists.
+struct PracticeCard: Identifiable {
+    var word: VocabWord
+    let listId: String
+    var id: String { word.id ?? UUID().uuidString }
 }
 
 /// A single vocabulary entry inside a list.
@@ -89,6 +119,9 @@ struct VocabWord: Codable, Identifiable {
 // MARK: - Leitner spaced-repetition helpers
 
 extension VocabWord {
+    /// Non-optional identifier for use as a `ForEach`/selection id.
+    var idValue: String { id ?? "" }
+
     /// The selected parts of speech, reading the new array field and falling
     /// back to the legacy single value. Excludes `.unspecified`.
     var partOfSpeechValues: [PartOfSpeech] {

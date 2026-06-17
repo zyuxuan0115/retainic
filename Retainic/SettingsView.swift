@@ -9,7 +9,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
-    @AppStorage(AppStorageKey.targetLanguage) private var targetLanguage = ""
 
     @EnvironmentObject private var auth: AuthService
     @State private var showingSignOut = false
@@ -22,13 +21,8 @@ struct SettingsView: View {
                     LabeledContent("Email", value: auth.profile?.email ?? auth.email ?? "—")
                 }
 
-                Section("Languages") {
-                    Picker("I speak", selection: $nativeLanguage) {
-                        ForEach(Language.all) { language in
-                            Text(language.displayName).tag(language.code)
-                        }
-                    }
-                    Picker("I'm learning", selection: $targetLanguage) {
+                Section("Language") {
+                    Picker("Native language", selection: $nativeLanguage) {
                         ForEach(Language.all) { language in
                             Text(language.displayName).tag(language.code)
                         }

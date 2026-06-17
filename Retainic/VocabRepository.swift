@@ -34,8 +34,19 @@ enum VocabRepository {
     }
 
     @discardableResult
-    static func createList(uid: String, name: String) async throws -> String {
-        let list = VocabularyList(name: name, createdAt: Date(), wordCount: 0)
+    static func createList(
+        uid: String,
+        name: String,
+        learningLanguage: String,
+        originalLanguage: String
+    ) async throws -> String {
+        let list = VocabularyList(
+            name: name,
+            createdAt: Date(),
+            wordCount: 0,
+            learningLanguage: learningLanguage,
+            originalLanguage: originalLanguage
+        )
         let ref = try listsRef(uid).addDocument(from: list)
         return ref.documentID
     }
@@ -106,6 +117,30 @@ enum VocabRepository {
         try await wordsRef(uid, listId).document(wordId).delete()
         try await listsRef(uid).document(listId)
             .updateData(["wordCount": FieldValue.increment(Int64(-1))])
+    }
+
+    /// Moves a word from one list to another, preserving its fields, review
+    /// progress and pronunciation audio. The audio is copied to the destination
+    /// path before the source word (and its audio) are removed.
+    static func moveWord(uid: String, fromListId: String, toListId: String, word: VocabWord) async throws {
+        guard let wordId = word.id, fromListId != toListId else { return }
+
+        var newWord = word
+        newWord.id = nil
+        newWord.audioPath = nil
+
+        var localAudioURL: URL?
+        if let audioPath = word.audioPath {
+            let data = try await downloadAudioData(path: audioPath)
+            let tmp = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".m4a")
+            try data.write(to: tmp)
+            localAudioURL = tmp
+        }
+
+        try await addWord(uid: uid, listId: toListId, word: newWord, audioFileURL: localAudioURL)
+        if let localAudioURL { try? FileManager.default.removeItem(at: localAudioURL) }
+        try await deleteWord(uid: uid, listId: fromListId, wordId: wordId)
     }
 
     // MARK: - Pronunciation audio (Firebase Storage)

@@ -17,6 +17,8 @@ final class PronunciationRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var isPlaying = false
     @Published var permissionDenied = false
+    /// Set when the last recording captured no audio (e.g. on the Simulator).
+    @Published var recordingWasEmpty = false
     /// Set when a brand-new clip has been recorded this session.
     @Published private(set) var recordedURL: URL?
 
@@ -56,6 +58,7 @@ final class PronunciationRecorder: NSObject, ObservableObject {
 
     private func beginRecording() {
         stopPlayback()
+        recordingWasEmpty = false
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
@@ -70,20 +73,42 @@ final class PronunciationRecorder: NSObject, ObservableObject {
                 AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
             ]
             let recorder = try AVAudioRecorder(url: url, settings: settings)
-            recorder.record()
+            recorder.prepareToRecord()
+            let started = recorder.record()
+            guard started else {
+                print("⚠️ AVAudioRecorder.record() returned false")
+                isRecording = false
+                return
+            }
             self.recorder = recorder
             self.recordedURL = url
             isRecording = true
         } catch {
+            print("⚠️ recording error: \(error)")
             isRecording = false
         }
     }
 
     private func stopRecording() {
+        let duration = recorder?.currentTime ?? 0
         recorder?.stop()
         recorder = nil
         isRecording = false
-        try? AVAudioSession.sharedInstance().setActive(false)
+        // Keep the session active; playback reconfigures the category itself.
+
+        if let url = recordedURL {
+            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+            let size = (attrs?[.size] as? NSNumber)?.intValue ?? -1
+            print("🎙️ recorded \(String(format: "%.1f", duration))s, \(size) bytes")
+            // A valid AAC clip is well over 1 KB; treat tiny files as empty so we
+            // never upload audio that can't be played back.
+            if size < 1_000 {
+                print("⚠️ recording is empty — microphone captured no audio (common on the Simulator).")
+                try? FileManager.default.removeItem(at: url)
+                recordedURL = nil
+                recordingWasEmpty = true
+            }
+        }
     }
 
     /// Discards the current recording (new clip or reference to a saved one).
@@ -115,22 +140,41 @@ final class PronunciationRecorder: NSObject, ObservableObject {
     }
 
     private func play(localURL: URL) {
-        guard let data = try? Data(contentsOf: localURL) else { return }
-        play(data: data)
+        do {
+            try activatePlaybackSession()
+            let player = try AVAudioPlayer(contentsOf: localURL)
+            start(player)
+        } catch {
+            print("⚠️ local playback error: \(error)")
+            isPlaying = false
+        }
     }
 
     private func play(data: Data) {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback)
-            try AVAudioSession.sharedInstance().setActive(true)
-            let player = try AVAudioPlayer(data: data)
-            player.delegate = self
-            player.play()
-            self.player = player
-            isPlaying = true
+            try activatePlaybackSession()
+            let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.m4a.rawValue)
+            start(player)
         } catch {
+            print("⚠️ data playback error: \(error)")
             isPlaying = false
         }
+    }
+
+    private func activatePlaybackSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default)
+        try session.setActive(true)
+    }
+
+    private func start(_ player: AVAudioPlayer) {
+        player.delegate = self
+        player.volume = 1
+        player.prepareToPlay()
+        let ok = player.play()
+        self.player = player
+        isPlaying = ok
+        if !ok { print("⚠️ AVAudioPlayer.play() returned false") }
     }
 
     func stopPlayback() {
@@ -177,14 +221,21 @@ final class AudioPlaybackStore: NSObject, ObservableObject {
                 data = try await VocabRepository.downloadAudioData(path: path)
                 cache[path] = data
             }
-            try AVAudioSession.sharedInstance().setCategory(.playback)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
-            let player = try AVAudioPlayer(data: data)
+            let player = try AVAudioPlayer(data: data, fileTypeHint: AVFileType.m4a.rawValue)
             player.delegate = self
-            player.play()
-            self.player = player
-            playingPath = path
+            player.volume = 1
+            player.prepareToPlay()
+            if player.play() {
+                self.player = player
+                playingPath = path
+            } else {
+                print("⚠️ AudioPlaybackStore.play() returned false")
+                playingPath = nil
+            }
         } catch {
+            print("⚠️ remote playback error: \(error)")
             playingPath = nil
         }
     }
