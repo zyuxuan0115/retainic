@@ -21,12 +21,21 @@ struct ContentView: View {
             }
         }
         // Drive the whole interface from the preferred-language setting.
-        .environment(\.locale, Locale(identifier: Language.localeIdentifier(for: preferredLanguage)))
+        .preferredLocale(preferredLanguage)
     }
 }
 
 enum AppStorageKey {
     static let preferredLanguage = "preferredLanguage"
+}
+
+extension View {
+    /// Applies the app's preferred-language locale to the interface. Also use
+    /// this on presented sheets, which don't reliably inherit `\.locale` from
+    /// the presenting view, so they'd otherwise fall back to the system language.
+    func preferredLocale(_ code: String) -> some View {
+        environment(\.locale, Language.locale(for: code))
+    }
 }
 
 #Preview {

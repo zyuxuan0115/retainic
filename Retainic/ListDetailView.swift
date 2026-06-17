@@ -85,6 +85,7 @@ struct ListDetailView: View {
     @EnvironmentObject private var auth: AuthService
     @StateObject private var vm = WordsViewModel()
 
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var showingAdd = false
     @State private var searchText = ""
     @State private var editMode: EditMode = .inactive
@@ -132,6 +133,7 @@ struct ListDetailView: View {
             NavigationStack {
                 AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage)
             }
+            .preferredLocale(preferredLanguage)
         }
         .sheet(isPresented: $showingMoveSheet) {
             MoveDestinationSheet(
@@ -140,19 +142,22 @@ struct ListDetailView: View {
             ) { destination in
                 moveSelected(to: destination)
             }
+            .preferredLocale(preferredLanguage)
         }
-        .alert("Something went wrong", isPresented: Binding(
+        .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
         )) {
-            Button("OK", role: .cancel) { vm.errorMessage = nil }
+            Button("OK".localized(preferredLanguage), role: .cancel) { vm.errorMessage = nil }
         } message: {
             Text(vm.errorMessage ?? "")
         }
     }
 
     private var selectionTitle: String {
-        selection.isEmpty ? "Select Words" : "\(selection.count) Selected"
+        selection.isEmpty
+            ? "Select Words".localized(preferredLanguage)
+            : "%lld Selected".localized(preferredLanguage, selection.count)
     }
 
     @ToolbarContentBuilder
@@ -216,7 +221,7 @@ struct ListDetailView: View {
             }
             .onDelete(perform: deleteWords)
         }
-        .searchable(text: $searchText, prompt: "Search words")
+        .searchable(text: $searchText, prompt: "Search words".localized(preferredLanguage))
     }
 
     private var emptyState: some View {
@@ -331,6 +336,7 @@ private struct MoveDestinationSheet: View {
     let count: Int
     let onSelect: (VocabularyList) -> Void
 
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -364,7 +370,7 @@ private struct MoveDestinationSheet: View {
                     }
                 }
             }
-            .navigationTitle("Move \(count) Words")
+            .navigationTitle("Move %lld Words".localized(preferredLanguage, count))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

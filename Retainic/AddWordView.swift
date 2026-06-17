@@ -64,7 +64,7 @@ struct AddWordView: View {
 
     var body: some View {
         Form {
-            Section(Language.named(learningLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Word")) {
+            Section(Language.named(learningLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Word", locale: Language.locale(for: preferredLanguage))) {
                 TextField("Word you're learning", text: $term)
                     .textInputAutocapitalization(.never)
             }
@@ -90,7 +90,7 @@ struct AddWordView: View {
                 }
             }
 
-            Section(Language.named(originalLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Translation")) {
+            Section(Language.named(originalLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Translation", locale: Language.locale(for: preferredLanguage))) {
                 TextField("Translation", text: $translation)
             }
 
@@ -130,7 +130,7 @@ struct AddWordView: View {
                     .foregroundStyle(.red)
             }
         }
-        .navigationTitle(isEditing ? "Edit Word" : "New Word")
+        .navigationTitle((isEditing ? "Edit Word" : "New Word").localized(preferredLanguage))
         .navigationBarTitleDisplayMode(.inline)
         .task { recorder.configure(existingAudioPath: existingWord?.audioPath) }
         .onDisappear { recorder.stopPlayback() }

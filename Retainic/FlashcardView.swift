@@ -52,7 +52,7 @@ struct FlashcardView: View {
                 practiceView
             }
         }
-        .navigationTitle("Practice")
+        .navigationTitle("Practice".localized(preferredLanguage))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !session.isEmpty && !isFinished {

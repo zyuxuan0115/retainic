@@ -75,6 +75,8 @@ final class StatsViewModel: ObservableObject {
 struct StatsView: View {
     @EnvironmentObject private var auth: AuthService
     @StateObject private var vm = StatsViewModel()
+    @Environment(\.locale) private var locale
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     var body: some View {
         NavigationStack {
@@ -87,18 +89,18 @@ struct StatsView: View {
                     emptyState
                 }
             }
-            .navigationTitle("Statistics")
+            .navigationTitle("Statistics".localized(preferredLanguage))
             .task(id: auth.uid) {
                 if let uid = auth.uid { await vm.load(uid: uid) }
             }
             .refreshable {
                 if let uid = auth.uid { await vm.load(uid: uid) }
             }
-            .alert("Something went wrong", isPresented: Binding(
+            .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
                 get: { vm.errorMessage != nil },
                 set: { if !$0 { vm.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { vm.errorMessage = nil }
+                Button("OK".localized(preferredLanguage), role: .cancel) { vm.errorMessage = nil }
             } message: {
                 Text(vm.errorMessage ?? "")
             }
@@ -124,7 +126,8 @@ struct StatsView: View {
                 }
 
                 if let start = stats.startDate {
-                    Text("Based on \(stats.activeDays) days of learning since \(start.formatted(date: .abbreviated, time: .omitted)).")
+                    let since = start.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(locale))
+                    Text("Based on \(stats.activeDays) days of learning since \(since).")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

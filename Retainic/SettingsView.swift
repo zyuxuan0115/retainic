@@ -24,7 +24,7 @@ struct SettingsView: View {
                 Section("Language") {
                     Picker("Preferred language", selection: $preferredLanguage) {
                         ForEach(Language.all) { language in
-                            Text(language.displayName(in: preferredLanguage)).tag(language.code)
+                            Text(language.autonym).tag(language.code)
                         }
                     }
                 }
@@ -35,10 +35,10 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
-            .confirmationDialog("Sign out of Retainic?", isPresented: $showingSignOut, titleVisibility: .visible) {
-                Button("Sign Out", role: .destructive) { auth.signOut() }
-                Button("Cancel", role: .cancel) {}
+            .navigationTitle("Settings".localized(preferredLanguage))
+            .confirmationDialog("Sign out of Retainic?".localized(preferredLanguage), isPresented: $showingSignOut, titleVisibility: .visible) {
+                Button("Sign Out".localized(preferredLanguage), role: .destructive) { auth.signOut() }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) {}
             }
         }
     }

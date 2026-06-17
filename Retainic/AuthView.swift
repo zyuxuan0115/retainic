@@ -14,6 +14,7 @@ struct AuthView: View {
     }
 
     @EnvironmentObject private var auth: AuthService
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     @State private var mode: Mode = .login
     @State private var username = ""
@@ -79,7 +80,7 @@ struct AuthView: View {
                 }
                 .padding()
             }
-            .navigationTitle(isRegistering ? "Create Account" : "Welcome Back")
+            .navigationTitle((isRegistering ? "Create Account" : "Welcome Back").localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: mode) { _, _ in auth.errorMessage = nil }
         }

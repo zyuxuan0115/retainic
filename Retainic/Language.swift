@@ -35,9 +35,23 @@ struct Language: Identifiable, Hashable {
         return localized.capitalized(with: locale)
     }
 
+    /// The language's name written in itself (its autonym), e.g. "Español",
+    /// "简体中文", "日本語". Falls back to the English `name`.
+    var autonym: String {
+        let identifier = Language.localeIdentifier(for: code)
+        let locale = Locale(identifier: identifier)
+        guard let localized = locale.localizedString(forLanguageCode: identifier) else { return name }
+        return localized.capitalized(with: locale)
+    }
+
     /// Maps an app language code to a full locale identifier for bundle lookup.
     static func localeIdentifier(for code: String) -> String {
         code == "zh" ? "zh-Hans" : code
+    }
+
+    /// The `Locale` for an app language code, used to drive the interface.
+    static func locale(for code: String) -> Locale {
+        Locale(identifier: localeIdentifier(for: code))
     }
 
     /// The best supported language for the current device, defaulting to English.

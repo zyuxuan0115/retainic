@@ -53,6 +53,7 @@ struct VocabListsView: View {
     @EnvironmentObject private var auth: AuthService
     @StateObject private var vm = ListsViewModel()
 
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var showingNewList = false
 
     var body: some View {
@@ -66,7 +67,7 @@ struct VocabListsView: View {
                     listContent
                 }
             }
-            .navigationTitle("My Lists")
+            .navigationTitle("My Lists".localized(preferredLanguage))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -86,12 +87,13 @@ struct VocabListsView: View {
                 NewListSheet { name, learning, original in
                     createList(name: name, learningLanguage: learning, originalLanguage: original)
                 }
+                .preferredLocale(preferredLanguage)
             }
-            .alert("Something went wrong", isPresented: Binding(
+            .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
                 get: { vm.errorMessage != nil },
                 set: { if !$0 { vm.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) { vm.errorMessage = nil }
+                Button("OK".localized(preferredLanguage), role: .cancel) { vm.errorMessage = nil }
             } message: {
                 Text(vm.errorMessage ?? "")
             }
@@ -194,7 +196,7 @@ private struct NewListSheet: View {
                     }
                 }
             }
-            .navigationTitle("New List")
+            .navigationTitle("New List".localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if originalLanguage.isEmpty { originalLanguage = preferredLanguage }
