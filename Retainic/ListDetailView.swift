@@ -190,7 +190,11 @@ struct ListDetailView: View {
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if !vm.words.isEmpty {
-                    Button("Select") { beginSelection() }
+                    Button {
+                        beginSelection()
+                    } label: {
+                        Label("Select", systemImage: "checklist")
+                    }
                 }
                 Button {
                     showingAdd = true

@@ -15,6 +15,11 @@ struct MainTabView: View {
                     Label("My Lists", systemImage: "rectangle.stack")
                 }
 
+            StatsView()
+                .tabItem {
+                    Label("Statistics", systemImage: "chart.bar")
+                }
+
             SettingsView()
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")

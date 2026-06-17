@@ -143,6 +143,16 @@ extension VocabWord {
         return nil
     }
 
+    /// Highest Leitner box; a word that reaches it counts as memorized.
+    static let memorizedBox = 5
+
+    /// Whether the word has graduated to the final Leitner box, i.e. it's been
+    /// recalled correctly enough times to count as memorized.
+    var isMemorized: Bool { box >= Self.memorizedBox }
+
+    /// The day the word was memorized (its last review), if memorized.
+    var memorizedDate: Date? { isMemorized ? lastReviewed : nil }
+
     /// Whether this card is due for review based on its Leitner box.
     var isDue: Bool {
         guard let lastReviewed else { return true }
