@@ -8,23 +8,25 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     @EnvironmentObject private var auth: AuthService
 
     var body: some View {
-        if nativeLanguage.isEmpty {
-            OnboardingView()
-        } else if !auth.isAuthenticated {
-            AuthView()
-        } else {
-            MainTabView()
+        Group {
+            if !auth.isAuthenticated {
+                AuthView()
+            } else {
+                MainTabView()
+            }
         }
+        // Drive the whole interface from the preferred-language setting.
+        .environment(\.locale, Locale(identifier: Language.localeIdentifier(for: preferredLanguage)))
     }
 }
 
 enum AppStorageKey {
-    static let nativeLanguage = "nativeLanguage"
+    static let preferredLanguage = "preferredLanguage"
 }
 
 #Preview {

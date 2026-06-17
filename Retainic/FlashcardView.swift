@@ -12,7 +12,7 @@ import SwiftUI
 enum FrontMode: String, CaseIterable, Identifiable {
     case term, translation, pronunciation
     var id: String { rawValue }
-    var label: String {
+    var label: LocalizedStringKey {
         switch self {
         case .term: return "Word"
         case .translation: return "Translation"
@@ -30,7 +30,7 @@ struct FlashcardView: View {
     @EnvironmentObject private var auth: AuthService
     @ObservedObject private var playback = AudioPlaybackStore.shared
 
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     @State private var session: [PracticeCard] = []
     @State private var index = 0
@@ -93,7 +93,7 @@ struct FlashcardView: View {
                 Text("Ready to practice?")
                     .font(.title2.bold())
                 Text(dueCount > 0
-                     ? "\(dueCount) card\(dueCount == 1 ? "" : "s") due for review."
+                     ? "\(dueCount) cards due for review."
                      : "No cards due right now — but you can review everything.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -109,7 +109,7 @@ struct FlashcardView: View {
                         .foregroundStyle(.secondary)
                     Picker("Show first", selection: $frontMode) {
                         ForEach(FrontMode.allCases) { mode in
-                            Text(mode.label).tag(mode)
+                            Text(mode.label).tag(mode)   // mode.label is a LocalizedStringKey
                         }
                     }
                     .pickerStyle(.segmented)
@@ -145,7 +145,7 @@ struct FlashcardView: View {
         // answer side always reveals the full entry: the word being learned, its
         // reading, parts of speech, the meaning, and the pronunciation button.
         let termReading = reading(for: word)
-        let posLabels = word.partOfSpeechValues.map { $0.label(for: nativeLanguage) }
+        let posLabels = word.partOfSpeechValues.map { $0.label(for: preferredLanguage) }
         return VStack(spacing: 24) {
             ProgressView(value: Double(index), total: Double(session.count))
                 .padding(.top)

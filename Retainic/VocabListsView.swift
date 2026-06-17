@@ -149,7 +149,7 @@ struct VocabListsView: View {
 /// New-list form: name plus the language pair the list bridges. The original
 /// (translation) language defaults to the user's native language.
 private struct NewListSheet: View {
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @Environment(\.dismiss) private var dismiss
 
     let onCreate: (_ name: String, _ learningLanguage: String, _ originalLanguage: String) -> Void
@@ -176,13 +176,13 @@ private struct NewListSheet: View {
                     Picker("I'm learning", selection: $learningLanguage) {
                         Text("Select…").tag("")
                         ForEach(Language.all) { language in
-                            Text(language.displayName).tag(language.code)
+                            Text(language.displayName(in: preferredLanguage)).tag(language.code)
                         }
                     }
                     Picker("Translated into", selection: $originalLanguage) {
                         Text("Select…").tag("")
                         ForEach(Language.all) { language in
-                            Text(language.displayName).tag(language.code)
+                            Text(language.displayName(in: preferredLanguage)).tag(language.code)
                         }
                     }
                 } header: {
@@ -197,7 +197,7 @@ private struct NewListSheet: View {
             .navigationTitle("New List")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
-                if originalLanguage.isEmpty { originalLanguage = nativeLanguage }
+                if originalLanguage.isEmpty { originalLanguage = preferredLanguage }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -225,7 +225,7 @@ private struct ListRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(list.name)
                     .font(.headline)
-                Text("\(list.wordCount) word\(list.wordCount == 1 ? "" : "s")")
+                Text("\(list.wordCount) words")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

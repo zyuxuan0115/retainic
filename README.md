@@ -12,7 +12,9 @@ many words you've memorized over time.
 
 - **Accounts** — email/password sign up and login (Firebase Authentication).
   Each user's data is private to them.
-- **Onboarding** — pick your native language on first launch.
+- **Localized interface** — the whole UI is available in English, Spanish,
+  Chinese, Japanese, and Korean. The **Preferred language** (in Settings)
+  controls the interface language and defaults to the device's system language.
 - **Vocabulary lists** — create as many lists ("decks") as you like. Each list
   has its own **learning language** (the words you study) and **original
   language** (the language you translate into, defaulting to your native
@@ -132,7 +134,9 @@ open Retainic.xcodeproj
 ### 5. Run
 
 - Pick an **iOS 26.5+ simulator** (or a connected device) and press **⌘R**.
-- On first launch you'll choose your native language, then register an account.
+- On first launch you'll register an account. The interface starts in your
+  device's language; you can change it later under **Settings ▸ Preferred
+  language**.
 
 > **Tip:** Microphone recording does not work on the iOS Simulator by default.
 > To test pronunciation recording, enable **I/O ▸ Audio Input** in the
@@ -164,8 +168,7 @@ firebase deploy --only firestore:rules,storage
 ```
 Retainic/
 ├── RetainicApp.swift        App entry point; configures Firebase
-├── ContentView.swift        Root gate: onboarding → sign in → main tabs
-├── OnboardingView.swift     First-run native-language picker
+├── ContentView.swift        Root gate: sign in → main tabs; applies UI locale
 ├── AuthService.swift        Firebase Auth + user profile
 ├── AuthView.swift           Register / login UI
 ├── MainTabView.swift        Tab bar: My Lists · Statistics · Settings
@@ -180,6 +183,7 @@ Retainic/
 ├── AudioManager.swift       Pronunciation recording/playback
 ├── Language.swift           Supported languages
 ├── PartOfSpeech.swift       Parts of speech + localized labels
+├── Localizable.xcstrings    UI translations (en, es, zh-Hans, ja, ko)
 └── GoogleService-Info.plist Firebase config (replace with your own)
 
 firebase.json                Firebase CLI config

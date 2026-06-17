@@ -281,7 +281,7 @@ struct ListDetailView: View {
 }
 
 private struct WordRow: View {
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @ObservedObject private var playback = AudioPlaybackStore.shared
     let word: VocabWord
 
@@ -297,7 +297,7 @@ private struct WordRow: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(word.partOfSpeechValues) { pos in
-                        Text(pos.label(for: nativeLanguage))
+                        Text(pos.label(for: preferredLanguage))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.tint)
                             .padding(.horizontal, 6)
@@ -355,7 +355,7 @@ private struct MoveDestinationSheet: View {
                                     Text(list.name)
                                         .font(.headline)
                                         .foregroundStyle(.primary)
-                                    Text("\(list.wordCount) word\(list.wordCount == 1 ? "" : "s")")
+                                    Text("\(list.wordCount) words")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -364,7 +364,7 @@ private struct MoveDestinationSheet: View {
                     }
                 }
             }
-            .navigationTitle("Move \(count) Word\(count == 1 ? "" : "s")")
+            .navigationTitle("Move \(count) Words")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

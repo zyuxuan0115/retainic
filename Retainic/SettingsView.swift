@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     @EnvironmentObject private var auth: AuthService
     @State private var showingSignOut = false
@@ -22,9 +22,9 @@ struct SettingsView: View {
                 }
 
                 Section("Language") {
-                    Picker("Native language", selection: $nativeLanguage) {
+                    Picker("Preferred language", selection: $preferredLanguage) {
                         ForEach(Language.all) { language in
-                            Text(language.displayName).tag(language.code)
+                            Text(language.displayName(in: preferredLanguage)).tag(language.code)
                         }
                     }
                 }

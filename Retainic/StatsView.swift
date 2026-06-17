@@ -120,10 +120,11 @@ struct StatsView: View {
                         averageCard(title: "Per week", value: stats.perWeek)
                         averageCard(title: "Per month", value: stats.perMonth)
                     }
+                    // titles above are LocalizedStringKey literals
                 }
 
                 if let start = stats.startDate {
-                    Text("Based on \(stats.activeDays) day\(stats.activeDays == 1 ? "" : "s") of learning since \(start.formatted(date: .abbreviated, time: .omitted)).")
+                    Text("Based on \(stats.activeDays) days of learning since \(start.formatted(date: .abbreviated, time: .omitted)).")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -153,7 +154,7 @@ struct StatsView: View {
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
     }
 
-    private func averageCard(title: String, value: Double) -> some View {
+    private func averageCard(title: LocalizedStringKey, value: Double) -> some View {
         VStack(spacing: 6) {
             Text(formatted(value))
                 .font(.title2.bold().monospacedDigit())

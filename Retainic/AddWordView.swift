@@ -16,7 +16,7 @@ struct AddWordView: View {
     /// Existing word when editing; nil when creating.
     private let existingWord: VocabWord?
 
-    @AppStorage(AppStorageKey.nativeLanguage) private var nativeLanguage = ""
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
     @EnvironmentObject private var auth: AuthService
     @Environment(\.dismiss) private var dismiss
@@ -64,7 +64,7 @@ struct AddWordView: View {
 
     var body: some View {
         Form {
-            Section(Language.named(learningLanguage)?.displayName ?? "Word") {
+            Section(Language.named(learningLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Word")) {
                 TextField("Word you're learning", text: $term)
                     .textInputAutocapitalization(.never)
             }
@@ -90,7 +90,7 @@ struct AddWordView: View {
                 }
             }
 
-            Section(Language.named(originalLanguage)?.displayName ?? "Translation") {
+            Section(Language.named(originalLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Translation")) {
                 TextField("Translation", text: $translation)
             }
 
@@ -100,7 +100,7 @@ struct AddWordView: View {
                         toggle(pos)
                     } label: {
                         HStack {
-                            Text(pos.label(for: nativeLanguage))
+                            Text(pos.label(for: preferredLanguage))
                                 .foregroundStyle(.primary)
                             Spacer()
                             if selectedPOS.contains(pos) {
