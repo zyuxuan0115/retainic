@@ -95,16 +95,11 @@ struct FlashcardView: View {
         )
     }
 
-    /// Number of aspect-cards still pending today across the selected modes.
+    /// Number of aspect-cards the current settings would include.
     private var dueCount: Int {
-        var count = 0
-        for mode in selectedModes {
-            for card in cards {
-                if mode == .pronunciation && card.word.audioPath == nil { continue }
-                if !card.word.wasRememberedToday(aspect: mode.memoryAspect) { count += 1 }
-            }
+        selectedModes.reduce(0) { sum, mode in
+            sum + cards.filter { includes($0, mode: mode) }.count
         }
-        return count
     }
 
     /// In pronunciation mode the audio button is the prompt (front); in the
@@ -141,7 +136,7 @@ struct FlashcardView: View {
             }
 
             VStack(alignment: .leading, spacing: 16) {
-                Toggle("Review due cards only", isOn: $dueOnly)
+                Toggle("Daily assignment", isOn: $dueOnly)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Show first")
@@ -316,8 +311,20 @@ struct FlashcardView: View {
     /// only — that aspect must not have been remembered yet today.
     private func includes(_ card: PracticeCard, mode: FrontMode) -> Bool {
         if mode == .pronunciation && card.word.audioPath == nil { return false }
-        if dueOnly && card.word.wasRememberedToday(aspect: mode.memoryAspect) { return false }
-        return true
+        if dueOnly {
+            // Daily assignment: each mode follows its own spaced-repetition schedule.
+            switch mode {
+            case .translation:
+                return card.word.isTranslationDue()
+            case .term:
+                return card.word.isWordDue()
+            case .pronunciation:
+                return card.word.isPronunciationDue()
+            }
+        } else {
+            // Free practice: show every word except finally-remembered ones.
+            return card.word.remember_final != true
+        }
     }
 
     private func deck() -> [SessionItem] {
@@ -347,20 +354,26 @@ struct FlashcardView: View {
 
     private func handleAnswer(correct: Bool) {
         var item = session[index]
+        // Progress (remembered counts/dates) is only recorded for the daily
+        // assignment; otherwise it's free practice that doesn't affect stats.
+        if dueOnly {
+            if correct {
+                item.card.word.markCorrect(aspect: item.mode.memoryAspect)
+            } else {
+                item.card.word.markIncorrect(aspect: item.mode.memoryAspect)
+            }
+            session[index] = item
+            // A word can be queued for multiple aspects; keep all of its copies
+            // in sync so one aspect's save doesn't clobber another's stats.
+            syncWord(item.card.word)
+            persist(item.card)
+        }
         if correct {
-            item.card.word.markCorrect(aspect: item.mode.memoryAspect)
             correctCount += 1
-            session[index] = item
         } else {
-            item.card.word.markIncorrect(aspect: item.mode.memoryAspect)
-            session[index] = item
             // Not remembered: move on, but re-queue it (same mode) for review.
             session.append(item)
         }
-        // A word can be queued for multiple aspects; keep all of its copies in
-        // sync so answering one aspect doesn't clobber another's saved stats.
-        syncWord(item.card.word)
-        persist(item.card)
         advance()
     }
 

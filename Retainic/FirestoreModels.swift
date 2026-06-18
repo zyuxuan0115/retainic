@@ -204,6 +204,48 @@ extension VocabWord {
         return Calendar.current.isDateInToday(last)
     }
 
+    /// Minimum days between translation reviews, indexed by how many times the
+    /// translation has already been remembered. After the 10th it's mastered.
+    static let translationReviewGaps = [0, 1, 1, 1, 2, 2, 3, 4, 5, 10]
+
+    /// Whether the translation aspect is due today under the spaced-repetition
+    /// schedule: enough days must have passed since it was last remembered.
+    func isTranslationDue(now: Date = Date()) -> Bool {
+        Self.isDue(count: timesTranslationCorrect ?? 0, last: lastTranslationRemembered,
+                   gaps: Self.translationReviewGaps, now: now)
+    }
+
+    /// Minimum days between word reviews, indexed by how many times the word has
+    /// already been remembered. After the 8th it's mastered.
+    static let wordReviewGaps = [0, 1, 1, 2, 3, 4, 6, 9]
+
+    /// Whether the word (spelling) aspect is due today under its schedule.
+    func isWordDue(now: Date = Date()) -> Bool {
+        Self.isDue(count: timesWordCorrect ?? 0, last: lastWordRemembered,
+                   gaps: Self.wordReviewGaps, now: now)
+    }
+
+    /// Minimum days between pronunciation reviews, indexed by how many times the
+    /// pronunciation has already been remembered. After the 7th it's mastered.
+    static let pronunciationReviewGaps = [0, 1, 2, 3, 4, 6, 8]
+
+    /// Whether the pronunciation aspect is due today under its schedule.
+    func isPronunciationDue(now: Date = Date()) -> Bool {
+        Self.isDue(count: timesPronounciationCorrect ?? 0, last: lastPronounciationRemembered,
+                   gaps: Self.pronunciationReviewGaps, now: now)
+    }
+
+    /// Shared spaced-repetition due check: due once the required gap of days has
+    /// passed since the last remember (or immediately if never remembered), and
+    /// not yet mastered (remembered as many times as the schedule has steps).
+    private static func isDue(count: Int, last: Date?, gaps: [Int], now: Date) -> Bool {
+        guard count < gaps.count else { return false }
+        guard let last else { return true }
+        let cal = Calendar.current
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: last), to: cal.startOfDay(for: now)).day ?? 0
+        return days >= gaps[count]
+    }
+
     /// Whether this card is due for review based on its Leitner box.
     var isDue: Bool {
         guard let lastReviewed else { return true }
