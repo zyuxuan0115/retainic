@@ -8,6 +8,19 @@
 import SwiftUI
 import Combine
 
+/// Filters which words are shown in a list.
+enum WordFilter: String, CaseIterable, Identifiable {
+    case all, remembered, unremembered
+    var id: String { rawValue }
+    var label: LocalizedStringKey {
+        switch self {
+        case .all: return "Show all"
+        case .remembered: return "Show remembered only"
+        case .unremembered: return "Show unremembered only"
+        }
+    }
+}
+
 @MainActor
 final class WordsViewModel: ObservableObject {
     @Published var words: [VocabWord] = []
@@ -65,6 +78,30 @@ final class WordsViewModel: ObservableObject {
         }
     }
 
+    func rename(uid: String, listId: String, to name: String) async {
+        do {
+            try await VocabRepository.renameList(uid: uid, listId: listId, name: name)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Resets every word's progress so the whole list counts as not remembered.
+    func resetAllMemory(uid: String, listId: String) async {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            var updated = words
+            for i in updated.indices {
+                updated[i].resetMemory()
+                try await VocabRepository.updateWord(uid: uid, listId: listId, word: updated[i])
+            }
+            words = updated
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func moveSelected(uid: String, fromListId: String, toListId: String, ids: Set<String>) async {
         isBusy = true
         defer { isBusy = false }
@@ -86,11 +123,19 @@ struct ListDetailView: View {
     @StateObject private var vm = WordsViewModel()
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
+    @State private var listName: String
     @State private var showingAdd = false
     @State private var searchText = ""
     @State private var editMode: EditMode = .inactive
     @State private var selection = Set<String>()
     @State private var showingMoveSheet = false
+    @State private var showingListSettings = false
+    @State private var wordFilter: WordFilter = .all
+
+    init(list: VocabularyList) {
+        self.list = list
+        _listName = State(initialValue: list.name)
+    }
 
     private var listId: String { list.id ?? "" }
     private var learningLanguage: String { list.learningLanguage ?? "" }
@@ -102,11 +147,19 @@ struct ListDetailView: View {
     }
 
     private var filteredWords: [VocabWord] {
-        guard !searchText.isEmpty else { return vm.words }
-        return vm.words.filter {
-            $0.term.localizedCaseInsensitiveContains(searchText) ||
-            $0.translation.localizedCaseInsensitiveContains(searchText)
+        var result = vm.words
+        switch wordFilter {
+        case .all: break
+        case .remembered: result = result.filter(\.isRemembered)
+        case .unremembered: result = result.filter { !$0.isRemembered }
         }
+        if !searchText.isEmpty {
+            result = result.filter {
+                $0.term.localizedCaseInsensitiveContains(searchText) ||
+                $0.translation.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        return result
     }
 
     var body: some View {
@@ -119,12 +172,14 @@ struct ListDetailView: View {
                 wordsList
             }
         }
-        .navigationTitle(isSelecting ? selectionTitle : list.name)
+        .navigationTitle(isSelecting ? selectionTitle : listName)
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.editMode, $editMode)
         .toolbar { toolbarContent }
-        // Hide the main tab bar while selecting words.
-        .toolbar(isSelecting ? .hidden : .visible, for: .tabBar)
+        // Hide the app tab bar on this screen so its bottom is free for the
+        // list's own toolbar (the Settings gear, and Move/Delete while selecting)
+        // — otherwise the tab bar's Settings tab covers them.
+        .toolbar(.hidden, for: .tabBar)
         .task(id: auth.uid) {
             if let uid = auth.uid { await vm.load(uid: uid, listId: listId) }
         }
@@ -144,6 +199,15 @@ struct ListDetailView: View {
             ) { destination in
                 moveSelected(to: destination)
             }
+            .preferredLocale(preferredLanguage)
+        }
+        .sheet(isPresented: $showingListSettings) {
+            ListSettingsSheet(
+                name: listName,
+                filter: $wordFilter,
+                onSave: { renameList(to: $0) },
+                onResetMemory: { resetMemory() }
+            )
             .preferredLocale(preferredLanguage)
         }
         .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
@@ -187,21 +251,26 @@ struct ListDetailView: View {
             }
         } else {
             if !vm.words.isEmpty {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        beginSelection()
+                    } label: {
+                        Label("Select", systemImage: "checklist")
+                    }
+                }
+            }
+            ToolbarItemGroup(placement: .bottomBar) {
+                if !vm.words.isEmpty {
                     NavigationLink {
                         FlashcardView(cards: practiceCards, learningLanguage: learningLanguage)
                     } label: {
                         Label("Practice", systemImage: "rectangle.on.rectangle.angled")
                     }
                 }
-            }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if !vm.words.isEmpty {
-                    Button {
-                        beginSelection()
-                    } label: {
-                        Label("Select", systemImage: "checklist")
-                    }
+                Button {
+                    showingListSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
                 }
                 Button {
                     showingAdd = true
@@ -230,7 +299,7 @@ struct ListDetailView: View {
         ContentUnavailableView {
             Label("No Words Yet", systemImage: "character.book.closed")
         } description: {
-            Text("Add the words you're learning to “\(list.name)”.")
+            Text("Add the words you're learning to “\(listName)”.")
         } actions: {
             Button("Add Your First Word") { showingAdd = true }
                 .buttonStyle(.borderedProminent)
@@ -248,6 +317,19 @@ struct ListDetailView: View {
         Task {
             for word in toDelete { await vm.delete(uid: uid, listId: listId, word: word) }
         }
+    }
+
+    private func renameList(to name: String) {
+        guard let uid = auth.uid else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        listName = trimmed
+        Task { await vm.rename(uid: uid, listId: listId, to: trimmed) }
+    }
+
+    private func resetMemory() {
+        guard let uid = auth.uid else { return }
+        Task { await vm.resetAllMemory(uid: uid, listId: listId) }
     }
 
     private func beginSelection() {
@@ -328,6 +410,79 @@ private struct WordRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+/// Per-list settings: rename the list and reset every word's remembered state.
+private struct ListSettingsSheet: View {
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name: String
+    @Binding private var filter: WordFilter
+    @State private var showingResetConfirm = false
+    let onSave: (String) -> Void
+    let onResetMemory: () -> Void
+
+    init(name: String, filter: Binding<WordFilter>, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
+        _name = State(initialValue: name)
+        _filter = filter
+        self.onSave = onSave
+        self.onResetMemory = onResetMemory
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("List name") {
+                    TextField("List name", text: $name)
+                }
+
+                Section("Show words") {
+                    Picker("Show words", selection: $filter) {
+                        ForEach(WordFilter.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                    .labelsHidden()
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        showingResetConfirm = true
+                    } label: {
+                        Label("Mark all as not remembered", systemImage: "arrow.counterclockwise")
+                    }
+                } footer: {
+                    Text("Every word in this list will show up again in practice for all methods.")
+                }
+            }
+            .navigationTitle("List Settings".localized(preferredLanguage))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(name)
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .confirmationDialog(
+                "Mark all words as not remembered?".localized(preferredLanguage),
+                isPresented: $showingResetConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Mark All as Not Remembered".localized(preferredLanguage), role: .destructive) {
+                    onResetMemory()
+                    dismiss()
+                }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) {}
+            }
+        }
     }
 }
 

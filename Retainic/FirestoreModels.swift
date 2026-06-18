@@ -94,11 +94,19 @@ struct VocabWord: Codable, Identifiable {
     // Spaced-repetition tracking (Leitner system).
     var box: Int
     var lastReviewed: Date?
-    /// The last time the word was recalled correctly in practice. Optional so
-    /// older documents (and never-remembered words) decode.
-    var lastRemembered: Date?
+    /// The last time the word was recalled correctly in practice, split by mode.
+    /// Optional so older documents (and never-remembered words) decode.
+    var lastWordRemembered: Date?
+    var lastPronounciationRemembered: Date?
+    var lastTranslationRemembered: Date?
     var timesSeen: Int
-    var timesCorrect: Int
+    /// Correct-recall counts split by practice mode.
+    var timesWordCorrect: Int
+    var timesPronounciationCorrect: Int
+    var timesTranslationCorrect: Int
+    /// Whether the word is finally remembered (mastered). Stored in Firebase as
+    /// `remember_final`. Optional so older documents still decode.
+    var remember_final: Bool?
 
     init(
         id: String? = nil,
@@ -113,9 +121,14 @@ struct VocabWord: Codable, Identifiable {
         createdAt: Date = Date(),
         box: Int = 1,
         lastReviewed: Date? = nil,
-        lastRemembered: Date? = nil,
+        lastWordRemembered: Date? = nil,
+        lastPronounciationRemembered: Date? = nil,
+        lastTranslationRemembered: Date? = nil,
         timesSeen: Int = 0,
-        timesCorrect: Int = 0
+        timesWordCorrect: Int = 0,
+        timesPronounciationCorrect: Int = 0,
+        timesTranslationCorrect: Int = 0,
+        remember_final: Bool? = false
     ) {
         self.id = id
         self.term = term
@@ -130,9 +143,14 @@ struct VocabWord: Codable, Identifiable {
         self.createdAt = createdAt
         self.box = box
         self.lastReviewed = lastReviewed
-        self.lastRemembered = lastRemembered
+        self.lastWordRemembered = lastWordRemembered
+        self.lastPronounciationRemembered = lastPronounciationRemembered
+        self.lastTranslationRemembered = lastTranslationRemembered
         self.timesSeen = timesSeen
-        self.timesCorrect = timesCorrect
+        self.timesWordCorrect = timesWordCorrect
+        self.timesPronounciationCorrect = timesPronounciationCorrect
+        self.timesTranslationCorrect = timesTranslationCorrect
+        self.remember_final = remember_final
     }
 }
 
@@ -173,6 +191,12 @@ extension VocabWord {
     /// The day the word was memorized (its last review), if memorized.
     var memorizedDate: Date? { isMemorized ? lastReviewed : nil }
 
+    /// Whether the word has ever been recalled correctly in practice. Cleared by
+    /// "mark all as not remembered" (`resetMemory`).
+    var isRemembered: Bool {
+        lastWordRemembered != nil || lastPronounciationRemembered != nil || lastTranslationRemembered != nil
+    }
+
     /// Whether the given memory aspect was recalled correctly today.
     func wasRememberedToday(aspect: String) -> Bool {
         guard let last = memoryStats?[aspect]?.lastRemembered else { return false }
@@ -201,10 +225,22 @@ extension VocabWord {
     mutating func markCorrect(aspect: String? = nil) {
         let now = Date()
         timesSeen += 1
-        timesCorrect += 1
+        // The aspect names map to the practice modes: spelling = Word mode.
+        switch aspect {
+        case "spelling":
+            timesWordCorrect += 1
+            lastWordRemembered = now
+        case "pronunciation":
+            timesPronounciationCorrect += 1
+            lastPronounciationRemembered = now
+        case "translation":
+            timesTranslationCorrect += 1
+            lastTranslationRemembered = now
+        default: break
+        }
+        updateRememberFinal()
         box = min(box + 1, 5)
         lastReviewed = now
-        lastRemembered = now
         record(aspect: aspect, correct: true, now: now)
     }
 
@@ -213,6 +249,31 @@ extension VocabWord {
         box = 1
         lastReviewed = Date()
         record(aspect: aspect, correct: false, now: Date())
+    }
+
+    /// Resets all spaced-repetition progress so the word counts as never
+    /// remembered (it will reappear in practice for every aspect).
+    mutating func resetMemory() {
+        box = 1
+        lastReviewed = nil
+        lastWordRemembered = nil
+        lastPronounciationRemembered = nil
+        lastTranslationRemembered = nil
+        timesSeen = 0
+        timesWordCorrect = 0
+        timesPronounciationCorrect = 0
+        timesTranslationCorrect = 0
+        memoryStats = nil
+    }
+
+    /// Marks the word as finally remembered once each mode has enough correct
+    /// recalls. Called whenever a per-mode correct count changes.
+    private mutating func updateRememberFinal() {
+        // Pronunciation only counts toward mastery for words that have a recording.
+        let pronunciationOK = audioPath == nil || timesPronounciationCorrect >= 7
+        if timesWordCorrect >= 8 && timesTranslationCorrect >= 10 && pronunciationOK {
+            remember_final = true
+        }
     }
 
     /// Updates the memory stats for the aspect tested, if provided.
