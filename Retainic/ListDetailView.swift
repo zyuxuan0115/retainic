@@ -123,6 +123,8 @@ struct ListDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.editMode, $editMode)
         .toolbar { toolbarContent }
+        // Hide the main tab bar while selecting words.
+        .toolbar(isSelecting ? .hidden : .visible, for: .tabBar)
         .task(id: auth.uid) {
             if let uid = auth.uid { await vm.load(uid: uid, listId: listId) }
         }

@@ -50,6 +50,13 @@ struct VocabularyList: Codable, Identifiable {
     }
 }
 
+/// Tally of reviews for a single practice method: how many times the word was
+/// shown with that method and how many of those it was recalled correctly.
+struct MethodStats: Codable, Hashable {
+    var seen: Int = 0
+    var correct: Int = 0
+}
+
 /// A word paired with the list it belongs to, for practice sessions that may
 /// span multiple lists.
 struct PracticeCard: Identifiable {
@@ -76,11 +83,18 @@ struct VocabWord: Codable, Identifiable {
     var pinyin: String?
     /// Firebase Storage path of the pronunciation recording, if any.
     var audioPath: String?
+    /// Per-practice-method review tallies, keyed by `FrontMode` raw value
+    /// ("term", "translation", "pronunciation"). Optional so older documents
+    /// still decode. Stored for analysis only; not shown in the UI.
+    var methodStats: [String: MethodStats]?
     var createdAt: Date
 
     // Spaced-repetition tracking (Leitner system).
     var box: Int
     var lastReviewed: Date?
+    /// The last time the word was recalled correctly in practice. Optional so
+    /// older documents (and never-remembered words) decode.
+    var lastRemembered: Date?
     var timesSeen: Int
     var timesCorrect: Int
 
@@ -93,9 +107,11 @@ struct VocabWord: Codable, Identifiable {
         hiragana: String? = nil,
         pinyin: String? = nil,
         audioPath: String? = nil,
+        methodStats: [String: MethodStats]? = nil,
         createdAt: Date = Date(),
         box: Int = 1,
         lastReviewed: Date? = nil,
+        lastRemembered: Date? = nil,
         timesSeen: Int = 0,
         timesCorrect: Int = 0
     ) {
@@ -108,9 +124,11 @@ struct VocabWord: Codable, Identifiable {
         self.hiragana = hiragana
         self.pinyin = pinyin
         self.audioPath = audioPath
+        self.methodStats = methodStats
         self.createdAt = createdAt
         self.box = box
         self.lastReviewed = lastReviewed
+        self.lastRemembered = lastRemembered
         self.timesSeen = timesSeen
         self.timesCorrect = timesCorrect
     }
@@ -172,16 +190,31 @@ extension VocabWord {
         return days * 24 * 60 * 60
     }
 
-    mutating func markCorrect() {
+    mutating func markCorrect(method: String? = nil) {
+        let now = Date()
         timesSeen += 1
         timesCorrect += 1
         box = min(box + 1, 5)
-        lastReviewed = Date()
+        lastReviewed = now
+        lastRemembered = now
+        record(method: method, correct: true)
     }
 
-    mutating func markIncorrect() {
+    mutating func markIncorrect(method: String? = nil) {
         timesSeen += 1
         box = 1
         lastReviewed = Date()
+        record(method: method, correct: false)
+    }
+
+    /// Updates the per-method tally for the practice method used, if provided.
+    private mutating func record(method: String?, correct: Bool) {
+        guard let method else { return }
+        var stats = methodStats ?? [:]
+        var entry = stats[method] ?? MethodStats()
+        entry.seen += 1
+        if correct { entry.correct += 1 }
+        stats[method] = entry
+        methodStats = stats
     }
 }

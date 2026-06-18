@@ -37,6 +37,9 @@ struct FlashcardView: View {
     @State private var isFlipped = false
     @State private var frontMode: FrontMode = .term
     @State private var correctCount = 0
+    /// Distinct words in this session (missed words are re-queued, so
+    /// `session.count` grows; this stays the count of unique words).
+    @State private var totalCards = 0
     @State private var isFinished = false
     @State private var dueOnly = true
 
@@ -214,7 +217,7 @@ struct FlashcardView: View {
                 .foregroundStyle(.green)
             Text("Session Complete!")
                 .font(.title.bold())
-            Text("You got \(correctCount) of \(session.count) right.")
+            Text("You got \(correctCount) of \(totalCards) right.")
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -276,6 +279,7 @@ struct FlashcardView: View {
         let deck = deck()
         guard !deck.isEmpty else { return }
         session = deck
+        totalCards = deck.count
         index = 0
         correctCount = 0
         isFlipped = false
@@ -285,12 +289,15 @@ struct FlashcardView: View {
     private func handleAnswer(correct: Bool) {
         var card = session[index]
         if correct {
-            card.word.markCorrect()
+            card.word.markCorrect(method: frontMode.rawValue)
             correctCount += 1
+            session[index] = card
         } else {
-            card.word.markIncorrect()
+            card.word.markIncorrect(method: frontMode.rawValue)
+            session[index] = card
+            // Not remembered: move on, but re-queue it to be reviewed again.
+            session.append(card)
         }
-        session[index] = card
         persist(card)
         advance()
     }
