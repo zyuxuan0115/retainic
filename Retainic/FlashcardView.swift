@@ -19,6 +19,17 @@ enum FrontMode: String, CaseIterable, Identifiable {
         case .pronunciation: return "Audio"
         }
     }
+
+    /// Which memory aspect this practice mode exercises, used for per-word stats.
+    /// Showing the word and recalling its meaning tests translation; showing the
+    /// meaning and recalling the word tests spelling; audio tests pronunciation.
+    var memoryAspect: String {
+        switch self {
+        case .term: return "translation"
+        case .translation: return "spelling"
+        case .pronunciation: return "pronunciation"
+        }
+    }
 }
 
 struct FlashcardView: View {
@@ -289,11 +300,11 @@ struct FlashcardView: View {
     private func handleAnswer(correct: Bool) {
         var card = session[index]
         if correct {
-            card.word.markCorrect(method: frontMode.rawValue)
+            card.word.markCorrect(aspect: frontMode.memoryAspect)
             correctCount += 1
             session[index] = card
         } else {
-            card.word.markIncorrect(method: frontMode.rawValue)
+            card.word.markIncorrect(aspect: frontMode.memoryAspect)
             session[index] = card
             // Not remembered: move on, but re-queue it to be reviewed again.
             session.append(card)

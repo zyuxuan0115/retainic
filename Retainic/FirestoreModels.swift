@@ -50,11 +50,13 @@ struct VocabularyList: Codable, Identifiable {
     }
 }
 
-/// Tally of reviews for a single practice method: how many times the word was
-/// shown with that method and how many of those it was recalled correctly.
-struct MethodStats: Codable, Hashable {
+/// Memory stats for one aspect of a word (translation, pronunciation, or
+/// spelling): how many times it was tested, how many times it was recalled
+/// correctly, and when it was last recalled correctly.
+struct MemoryStat: Codable, Hashable {
     var seen: Int = 0
-    var correct: Int = 0
+    var timesRemembered: Int = 0
+    var lastRemembered: Date?
 }
 
 /// A word paired with the list it belongs to, for practice sessions that may
@@ -83,10 +85,10 @@ struct VocabWord: Codable, Identifiable {
     var pinyin: String?
     /// Firebase Storage path of the pronunciation recording, if any.
     var audioPath: String?
-    /// Per-practice-method review tallies, keyed by `FrontMode` raw value
-    /// ("term", "translation", "pronunciation"). Optional so older documents
-    /// still decode. Stored for analysis only; not shown in the UI.
-    var methodStats: [String: MethodStats]?
+    /// Memory stats per aspect, keyed "translation", "pronunciation", and
+    /// "spelling". Optional so older documents still decode. Stored for analysis
+    /// only; not shown in the UI.
+    var memoryStats: [String: MemoryStat]?
     var createdAt: Date
 
     // Spaced-repetition tracking (Leitner system).
@@ -107,7 +109,7 @@ struct VocabWord: Codable, Identifiable {
         hiragana: String? = nil,
         pinyin: String? = nil,
         audioPath: String? = nil,
-        methodStats: [String: MethodStats]? = nil,
+        memoryStats: [String: MemoryStat]? = nil,
         createdAt: Date = Date(),
         box: Int = 1,
         lastReviewed: Date? = nil,
@@ -124,7 +126,7 @@ struct VocabWord: Codable, Identifiable {
         self.hiragana = hiragana
         self.pinyin = pinyin
         self.audioPath = audioPath
-        self.methodStats = methodStats
+        self.memoryStats = memoryStats
         self.createdAt = createdAt
         self.box = box
         self.lastReviewed = lastReviewed
@@ -190,31 +192,34 @@ extension VocabWord {
         return days * 24 * 60 * 60
     }
 
-    mutating func markCorrect(method: String? = nil) {
+    mutating func markCorrect(aspect: String? = nil) {
         let now = Date()
         timesSeen += 1
         timesCorrect += 1
         box = min(box + 1, 5)
         lastReviewed = now
         lastRemembered = now
-        record(method: method, correct: true)
+        record(aspect: aspect, correct: true, now: now)
     }
 
-    mutating func markIncorrect(method: String? = nil) {
+    mutating func markIncorrect(aspect: String? = nil) {
         timesSeen += 1
         box = 1
         lastReviewed = Date()
-        record(method: method, correct: false)
+        record(aspect: aspect, correct: false, now: Date())
     }
 
-    /// Updates the per-method tally for the practice method used, if provided.
-    private mutating func record(method: String?, correct: Bool) {
-        guard let method else { return }
-        var stats = methodStats ?? [:]
-        var entry = stats[method] ?? MethodStats()
+    /// Updates the memory stats for the aspect tested, if provided.
+    private mutating func record(aspect: String?, correct: Bool, now: Date) {
+        guard let aspect else { return }
+        var stats = memoryStats ?? [:]
+        var entry = stats[aspect] ?? MemoryStat()
         entry.seen += 1
-        if correct { entry.correct += 1 }
-        stats[method] = entry
-        methodStats = stats
+        if correct {
+            entry.timesRemembered += 1
+            entry.lastRemembered = now
+        }
+        stats[aspect] = entry
+        memoryStats = stats
     }
 }
