@@ -32,6 +32,13 @@ enum FrontMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// A card in the running session together with the mode it's shown in. With
+/// multi-select, different cards in one session can use different modes.
+private struct SessionItem {
+    var card: PracticeCard
+    let mode: FrontMode
+}
+
 struct FlashcardView: View {
     let cards: [PracticeCard]
     /// Language of the words being studied (the `term` side), from the list.
@@ -43,10 +50,10 @@ struct FlashcardView: View {
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
-    @State private var session: [PracticeCard] = []
+    @State private var session: [SessionItem] = []
     @State private var index = 0
     @State private var isFlipped = false
-    @State private var frontMode: FrontMode = .term
+    @State private var selectedModes: Set<FrontMode> = [.term]
     @State private var correctCount = 0
     /// Distinct words in this session (missed words are re-queued, so
     /// `session.count` grows; this stays the count of unique words).
@@ -89,10 +96,18 @@ struct FlashcardView: View {
 
     private var dueCount: Int { cards.filter { $0.word.isDue }.count }
 
-    /// In pronunciation-first mode the audio button is the prompt (front);
-    /// in the other modes it's revealed with the answer (back).
-    private var showAudioButton: Bool {
-        frontMode == .pronunciation ? !isFlipped : isFlipped
+    /// In pronunciation mode the audio button is the prompt (front); in the
+    /// other modes it's revealed with the answer (back).
+    private func showAudioButton(_ mode: FrontMode) -> Bool {
+        mode == .pronunciation ? !isFlipped : isFlipped
+    }
+
+    private func toggleMode(_ mode: FrontMode) {
+        if selectedModes.contains(mode) {
+            selectedModes.remove(mode)
+        } else {
+            selectedModes.insert(mode)
+        }
     }
 
     private var setupView: some View {
@@ -121,14 +136,22 @@ struct FlashcardView: View {
                     Text("Show first")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Picker("Show first", selection: $frontMode) {
-                        ForEach(FrontMode.allCases) { mode in
-                            Text(mode.label).tag(mode)   // mode.label is a LocalizedStringKey
+                    ForEach(FrontMode.allCases) { mode in
+                        Button {
+                            toggleMode(mode)
+                        } label: {
+                            HStack {
+                                Image(systemName: selectedModes.contains(mode) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selectedModes.contains(mode) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                                Text(mode.label)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .pickerStyle(.segmented)
-                    if frontMode == .pronunciation {
-                        Text("Only words with a recorded pronunciation are included.")
+                    if selectedModes.contains(.pronunciation) {
+                        Text("Audio is only used for words with a recorded pronunciation.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -154,10 +177,11 @@ struct FlashcardView: View {
     }
 
     private var practiceView: some View {
-        let word = session[index].word
-        // The front is a bare prompt (term or translation, per the toggle); the
-        // answer side always reveals the full entry: the word being learned, its
-        // reading, parts of speech, the meaning, and the pronunciation button.
+        let mode = session[index].mode
+        let word = session[index].card.word
+        // The front is a bare prompt (term or translation, per the card's mode);
+        // the answer side always reveals the full entry: the word being learned,
+        // its reading, parts of speech, the meaning, and the pronunciation button.
         let termReading = reading(for: word)
         let posLabels = word.partOfSpeechValues.map { $0.label(for: preferredLanguage) }
         return VStack(spacing: 24) {
@@ -170,8 +194,8 @@ struct FlashcardView: View {
             Spacer()
 
             CardView(
-                prompt: frontMode == .translation ? word.translation : word.term,
-                frontIsPronunciation: frontMode == .pronunciation,
+                prompt: mode == .translation ? word.translation : word.term,
+                frontIsPronunciation: mode == .pronunciation,
                 term: word.term,
                 termReading: termReading,
                 partsOfSpeech: posLabels,
@@ -185,9 +209,9 @@ struct FlashcardView: View {
                 }
             }
 
-            // In pronunciation-first mode the audio button is the prompt (shown
-            // on the front); otherwise it's part of the revealed answer.
-            if showAudioButton, let path = word.audioPath {
+            // In pronunciation mode the audio button is the prompt (shown on
+            // the front); otherwise it's part of the revealed answer.
+            if showAudioButton(mode), let path = word.audioPath {
                 Button {
                     playback.toggle(path: path)
                 } label: {
@@ -276,14 +300,23 @@ struct FlashcardView: View {
 
     // MARK: - Session logic
 
-    private func deck() -> [PracticeCard] {
-        var pool = dueOnly ? cards.filter { $0.word.isDue } : cards
-        // Pronunciation-first mode only makes sense for words with a recording.
-        if frontMode == .pronunciation {
-            pool = pool.filter { $0.word.audioPath != nil }
-        }
+    /// The selected modes that apply to a given word. Pronunciation only applies
+    /// to words that have a recording.
+    private func applicableModes(for word: VocabWord) -> [FrontMode] {
+        selectedModes.filter { $0 != .pronunciation || word.audioPath != nil }
+    }
+
+    private func deck() -> [SessionItem] {
+        guard !selectedModes.isEmpty else { return [] }
+        let pool = dueOnly ? cards.filter { $0.word.isDue } : cards
         // Prioritise lower Leitner boxes, then shuffle within the selection.
-        return pool.shuffled().sorted { $0.word.box < $1.word.box }
+        let ordered = pool.shuffled().sorted { $0.word.box < $1.word.box }
+        // Assign each card a random mode among those that apply to it; skip
+        // cards with no applicable mode (e.g. only Audio selected, no recording).
+        return ordered.compactMap { card in
+            guard let mode = applicableModes(for: card.word).randomElement() else { return nil }
+            return SessionItem(card: card, mode: mode)
+        }
     }
 
     private func startSession() {
@@ -298,18 +331,18 @@ struct FlashcardView: View {
     }
 
     private func handleAnswer(correct: Bool) {
-        var card = session[index]
+        var item = session[index]
         if correct {
-            card.word.markCorrect(aspect: frontMode.memoryAspect)
+            item.card.word.markCorrect(aspect: item.mode.memoryAspect)
             correctCount += 1
-            session[index] = card
+            session[index] = item
         } else {
-            card.word.markIncorrect(aspect: frontMode.memoryAspect)
-            session[index] = card
-            // Not remembered: move on, but re-queue it to be reviewed again.
-            session.append(card)
+            item.card.word.markIncorrect(aspect: item.mode.memoryAspect)
+            session[index] = item
+            // Not remembered: move on, but re-queue it (same mode) for review.
+            session.append(item)
         }
-        persist(card)
+        persist(item.card)
         advance()
     }
 
