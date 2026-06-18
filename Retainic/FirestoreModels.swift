@@ -173,6 +173,12 @@ extension VocabWord {
     /// The day the word was memorized (its last review), if memorized.
     var memorizedDate: Date? { isMemorized ? lastReviewed : nil }
 
+    /// Whether the given memory aspect was recalled correctly today.
+    func wasRememberedToday(aspect: String) -> Bool {
+        guard let last = memoryStats?[aspect]?.lastRemembered else { return false }
+        return Calendar.current.isDateInToday(last)
+    }
+
     /// Whether this card is due for review based on its Leitner box.
     var isDue: Bool {
         guard let lastReviewed else { return true }

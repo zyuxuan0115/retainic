@@ -20,13 +20,14 @@ enum FrontMode: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Which memory aspect this practice mode exercises, used for per-word stats.
-    /// Showing the word and recalling its meaning tests translation; showing the
-    /// meaning and recalling the word tests spelling; audio tests pronunciation.
+    /// Which memory aspect this practice mode tracks, used for per-word stats and
+    /// the per-aspect daily "remembered today" check. The Show First option name
+    /// matches the aspect: Translation → translation, Audio → pronunciation, and
+    /// Word → spelling.
     var memoryAspect: String {
         switch self {
-        case .term: return "translation"
-        case .translation: return "spelling"
+        case .term: return "spelling"
+        case .translation: return "translation"
         case .pronunciation: return "pronunciation"
         }
     }
@@ -94,7 +95,17 @@ struct FlashcardView: View {
         )
     }
 
-    private var dueCount: Int { cards.filter { $0.word.isDue }.count }
+    /// Number of aspect-cards still pending today across the selected modes.
+    private var dueCount: Int {
+        var count = 0
+        for mode in selectedModes {
+            for card in cards {
+                if mode == .pronunciation && card.word.audioPath == nil { continue }
+                if !card.word.wasRememberedToday(aspect: mode.memoryAspect) { count += 1 }
+            }
+        }
+        return count
+    }
 
     /// In pronunciation mode the audio button is the prompt (front); in the
     /// other modes it's revealed with the answer (back).
@@ -300,23 +311,27 @@ struct FlashcardView: View {
 
     // MARK: - Session logic
 
-    /// The selected modes that apply to a given word. Pronunciation only applies
-    /// to words that have a recording.
-    private func applicableModes(for word: VocabWord) -> [FrontMode] {
-        selectedModes.filter { $0 != .pronunciation || word.audioPath != nil }
+    /// Whether a card should be included for a given mode: the mode must apply to
+    /// the word (pronunciation needs a recording), and — when reviewing due cards
+    /// only — that aspect must not have been remembered yet today.
+    private func includes(_ card: PracticeCard, mode: FrontMode) -> Bool {
+        if mode == .pronunciation && card.word.audioPath == nil { return false }
+        if dueOnly && card.word.wasRememberedToday(aspect: mode.memoryAspect) { return false }
+        return true
     }
 
     private func deck() -> [SessionItem] {
         guard !selectedModes.isEmpty else { return [] }
-        let pool = dueOnly ? cards.filter { $0.word.isDue } : cards
-        // Prioritise lower Leitner boxes, then shuffle within the selection.
-        let ordered = pool.shuffled().sorted { $0.word.box < $1.word.box }
-        // Assign each card a random mode among those that apply to it; skip
-        // cards with no applicable mode (e.g. only Audio selected, no recording).
-        return ordered.compactMap { card in
-            guard let mode = applicableModes(for: card.word).randomElement() else { return nil }
-            return SessionItem(card: card, mode: mode)
+        // One card per selected aspect a word still needs today, so a word can
+        // appear once per aspect (e.g. both its translation and pronunciation).
+        var items: [SessionItem] = []
+        for mode in selectedModes {
+            for card in cards where includes(card, mode: mode) {
+                items.append(SessionItem(card: card, mode: mode))
+            }
         }
+        // Prioritise lower Leitner boxes, then shuffle within the selection.
+        return items.shuffled().sorted { $0.card.word.box < $1.card.word.box }
     }
 
     private func startSession() {
@@ -342,8 +357,18 @@ struct FlashcardView: View {
             // Not remembered: move on, but re-queue it (same mode) for review.
             session.append(item)
         }
+        // A word can be queued for multiple aspects; keep all of its copies in
+        // sync so answering one aspect doesn't clobber another's saved stats.
+        syncWord(item.card.word)
         persist(item.card)
         advance()
+    }
+
+    /// Propagates a word's updated state to every queued item for the same word.
+    private func syncWord(_ word: VocabWord) {
+        for i in session.indices where session[i].card.word.id == word.id {
+            session[i].card.word = word
+        }
     }
 
     private func persist(_ card: PracticeCard) {
