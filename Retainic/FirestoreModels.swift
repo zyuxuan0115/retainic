@@ -100,10 +100,11 @@ struct VocabWord: Codable, Identifiable {
     var lastPronounciationRemembered: Date?
     var lastTranslationRemembered: Date?
     var timesSeen: Int
-    /// Correct-recall counts split by practice mode.
-    var timesWordCorrect: Int
-    var timesPronounciationCorrect: Int
-    var timesTranslationCorrect: Int
+    /// Correct-recall counts split by practice mode. Optional so older documents
+    /// (which only had a single `timesCorrect`) still decode.
+    var timesWordCorrect: Int?
+    var timesPronounciationCorrect: Int?
+    var timesTranslationCorrect: Int?
     /// Whether the word is finally remembered (mastered). Stored in Firebase as
     /// `remember_final`. Optional so older documents still decode.
     var remember_final: Bool?
@@ -125,9 +126,9 @@ struct VocabWord: Codable, Identifiable {
         lastPronounciationRemembered: Date? = nil,
         lastTranslationRemembered: Date? = nil,
         timesSeen: Int = 0,
-        timesWordCorrect: Int = 0,
-        timesPronounciationCorrect: Int = 0,
-        timesTranslationCorrect: Int = 0,
+        timesWordCorrect: Int? = 0,
+        timesPronounciationCorrect: Int? = 0,
+        timesTranslationCorrect: Int? = 0,
         remember_final: Bool? = false
     ) {
         self.id = id
@@ -228,13 +229,13 @@ extension VocabWord {
         // The aspect names map to the practice modes: spelling = Word mode.
         switch aspect {
         case "spelling":
-            timesWordCorrect += 1
+            timesWordCorrect = (timesWordCorrect ?? 0) + 1
             lastWordRemembered = now
         case "pronunciation":
-            timesPronounciationCorrect += 1
+            timesPronounciationCorrect = (timesPronounciationCorrect ?? 0) + 1
             lastPronounciationRemembered = now
         case "translation":
-            timesTranslationCorrect += 1
+            timesTranslationCorrect = (timesTranslationCorrect ?? 0) + 1
             lastTranslationRemembered = now
         default: break
         }
@@ -269,9 +270,12 @@ extension VocabWord {
     /// Marks the word as finally remembered once each mode has enough correct
     /// recalls. Called whenever a per-mode correct count changes.
     private mutating func updateRememberFinal() {
+        let word = timesWordCorrect ?? 0
+        let translation = timesTranslationCorrect ?? 0
+        let pronunciation = timesPronounciationCorrect ?? 0
         // Pronunciation only counts toward mastery for words that have a recording.
-        let pronunciationOK = audioPath == nil || timesPronounciationCorrect >= 7
-        if timesWordCorrect >= 8 && timesTranslationCorrect >= 10 && pronunciationOK {
+        let pronunciationOK = audioPath == nil || pronunciation >= 7
+        if word >= 8 && translation >= 10 && pronunciationOK {
             remember_final = true
         }
     }
