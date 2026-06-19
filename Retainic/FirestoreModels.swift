@@ -67,6 +67,16 @@ struct PracticeCard: Identifiable {
     var id: String { word.id ?? UUID().uuidString }
 }
 
+/// Daily tally of how many words were remembered per aspect in the daily
+/// assignment, stored at users/{uid}/dailyStats/{yyyy-MM-dd}.
+struct DailyStat: Codable, Identifiable {
+    @DocumentID var id: String?
+    var date: String
+    var word: Int?
+    var translation: Int?
+    var pronunciation: Int?
+}
+
 /// A single vocabulary entry inside a list.
 struct VocabWord: Codable, Identifiable {
     @DocumentID var id: String?
@@ -192,11 +202,9 @@ extension VocabWord {
     /// The day the word was memorized (its last review), if memorized.
     var memorizedDate: Date? { isMemorized ? lastReviewed : nil }
 
-    /// Whether the word has ever been recalled correctly in practice. Cleared by
-    /// "mark all as not remembered" (`resetMemory`).
-    var isRemembered: Bool {
-        lastWordRemembered != nil || lastPronounciationRemembered != nil || lastTranslationRemembered != nil
-    }
+    /// Whether the word is fully remembered (the `remember_final` flag in
+    /// Firebase). Drives the "show remembered only" list filter.
+    var isRemembered: Bool { remember_final == true }
 
     /// Whether the given memory aspect was recalled correctly today.
     func wasRememberedToday(aspect: String) -> Bool {

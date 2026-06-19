@@ -337,8 +337,8 @@ struct FlashcardView: View {
                 items.append(SessionItem(card: card, mode: mode))
             }
         }
-        // Prioritise lower Leitner boxes, then shuffle within the selection.
-        return items.shuffled().sorted { $0.card.word.box < $1.card.word.box }
+        // Random order.
+        return items.shuffled()
     }
 
     private func startSession() {
@@ -359,6 +359,7 @@ struct FlashcardView: View {
         if dueOnly {
             if correct {
                 item.card.word.markCorrect(aspect: item.mode.memoryAspect)
+                recordDailyStat(aspect: item.mode.memoryAspect)
             } else {
                 item.card.word.markIncorrect(aspect: item.mode.memoryAspect)
             }
@@ -387,6 +388,11 @@ struct FlashcardView: View {
     private func persist(_ card: PracticeCard) {
         guard let uid = auth.uid else { return }
         Task { try? await VocabRepository.updateWord(uid: uid, listId: card.listId, word: card.word) }
+    }
+
+    private func recordDailyStat(aspect: String) {
+        guard let uid = auth.uid else { return }
+        Task { try? await VocabRepository.recordRemembered(uid: uid, aspect: aspect) }
     }
 
     private func advance() {

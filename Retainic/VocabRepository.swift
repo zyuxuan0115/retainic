@@ -24,6 +24,49 @@ enum VocabRepository {
         listsRef(uid).document(listId).collection("words")
     }
 
+    // MARK: - Daily stats
+
+    /// "yyyy-MM-dd" key in the device's calendar, used for daily-stat documents.
+    static let dayKeyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static func dayKey(_ date: Date) -> String { dayKeyFormatter.string(from: date) }
+
+    private static func dailyStatsRef(_ uid: String) -> CollectionReference {
+        userDoc(uid).collection("dailyStats")
+    }
+
+    /// Increments today's remembered count for the given aspect.
+    static func recordRemembered(uid: String, aspect: String, on date: Date = Date()) async throws {
+        let field: String
+        switch aspect {
+        case "spelling": field = "word"
+        case "translation": field = "translation"
+        case "pronunciation": field = "pronunciation"
+        default: return
+        }
+        let key = dayKey(date)
+        try await dailyStatsRef(uid).document(key).setData([
+            "date": key,
+            field: FieldValue.increment(Int64(1))
+        ], merge: true)
+    }
+
+    /// Most recent `days` daily-stat documents (chronological order).
+    static func fetchDailyStats(uid: String, days: Int) async throws -> [DailyStat] {
+        let snapshot = try await dailyStatsRef(uid)
+            .order(by: "date", descending: true)
+            .limit(to: days)
+            .getDocuments()
+        let stats = snapshot.documents.compactMap { try? $0.data(as: DailyStat.self) }
+        return stats.sorted { $0.date < $1.date }
+    }
+
     // MARK: - Lists
 
     static func fetchLists(uid: String) async throws -> [VocabularyList] {
