@@ -129,7 +129,7 @@ struct FlashcardView: View {
                     .font(.title2.bold())
                 Text(dueCount > 0
                      ? "\(dueCount) cards due for review."
-                     : "No cards due right now — but you can review everything.")
+                     : "You finished your daily assignment.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
