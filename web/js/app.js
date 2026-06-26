@@ -1,0 +1,1032 @@
+//
+//  app.js
+//  Retainic Web
+//
+//  The whole interface: auth gate, tab shell, and every screen — a faithful
+//  port of the SwiftUI views (ContentView, MainTabView, AuthView,
+//  VocabListsView, ListDetailView, AddWordView, FlashcardView, StatsView,
+//  SettingsView).
+//
+
+import { el, clear, svgEl, presentSheet, toast } from "./dom.js";
+import * as i18n from "./i18n.js";
+import { t, tn, tf, LANGUAGES, autonym, displayNameIn, preferredLanguage, setPreferredLanguage } from "./i18n.js";
+import * as Repo from "./repository.js";
+import * as M from "./models.js";
+import * as Auth from "./auth.js";
+import { authState } from "./auth.js";
+import { playback, PronunciationRecorder } from "./audio.js";
+
+const root = document.getElementById("app");
+
+// Navigation state for the "My Lists" tab (a simple screen stack).
+const state = {
+  tab: "lists",
+  stack: [{ name: "lists" }],
+};
+
+// MARK: - Boot
+
+Auth.onAuthChange(() => renderApp());
+window.addEventListener("languagechange-app", () => renderApp());
+document.documentElement.lang = preferredLanguage();
+
+function renderApp() {
+  clear(root);
+  if (!authState.isAuthenticated) {
+    root.appendChild(AuthScreen());
+  } else {
+    root.appendChild(Shell());
+  }
+}
+
+// MARK: - Shared building blocks
+
+function navBar(title, { leading = null, trailing = null } = {}) {
+  return el(".navbar", {},
+    el(".navbar-side.leading", {}, leading),
+    el(".navbar-title", {}, title),
+    el(".navbar-side.trailing", {}, trailing),
+  );
+}
+
+function iconButton(symbol, onClick, { label = "", danger = false } = {}) {
+  return el("button.icon-btn" + (danger ? ".danger" : ""), { onclick: onClick, title: label, "aria-label": label }, symbol);
+}
+
+function textButton(label, onClick, { kind = "plain" } = {}) {
+  return el(`button.txt-btn.${kind}`, { onclick: onClick }, label);
+}
+
+function spinner(label) {
+  return el(".center-state", {}, el(".spinner"), label ? el("p", {}, label) : null);
+}
+
+function emptyState(icon, title, desc, action = null) {
+  return el(".center-state", {},
+    el(".empty-icon", {}, icon),
+    el("h2", {}, title),
+    el("p", {}, desc),
+    action,
+  );
+}
+
+// MARK: - Auth
+
+function AuthScreen() {
+  let mode = "login"; // or "register"
+  let error = null;
+  let working = false;
+  const wrap = el(".auth-wrap");
+
+  function render() {
+    clear(wrap);
+    const isRegister = mode === "register";
+    const username = el("input.field-input", { type: "text", placeholder: t("Username"), autocomplete: "username" });
+    const email = el("input.field-input", { type: "email", placeholder: t("Email"), autocomplete: "email" });
+    const password = el("input.field-input", { type: "password", placeholder: t("Password"), autocomplete: isRegister ? "new-password" : "current-password" });
+
+    const submit = async () => {
+      error = null;
+      const em = email.value.trim();
+      const emailOK = em.includes("@") && em.includes(".");
+      const passOK = password.value.length >= 6;
+      const userOK = !isRegister || username.value.trim().length > 0;
+      if (!emailOK || !passOK || !userOK) return;
+      working = true; render();
+      try {
+        if (isRegister) await Auth.register(em, password.value, username.value.trim());
+        else await Auth.signIn(em, password.value);
+        // onAuthChange re-renders the app.
+      } catch (e) {
+        error = Auth.friendlyMessage(e);
+        working = false; render();
+      }
+    };
+
+    wrap.appendChild(el(".auth-card", {},
+      el(".auth-header", {},
+        el(".auth-logo", {}, bookIcon(44)),
+        el("h1", {}, "Retainic"),
+        el("p", {}, t("Sign in to access your vocabulary lists.")),
+      ),
+      el(".segmented", {},
+        segButton(t("Log In"), !isRegister, () => { mode = "login"; error = null; render(); }),
+        segButton(t("Register"), isRegister, () => { mode = "register"; error = null; render(); }),
+      ),
+      el(".auth-fields", {},
+        isRegister ? fieldRow("person", username) : null,
+        fieldRow("envelope", email),
+        fieldRow("lock", password),
+      ),
+      error ? el(".form-error", {}, error) : null,
+      el("button.btn.primary.large", {
+        disabled: working,
+        onclick: submit,
+      }, working ? t("Loading…") : (isRegister ? t("Create Account") : t("Log In"))),
+      isRegister ? el(".caption.center", {}, t("Password must be at least 6 characters.")) : null,
+    ));
+
+    [username, email, password].forEach((inp) =>
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); }));
+  }
+
+  function segButton(label, active, onClick) {
+    return el("button.seg" + (active ? ".active" : ""), { onclick: onClick }, label);
+  }
+  function fieldRow(icon, input) {
+    return el(".field-row", {}, el(".field-icon", {}, glyph(icon)), input);
+  }
+
+  render();
+  return wrap;
+}
+
+// MARK: - Shell (tab bar)
+
+function Shell() {
+  const content = el(".content");
+  const shell = el(".shell", {},
+    content,
+    el(".tabbar", {},
+      tabItem("lists", listsGlyph(), t("My Lists")),
+      tabItem("stats", chartGlyph(), t("Statistics")),
+      tabItem("settings", gearGlyph(), t("Settings")),
+    ),
+  );
+  renderTab(content);
+  return shell;
+
+  function tabItem(tab, icon, label) {
+    return el(".tab" + (state.tab === tab ? ".active" : ""), {
+      onclick: () => { state.tab = tab; if (tab === "lists" && state.stack.length === 0) state.stack = [{ name: "lists" }]; renderApp(); },
+    }, el(".tab-icon", {}, icon), el(".tab-label", {}, label));
+  }
+}
+
+function renderTab(content) {
+  clear(content);
+  if (state.tab === "lists") {
+    const top = state.stack[state.stack.length - 1];
+    if (top.name === "lists") ListsScreen(content);
+    else if (top.name === "detail") ListDetailScreen(content, top.list);
+    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage);
+  } else if (state.tab === "stats") {
+    StatsScreen(content);
+  } else {
+    SettingsScreen(content);
+  }
+}
+
+function navPush(screen) { state.stack.push(screen); renderApp(); }
+function navPop() { state.stack.pop(); renderApp(); }
+
+// MARK: - Lists screen
+
+async function ListsScreen(content) {
+  content.appendChild(navBar(t("My Lists"), {
+    trailing: iconButton("+", () => presentNewListSheet(reload), { label: t("New List") }),
+  }));
+  const body = el(".scroll");
+  content.appendChild(body);
+  body.appendChild(spinner(t("Loading…")));
+
+  async function reload() {
+    let lists = [];
+    try { lists = await Repo.fetchLists(authState.uid); }
+    catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+    clear(body);
+    if (lists.length === 0) {
+      body.appendChild(emptyState(rectStackGlyph(), t("No Lists Yet"),
+        t("Create your first vocabulary list to start adding words."),
+        el("button.btn.primary", { onclick: () => presentNewListSheet(reload) }, t("Create a List"))));
+      return;
+    }
+    const listEl = el(".list");
+    for (const list of lists) {
+      listEl.appendChild(el(".row.tappable", { onclick: () => navPush({ name: "detail", list }) },
+        el(".row-lead", {}, rectStackGlyph()),
+        el(".row-main", {},
+          el(".row-title", {}, list.name),
+          el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
+        ),
+        iconButton("🗑", async (e) => {
+          e.stopPropagation();
+          if (!confirm(`${t("Delete")} “${list.name}”?`)) return;
+          try { await Repo.deleteList(authState.uid, list.id); reload(); }
+          catch (err) { toast(Auth.friendlyMessage(err)); }
+        }, { label: t("Delete"), danger: true }),
+        el(".row-chevron", {}, "›"),
+      ));
+    }
+    body.appendChild(listEl);
+  }
+  reload();
+}
+
+function presentNewListSheet(onCreated) {
+  presentSheet((api) => {
+    let learning = "";
+    let original = preferredLanguage();
+    const name = el("input.field-input", { type: "text", placeholder: t("e.g. Kitchen vocabulary") });
+    const learnSel = languageSelect(learning, t("Select…"), (v) => { learning = v; validate(); });
+    const origSel = languageSelect(original, t("Select…"), (v) => { original = v; validate(); });
+    const footer = el(".form-footer-error");
+    const createBtn = el("button.txt-btn.bold", { onclick: create }, t("Create"));
+
+    function validate() {
+      const same = learning !== "" && learning === original;
+      footer.textContent = same ? t("The two languages must be different.") : "";
+      const ok = name.value.trim() && learning && original && !same;
+      createBtn.disabled = !ok;
+      createBtn.classList.toggle("disabled", !ok);
+    }
+    name.addEventListener("input", validate);
+
+    async function create() {
+      if (createBtn.disabled) return;
+      try {
+        await Repo.createList(authState.uid, name.value.trim(), learning, original);
+        api.close();
+        onCreated();
+      } catch (e) { toast(Auth.friendlyMessage(e)); }
+    }
+
+    setTimeout(validate, 0);
+    return el(".sheet-content", {},
+      sheetHeader(t("New List"), api, createBtn),
+      el(".form", {},
+        formSection(t("List name"), el(".form-card", {}, name)),
+        formSection(t("Languages"),
+          el(".form-card", {},
+            pickerRow(t("I'm learning"), learnSel),
+            pickerRow(t("Translated into"), origSel),
+          ), footer),
+      ),
+    );
+  });
+}
+
+function languageSelect(value, placeholder, onChange) {
+  const sel = el("select.picker", { onchange: (e) => onChange(e.target.value) },
+    el("option", { value: "" }, placeholder),
+    ...LANGUAGES.map((l) => el("option", { value: l.code, selected: l.code === value }, displayNameIn(l.code))),
+  );
+  return sel;
+}
+
+// MARK: - List detail screen
+
+async function ListDetailScreen(content, list) {
+  let words = [];
+  let selecting = false;
+  let selection = new Set();
+  let searchText = "";
+  let filter = "all"; // all | remembered | unremembered
+  let listName = list.name;
+
+  const header = el(".navbar-host");
+  const body = el(".scroll.with-toolbar");
+  const toolbarHost = el(".bottom-toolbar-host");
+  content.appendChild(header);
+  content.appendChild(body);
+  content.appendChild(toolbarHost);
+
+  body.appendChild(spinner(t("Loading…")));
+  try { words = await Repo.fetchWords(authState.uid, list.id); }
+  catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+  renderAll();
+
+  function filteredWords() {
+    let r = words;
+    if (filter === "remembered") r = r.filter(M.isRemembered);
+    else if (filter === "unremembered") r = r.filter((w) => !M.isRemembered(w));
+    const q = searchText.trim().toLowerCase();
+    if (q) r = r.filter((w) => w.term.toLowerCase().includes(q) || w.translation.toLowerCase().includes(q));
+    return r;
+  }
+
+  function renderAll() {
+    // Nav bar
+    clear(header);
+    const title = selecting
+      ? (selection.size === 0 ? t("Select Words") : tn("%lld Selected", selection.size))
+      : listName;
+    header.appendChild(navBar(title, {
+      leading: selecting ? null : iconButton("‹", () => navPop(), { label: "Back" }),
+      trailing: words.length === 0 ? null : (selecting
+        ? textButton(t("Done"), endSelection, { kind: "bold" })
+        : textButton(t("Select"), beginSelection, { kind: "plain" })),
+    }));
+
+    // Body
+    clear(body);
+    if (words.length === 0) {
+      body.appendChild(emptyState(bookClosedGlyph(), t("No Words Yet"),
+        tf("Add the words you're learning to “%@”.", listName),
+        el("button.btn.primary", { onclick: openAdd }, t("Add Your First Word"))));
+      renderToolbar();
+      return;
+    }
+    const search = el("input.search", { type: "search", placeholder: t("Search words"), value: searchText });
+    search.addEventListener("input", () => { searchText = search.value; renderRows(); });
+    body.appendChild(el(".search-wrap", {}, search));
+    const rowsHost = el(".list", { id: "rows-host" });
+    body.appendChild(rowsHost);
+    renderRows();
+    renderToolbar();
+
+    function renderRows() {
+      const host = body.querySelector("#rows-host");
+      clear(host);
+      for (const w of filteredWords()) host.appendChild(wordRow(w));
+    }
+  }
+
+  function wordRow(w) {
+    const checked = selection.has(w.id);
+    const posChips = M.partOfSpeechValues(w).map((p) =>
+      el(".chip", {}, M.posLabel(p, preferredLanguage())));
+    const audioBtn = w.audioPath ? playbackButton(w.audioPath) : null;
+    const row = el(".row.word-row" + (selecting && checked ? ".selected" : ""), {
+      onclick: () => {
+        if (selecting) { toggleSelect(w.id); }
+        else openEdit(w);
+      },
+    },
+      selecting ? el(".select-dot" + (checked ? ".on" : ""), {}, checked ? "✓" : "") : null,
+      el(".row-main", {},
+        el(".word-top", {},
+          el("span.word-term", {}, w.term),
+          M.reading(w) ? el("span.word-reading", {}, M.reading(w)) : null,
+          ...posChips,
+        ),
+        el(".row-sub", {}, w.translation),
+      ),
+      audioBtn,
+      !selecting ? el(".row-chevron", {}, "›") : null,
+    );
+    return row;
+  }
+
+  function renderToolbar() {
+    clear(toolbarHost);
+    if (selecting) {
+      const can = selection.size > 0;
+      toolbarHost.appendChild(el(".bottom-toolbar", {},
+        el("button.tool" + (can ? "" : ".disabled"), { disabled: !can, onclick: beginMove }, "📁 " + t("Move")),
+        el(".spacer"),
+        el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, "🗑 " + t("Delete")),
+      ));
+    } else {
+      toolbarHost.appendChild(el(".bottom-toolbar", {},
+        words.length ? el("button.tool", { onclick: startPractice }, "🃏 " + t("Practice")) : null,
+        el(".spacer"),
+        el("button.tool", { onclick: openListSettings }, "⚙ " + t("Settings")),
+        el("button.tool", { onclick: openAdd }, "+ " + t("Add Word")),
+      ));
+    }
+  }
+
+  // Selection
+  function beginSelection() { selecting = true; selection = new Set(); renderAll(); }
+  function endSelection() { selecting = false; selection = new Set(); renderAll(); }
+  function toggleSelect(id) {
+    if (selection.has(id)) selection.delete(id); else selection.add(id);
+    renderAll();
+  }
+
+  async function deleteSelected() {
+    const ids = new Set(selection);
+    try {
+      for (const id of ids) await Repo.deleteWord(authState.uid, list.id, id);
+      words = words.filter((w) => !ids.has(w.id));
+    } catch (e) { toast(Auth.friendlyMessage(e)); }
+    endSelection();
+  }
+
+  async function beginMove() {
+    let lists = [];
+    try { lists = await Repo.fetchLists(authState.uid); } catch (e) { toast(Auth.friendlyMessage(e)); return; }
+    const targets = lists.filter((o) => o.id !== list.id
+      && o.learningLanguage === list.learningLanguage
+      && o.originalLanguage === list.originalLanguage);
+    presentMoveSheet(targets, selection.size, async (dest) => {
+      const ids = new Set(selection);
+      try {
+        for (const w of words.filter((x) => ids.has(x.id)))
+          await Repo.moveWord(authState.uid, list.id, dest.id, w);
+        words = words.filter((w) => !ids.has(w.id));
+      } catch (e) { toast(Auth.friendlyMessage(e)); }
+      endSelection();
+    });
+  }
+
+  // Add / edit
+  function openAdd() {
+    presentWordSheet({ list, word: null, onSaved: reload });
+  }
+  function openEdit(w) {
+    presentWordSheet({ list, word: w, onSaved: reload });
+  }
+  async function reload() {
+    try { words = await Repo.fetchWords(authState.uid, list.id); } catch (e) { toast(Auth.friendlyMessage(e)); }
+    renderAll();
+  }
+
+  function openListSettings() {
+    presentListSettingsSheet({
+      name: listName,
+      filter,
+      onFilter: (f) => { filter = f; renderAll(); },
+      onRename: async (newName) => {
+        const trimmed = newName.trim();
+        if (!trimmed) return;
+        listName = trimmed;
+        try { await Repo.renameList(authState.uid, list.id, trimmed); } catch (e) { toast(Auth.friendlyMessage(e)); }
+        renderAll();
+      },
+      onReset: async () => {
+        try {
+          for (const w of words) { M.resetMemory(w); await Repo.updateWord(authState.uid, list.id, w); }
+        } catch (e) { toast(Auth.friendlyMessage(e)); }
+        renderAll();
+      },
+    });
+  }
+
+  function startPractice() {
+    const cards = words.map((w) => ({ word: w, listId: list.id }));
+    navPush({ name: "practice", cards, learningLanguage: list.learningLanguage || "" });
+  }
+}
+
+function presentMoveSheet(targets, count, onSelect) {
+  presentSheet((api) => {
+    let bodyContent;
+    if (targets.length === 0) {
+      bodyContent = emptyState(rectStackGlyph(), t("No Compatible Lists"),
+        t("You need another list with the same learning and native language to move these words."));
+    } else {
+      bodyContent = el(".list", {}, ...targets.map((l) =>
+        el(".row.tappable", { onclick: () => { onSelect(l); api.close(); } },
+          el(".row-lead", {}, rectStackGlyph()),
+          el(".row-main", {}, el(".row-title", {}, l.name), el(".row-sub", {}, tn("%lld words", l.wordCount ?? 0))),
+        )));
+    }
+    return el(".sheet-content", {},
+      sheetHeader(tn("Move %lld Words", count), api, null),
+      el(".scroll", {}, bodyContent),
+    );
+  });
+}
+
+function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset }) {
+  presentSheet((api) => {
+    const nameInput = el("input.field-input", { type: "text", value: name });
+    const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
+      el("option", { value: "all", selected: filter === "all" }, t("Show all")),
+      el("option", { value: "remembered", selected: filter === "remembered" }, t("Show remembered only")),
+      el("option", { value: "unremembered", selected: filter === "unremembered" }, t("Show unremembered only")),
+    );
+    const saveBtn = el("button.txt-btn.bold", { onclick: () => { onRename(nameInput.value); api.close(); } }, t("Save"));
+    return el(".sheet-content", {},
+      sheetHeader(t("List Settings"), api, saveBtn, t("Cancel")),
+      el(".form", {},
+        formSection(t("List name"), el(".form-card", {}, nameInput)),
+        formSection(t("Show words"), el(".form-card", {}, pickerRow(t("Show words"), filterSel))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action.danger", {
+              onclick: () => {
+                if (confirm(t("Mark all words as not remembered?"))) { onReset(); api.close(); }
+              },
+            }, "↺ " + t("Mark all as not remembered")),
+          ),
+          el(".form-note", {}, t("Every word in this list will show up again in practice for all methods."))),
+      ),
+    );
+  });
+}
+
+// MARK: - Add / edit word sheet
+
+function presentWordSheet({ list, word, onSaved }) {
+  const isEditing = word != null;
+  const learning = list.learningLanguage || "";
+  const original = list.originalLanguage || "";
+  const isJa = learning === "ja";
+  const isZh = learning === "zh";
+
+  presentSheet((api) => {
+    const recorder = new PronunciationRecorder();
+    const selectedPOS = new Set(word ? M.partOfSpeechValues(word) : []);
+
+    const term = el("input.field-input", { type: "text", value: word?.term || "", placeholder: t("Word you're learning") });
+    const hiragana = el("input.field-input", { type: "text", value: word?.hiragana || "", placeholder: t("ひらがな reading") });
+    const pinyin = el("input.field-input", { type: "text", value: word?.pinyin || "", placeholder: t("pīnyīn reading") });
+    const translation = el("input.field-input", { type: "text", value: word?.translation || "", placeholder: t("Translation") });
+    const notes = el("textarea.field-input", { rows: 3, placeholder: t("Example sentence or memory hint") }, word?.notes || "");
+    const errorEl = el(".form-footer-error");
+    const pinyinFooter = el(".form-note");
+    const saveBtn = el("button.txt-btn.bold", { onclick: save }, t("Save"));
+
+    function validate() {
+      const ok = term.value.trim() && translation.value.trim() && (!isZh || pinyin.value.trim());
+      saveBtn.disabled = !ok;
+      saveBtn.classList.toggle("disabled", !ok);
+      if (isZh) pinyinFooter.innerHTML = pinyin.value.trim() ? "" : `<span class="danger-text">${t("Pinyin is required for Chinese words.")}</span>`;
+    }
+    [term, translation, pinyin].forEach((i) => i.addEventListener("input", validate));
+
+    // Pronunciation section
+    const pronHost = el(".form-card");
+    recorder.onChange = renderPron;
+    recorder.configure(word?.audioPath);
+    function renderPron() {
+      clear(pronHost);
+      pronHost.appendChild(el("button.form-action", { onclick: () => recorder.toggleRecording() },
+        recorder.isRecording ? "⏹ " + t("Stop Recording") : (recorder.hasAudio ? "🎤 " + t("Re-record") : "🎤 " + t("Record"))));
+      if (recorder.hasAudio && !recorder.isRecording) {
+        pronHost.appendChild(el("button.form-action", { onclick: () => recorder.isPlaying ? recorder.stopPlayback() : recorder.play() },
+          recorder.isPlaying ? "⏹ " + t("Stop") : "▶ " + t("Play")));
+        pronHost.appendChild(el("button.form-action.danger", { onclick: () => recorder.clear() }, "🗑 " + t("Delete Recording")));
+      }
+      const note = recorder.permissionDenied ? t("Microphone access is off. Enable it in Settings to record.")
+        : recorder.recordingWasEmpty ? t("No audio was captured. On the Simulator, enable I/O ▸ Audio Input; otherwise try recording on a real device.")
+        : "";
+      pronNote.innerHTML = note ? `<span class="danger-text">${note}</span>` : "";
+    }
+    const pronNote = el(".form-note");
+
+    // POS section
+    const posHost = el(".form-card");
+    function renderPOS() {
+      clear(posHost);
+      for (const p of M.PARTS_OF_SPEECH) {
+        const on = selectedPOS.has(p);
+        posHost.appendChild(el(".check-row", {
+          onclick: () => { on ? selectedPOS.delete(p) : selectedPOS.add(p); renderPOS(); },
+        }, el("span", {}, M.posLabel(p, preferredLanguage())), el("span.check", {}, on ? "✓" : "")));
+      }
+    }
+    renderPOS();
+    renderPron();
+
+    async function save() {
+      if (saveBtn.disabled) return;
+      const posList = M.PARTS_OF_SPEECH.filter((p) => selectedPOS.has(p));
+      const audioBlob = recorder.recordedBlob;
+      const removeAudio = isEditing && word.audioPath != null && !recorder.hasAudio;
+      saveBtn.disabled = true;
+      try {
+        if (isEditing) {
+          const w = { ...word };
+          w.term = term.value.trim();
+          w.translation = translation.value.trim();
+          w.notes = notes.value.trim();
+          w.partsOfSpeech = posList;
+          w.partOfSpeech = null;
+          w.hiragana = hiragana.value.trim() || null;
+          w.pinyin = pinyin.value.trim() || null;
+          await Repo.updateWord(authState.uid, list.id, w, { audioBlob, removeAudio });
+        } else {
+          const w = M.newWord({
+            term: term.value.trim(),
+            translation: translation.value.trim(),
+            notes: notes.value.trim(),
+            partsOfSpeech: posList,
+            hiragana: hiragana.value.trim() || null,
+            pinyin: pinyin.value.trim() || null,
+          });
+          await Repo.addWord(authState.uid, list.id, w, audioBlob);
+        }
+        recorder.stopPlayback();
+        api.close();
+        onSaved();
+      } catch (e) {
+        errorEl.textContent = Auth.friendlyMessage(e);
+        saveBtn.disabled = false;
+      }
+    }
+
+    setTimeout(validate, 0);
+    const learnTitle = displayNameIn(learning) || t("Word");
+    const origTitle = displayNameIn(original) || t("Translation");
+
+    return el(".sheet-content", {},
+      sheetHeader(isEditing ? t("Edit Word") : t("New Word"), api, saveBtn, isEditing ? null : t("Cancel")),
+      el(".form", {},
+        formSection(learnTitle, el(".form-card", {}, term)),
+        isJa ? formSection(t("Hiragana (optional)"), el(".form-card", {}, hiragana)) : null,
+        isZh ? formSection(t("Pinyin (required)"), el(".form-card", {}, pinyin), pinyinFooter) : null,
+        formSection(origTitle, el(".form-card", {}, translation)),
+        formSection(t("Part of speech"), posHost, el(".form-note", {}, t("Select all that apply."))),
+        formSection(t("Pronunciation (optional)"), pronHost, pronNote),
+        formSection(t("Notes (optional)"), el(".form-card", {}, notes)),
+        errorEl,
+      ),
+    );
+  });
+}
+
+// MARK: - Flashcard screen
+
+const FRONT_MODES = [
+  { id: "term", labelKey: "Word", aspect: "spelling" },
+  { id: "translation", labelKey: "Translation", aspect: "translation" },
+  { id: "pronunciation", labelKey: "Audio", aspect: "pronunciation" },
+];
+
+function FlashcardScreen(content, cards, learningLanguage) {
+  const header = el(".navbar-host");
+  const body = el(".scroll");
+  content.appendChild(header);
+  content.appendChild(body);
+
+  let session = [];   // [{ card, mode }]
+  let index = 0;
+  let isFlipped = false;
+  let selectedModes = new Set(["term"]);
+  let correctCount = 0;
+  let totalCards = 0;
+  let dueOnly = true;
+  let finished = false;
+
+  function includes(card, modeId) {
+    if (modeId === "pronunciation" && card.word.audioPath == null) return false;
+    if (dueOnly) {
+      if (modeId === "translation") return M.isTranslationDue(card.word);
+      if (modeId === "term") return M.isWordDue(card.word);
+      return M.isPronunciationDue(card.word);
+    }
+    return card.word.remember_final !== true;
+  }
+  function deck() {
+    if (selectedModes.size === 0) return [];
+    const items = [];
+    for (const mode of selectedModes)
+      for (const card of cards) if (includes(card, mode)) items.push({ card, mode });
+    // shuffle
+    for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
+    return items;
+  }
+  function dueCount() {
+    let sum = 0;
+    for (const mode of selectedModes) sum += cards.filter((c) => includes(c, mode)).length;
+    return sum;
+  }
+
+  function renderHeader() {
+    clear(header);
+    header.appendChild(navBar(t("Practice"), {
+      leading: iconButton("‹", () => { playback.stop(); navPop(); }, { label: "Back" }),
+      trailing: (session.length && !finished) ? textButton(t("End"), () => { finished = true; render(); }) : null,
+    }));
+  }
+
+  function render() {
+    renderHeader();
+    clear(body);
+    if (cards.length === 0) {
+      body.appendChild(emptyState("🃏", t("Nothing to Practice"),
+        t("Add some words to a list first, then come back to review them.")));
+    } else if (session.length === 0) {
+      renderSetup();
+    } else if (finished) {
+      renderSummary();
+    } else {
+      renderPractice();
+    }
+  }
+
+  function renderSetup() {
+    const due = dueCount();
+    const modeList = el(".check-card");
+    for (const mode of FRONT_MODES) {
+      const on = selectedModes.has(mode.id);
+      modeList.appendChild(el(".check-row", {
+        onclick: () => { on ? selectedModes.delete(mode.id) : selectedModes.add(mode.id); render(); },
+      }, el(".radio" + (on ? ".on" : ""), {}, on ? "✓" : ""), el("span", {}, t(mode.labelKey))));
+    }
+    const dailyToggle = el(".toggle-row", {},
+      el("span", {}, t("Daily assignment")),
+      el(".switch" + (dueOnly ? ".on" : ""), { onclick: () => { dueOnly = !dueOnly; render(); } }, el(".knob")),
+    );
+    body.appendChild(el(".practice-setup", {},
+      el(".big-icon", {}, "🃏"),
+      el("h2", {}, t("Ready to practice?")),
+      el("p.muted", {}, due > 0 ? tn("%lld cards due for review.", due) : t("You finished your daily assignment.")),
+      el(".setup-card", {},
+        dailyToggle,
+        el(".section-label", {}, t("Show first")),
+        modeList,
+        selectedModes.has("pronunciation") ? el(".form-note", {}, t("Audio is only used for words with a recorded pronunciation.")) : null,
+      ),
+      el("button.btn.primary.large", { disabled: deck().length === 0, onclick: start }, t("Start Session")),
+    ));
+  }
+
+  function start() {
+    const d = deck();
+    if (d.length === 0) return;
+    session = d; totalCards = d.length; index = 0; correctCount = 0; isFlipped = false; finished = false;
+    render();
+  }
+
+  function renderPractice() {
+    const item = session[index];
+    const word = item.card.word;
+    const mode = item.mode;
+    const frontIsPron = mode === "pronunciation";
+    const termReading = M.readingFor(word, learningLanguage);
+    const posLabels = M.partOfSpeechValues(word).map((p) => M.posLabel(p, preferredLanguage()));
+
+    const card = el(".flashcard" + (isFlipped ? ".flipped" : ""), {
+      onclick: () => { isFlipped = !isFlipped; render(); },
+    });
+    card.appendChild(el(".card-corner", {}, isFlipped ? t("Answer") : t("Tap to flip")));
+    if (isFlipped) {
+      card.appendChild(el(".card-answer", {},
+        el(".answer-term", {}, word.term),
+        termReading ? el(".answer-reading", {}, termReading) : null,
+        posLabels.length ? el(".chip-row", {}, ...posLabels.map((p) => el(".chip", {}, p))) : null,
+        el("hr"),
+        el(".answer-translation", {}, word.translation),
+        word.notes ? el(".answer-notes", {}, word.notes) : null,
+      ));
+    } else if (frontIsPron) {
+      card.appendChild(el(".card-front-pron", {}, el(".big-icon", {}, "🔊"), el("p.muted", {}, t("Listen and recall"))));
+    } else {
+      card.appendChild(el(".card-prompt", {}, mode === "translation" ? word.translation : word.term));
+    }
+
+    const showAudio = (frontIsPron ? !isFlipped : isFlipped) && word.audioPath;
+
+    body.appendChild(el(".practice-view", {},
+      el(".progress-track", {}, el(".progress-fill", { style: `width:${(index / session.length) * 100}%` })),
+      el("p.caption.center", {}, tf("%lld of %lld", index + 1, session.length)),
+      card,
+      showAudio ? playbackButton(word.audioPath, true) : el(".audio-placeholder"),
+      isFlipped
+        ? el(".answer-actions", {},
+            el("button.btn.warn.large", { onclick: () => answer(false) }, "↺ " + t("Practice Again")),
+            el("button.btn.good.large", { onclick: () => answer(true) }, "✓ " + t("Got It")),
+          )
+        : el("p.muted.center", {}, t("Tap the card to reveal the answer")),
+    ));
+  }
+
+  function answer(correct) {
+    const item = session[index];
+    if (dueOnly) {
+      if (correct) { M.markCorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation");
+        Repo.recordRemembered(authState.uid, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation").catch(() => {});
+      } else {
+        M.markIncorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation");
+      }
+      // keep copies in sync
+      for (const s of session) if (s.card.word.id === item.card.word.id) s.card.word = item.card.word;
+      Repo.updateWord(authState.uid, item.card.listId, item.card.word).catch(() => {});
+    }
+    if (correct) correctCount += 1;
+    else session.push(item);
+    isFlipped = false;
+    if (index + 1 < session.length) index += 1; else finished = true;
+    render();
+  }
+
+  function renderSummary() {
+    body.appendChild(el(".practice-summary", {},
+      el(".big-icon.good", {}, "✅"),
+      el("h2", {}, t("Session Complete!")),
+      el("p.muted", {}, tf("You got %lld of %lld right.", correctCount, totalCards)),
+      el("button.btn.primary.large", { onclick: () => { session = []; index = 0; correctCount = 0; finished = false; render(); } }, t("Done")),
+    ));
+  }
+
+  render();
+}
+
+// MARK: - Stats screen
+
+async function StatsScreen(content) {
+  content.appendChild(navBar(t("Statistics"), {}));
+  const body = el(".scroll");
+  content.appendChild(body);
+  body.appendChild(spinner(t("Loading…")));
+
+  let words = [];
+  let dailyStats = [];
+  try {
+    const lists = await Repo.fetchLists(authState.uid);
+    for (const l of lists) words = words.concat(await Repo.fetchWords(authState.uid, l.id));
+    dailyStats = await Repo.fetchDailyStats(authState.uid, 7).catch(() => []);
+  } catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+
+  clear(body);
+  if (words.length === 0) {
+    body.appendChild(emptyState(chartGlyph(28), t("No Stats Yet"),
+      t("Add words and practice them. Once you've memorized some, your progress shows up here.")));
+    return;
+  }
+
+  // Aggregate stats (LearningStats)
+  const totalWords = words.length;
+  const totalMemorized = words.filter(M.isMemorized).length;
+  const dates = words.map((w) => w.createdAt).filter(Boolean);
+  const start = dates.length ? new Date(Math.min(...dates.map((d) => +d))) : null;
+  let activeDays = 1;
+  if (start) {
+    const s = new Date(start); s.setHours(0, 0, 0, 0);
+    const n = new Date(); n.setHours(0, 0, 0, 0);
+    activeDays = Math.max(1, Math.round((n - s) / 86400000) + 1);
+  }
+  const perDay = totalMemorized / activeDays;
+  const perWeek = perDay * 7;
+  const perMonth = perDay * (365.25 / 12);
+
+  // Today remembered (derived from words)
+  const today = { word: 0, translation: 0, pronunciation: 0 };
+  for (const w of words) {
+    if (M.isToday(w.lastWordRemembered)) today.word += 1;
+    if (M.isToday(w.lastTranslationRemembered)) today.translation += 1;
+    if (M.isToday(w.lastPronounciationRemembered)) today.pronunciation += 1;
+  }
+
+  const aspectKeys = ["word", "translation", "pronunciation"];
+  const aspectLabel = (k) => k === "word" ? t("Word") : k === "translation" ? t("Translation") : t("Pronunciation");
+  const colors = { word: "#2f6bff", translation: "#1fb56a", pronunciation: "#ff8a1f" };
+
+  body.appendChild(el(".stats", {},
+    // total card
+    el(".stat-total", {},
+      el(".big-icon", {}, "🧠"),
+      el(".stat-number", {}, `${totalMemorized}`),
+      el(".stat-caption", {}, t("words memorized")),
+      el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
+    ),
+    el(".stat-block", {},
+      el("h3", {}, t("Remembered today")),
+      barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
+    ),
+    el(".stat-block", {},
+      el("h3", {}, t("This week")),
+      weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
+    ),
+    el(".stat-block", {},
+      el("h3", {}, t("Average pace")),
+      el(".pace-row", {},
+        paceCard(t("Per day"), perDay),
+        paceCard(t("Per week"), perWeek),
+        paceCard(t("Per month"), perMonth),
+      ),
+    ),
+    start ? el("p.caption.center", {},
+      tf("Based on %lld days of learning since %@.", activeDays, start.toLocaleDateString(i18n.preferredLanguage()))) : null,
+  ));
+
+  function paceCard(title, value) {
+    const text = value < 10 ? value.toFixed(1) : `${Math.round(value)}`;
+    return el(".pace-card", {}, el(".pace-value", {}, text), el(".pace-title", {}, title));
+  }
+}
+
+function barChart(bars) {
+  const W = 320, H = 200, pad = 28;
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  const bw = (W - pad * 2) / bars.length;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", preserveAspectRatio: "xMidYMid meet" });
+  bars.forEach((b, i) => {
+    const h = (b.value / max) * (H - pad * 2);
+    const x = pad + i * bw + bw * 0.2;
+    const w = bw * 0.6;
+    const y = H - pad - h;
+    svg.appendChild(svgEl("rect", { x, y, width: w, height: h, rx: 6, fill: b.color }));
+    svg.appendChild(svgEl("text", { x: x + w / 2, y: y - 6, "text-anchor": "middle", class: "chart-val" }, document.createTextNode(`${b.value}`)));
+    const label = svgEl("text", { x: x + w / 2, y: H - 8, "text-anchor": "middle", class: "chart-lbl" });
+    label.appendChild(document.createTextNode(b.label));
+    svg.appendChild(label);
+  });
+  return svg;
+}
+
+function weekChart(dailyStats, today, aspectKeys, aspectLabel, colors) {
+  const W = 340, H = 220, padX = 24, padY = 28;
+  const byDate = {};
+  for (const s of dailyStats) byDate[s.date] = s;
+  const days = [];
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  for (let off = 6; off >= 0; off--) {
+    const d = new Date(now); d.setDate(d.getDate() - off);
+    const key = Repo.dayKey(d);
+    const stat = byDate[key];
+    const vals = {};
+    for (const k of aspectKeys) {
+      vals[k] = off === 0 ? (today[k] || 0) : (stat ? (stat[k] || 0) : 0);
+    }
+    days.push({ date: d, vals });
+  }
+  const max = Math.max(1, ...days.flatMap((d) => aspectKeys.map((k) => d.vals[k])));
+  const innerW = W - padX * 2, innerH = H - padY * 2;
+  const x = (i) => padX + (i / 6) * innerW;
+  const y = (v) => padY + innerH - (v / max) * innerH;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", preserveAspectRatio: "xMidYMid meet" });
+  // gridlines + weekday labels
+  days.forEach((d, i) => {
+    svg.appendChild(svgEl("line", { x1: x(i), y1: padY, x2: x(i), y2: padY + innerH, stroke: "#e6e6ec", "stroke-width": 1 }));
+    const lbl = svgEl("text", { x: x(i), y: H - 8, "text-anchor": "middle", class: "chart-lbl" });
+    lbl.appendChild(document.createTextNode(d.date.toLocaleDateString(i18n.preferredLanguage(), { weekday: "narrow" })));
+    svg.appendChild(lbl);
+  });
+  for (const k of aspectKeys) {
+    const pts = days.map((d, i) => `${x(i)},${y(d.vals[k])}`).join(" ");
+    svg.appendChild(svgEl("polyline", { points: pts, fill: "none", stroke: colors[k], "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    days.forEach((d, i) => svg.appendChild(svgEl("circle", { cx: x(i), cy: y(d.vals[k]), r: 3, fill: colors[k] })));
+  }
+  // legend
+  const legend = el(".chart-legend", {}, ...aspectKeys.map((k) =>
+    el(".legend-item", {}, el(".legend-dot", { style: `background:${colors[k]}` }), aspectLabel(k))));
+  return el(".chart-wrap", {}, svg, legend);
+}
+
+// MARK: - Settings screen
+
+function SettingsScreen(content) {
+  content.appendChild(navBar(t("Settings"), {}));
+  const body = el(".scroll");
+  content.appendChild(body);
+
+  const langSel = el("select.picker", { onchange: (e) => setPreferredLanguage(e.target.value) },
+    ...LANGUAGES.map((l) => el("option", { value: l.code, selected: l.code === preferredLanguage() }, autonym(l.code))));
+
+  body.appendChild(el(".form", {},
+    formSection(t("Account"), el(".form-card", {},
+      labeledRow(t("Username"), authState.profile?.username || authState.displayName || "—"),
+      labeledRow(t("Email"), authState.profile?.email || authState.email || "—"),
+    )),
+    formSection(t("Language"), el(".form-card", {}, pickerRow(t("Preferred language"), langSel))),
+    formSection(null, el(".form-card", {},
+      el("button.form-action.danger", {
+        onclick: () => { if (confirm(t("Sign out of Retainic?"))) Auth.signOut(); },
+      }, t("Sign Out")))),
+  ));
+}
+
+// MARK: - Small shared pieces
+
+function playbackButton(path, large = false) {
+  const btn = el("button.audio-btn" + (large ? ".large" : ""), {}, speakerGlyph());
+  const update = (playingPath) => {
+    const playing = playingPath === path;
+    clear(btn);
+    btn.appendChild(playing ? stopGlyph() : speakerGlyph());
+    if (large) btn.appendChild(document.createTextNode(" " + (playing ? t("Stop") : t("Play pronunciation"))));
+  };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); playback.toggle(path); });
+  const unsub = playback.subscribe(update);
+  update(playback.playingPath);
+  // Clean up subscription when removed (best-effort)
+  return btn;
+}
+
+function labeledRow(label, value) {
+  return el(".labeled-row", {}, el("span.lr-label", {}, label), el("span.lr-value", {}, value));
+}
+function pickerRow(label, select) {
+  return el(".picker-row", {}, el("span", {}, label), select);
+}
+function formSection(title, ...cards) {
+  return el(".form-section", {}, title ? el(".section-title", {}, title) : null, ...cards.filter(Boolean));
+}
+function sheetHeader(title, api, confirmBtn, cancelLabel) {
+  return el(".sheet-header", {},
+    el(".sheet-side", {}, cancelLabel === null ? null : textButton(cancelLabel || t("Cancel"), () => api.close())),
+    el(".sheet-title", {}, title),
+    el(".sheet-side.trailing", {}, confirmBtn),
+  );
+}
+function errorState(e) {
+  return emptyState("⚠️", t("Something went wrong"), Auth.friendlyMessage(e));
+}
+
+// MARK: - Icons (inline SVG / glyphs)
+
+function bookIcon(size = 24) {
+  return svgEl("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "currentColor" },
+    svgEl("path", { d: "M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17zM6.5 17H18V4H6.5a.5.5 0 0 0-.5.5V17z" }));
+}
+function glyph(name) {
+  const map = { person: "👤", envelope: "✉️", lock: "🔒" };
+  return map[name] || "";
+}
+function listsGlyph() { return svgIcon("M4 6h16M4 12h16M4 18h16"); }
+function chartGlyph(size) { return svgIcon("M4 20V10M10 20V4M16 20v-7M22 20H2", size); }
+function gearGlyph() { return svgIcon("M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"); }
+function rectStackGlyph() { return el(".glyph", {}, "🗂"); }
+function bookClosedGlyph() { return el(".glyph", {}, "📕"); }
+function speakerGlyph() { return el("span.glyph", {}, "🔊"); }
+function stopGlyph() { return el("span.glyph", {}, "⏹"); }
+function svgIcon(d, size = 24) {
+  return svgEl("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round" }, svgEl("path", { d }));
+}
