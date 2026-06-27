@@ -99,7 +99,8 @@ function AuthScreen() {
         else await Auth.signIn(em, password.value);
         // onAuthChange re-renders the app.
       } catch (e) {
-        error = Auth.friendlyMessage(e);
+        console.error("Auth failed:", e?.code, e?.message, e);
+        error = `${Auth.friendlyMessage(e)} (${e?.code || "unknown"})`;
         working = false; render();
       }
     };
@@ -149,6 +150,7 @@ function Shell() {
   const shell = el(".shell", {},
     content,
     el(".tabbar", {},
+      el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
       tabItem("lists", listsGlyph(), t("My Lists")),
       tabItem("stats", chartGlyph(), t("Statistics")),
       tabItem("settings", gearGlyph(), t("Settings")),

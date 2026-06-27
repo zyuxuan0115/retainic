@@ -97,6 +97,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .tab.active { color: var(--tint); }
 .tab-icon { display: flex; }
 .tab-label { font-size: 10px; font-weight: 500; }
+.tabbar-brand { display: none; }
 
 /* Lists / rows */
 .list { background: var(--bg-elevated); margin: 16px; border-radius: var(--radius); overflow: hidden; }
@@ -307,3 +308,100 @@ textarea.field-input { resize: vertical; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 .navbar-host { position: sticky; top: 0; z-index: 5; }
+
+/* ===========================================================================
+   Wide screens: sidebar navigation + content that uses the browser's width.
+   Phones (below the breakpoint) keep the bottom tab bar above.
+   =========================================================================== */
+@media (min-width: 860px) {
+  .shell {
+    max-width: 1280px;
+    flex-direction: row;
+    border-left: 0.5px solid var(--separator);
+    border-right: 0.5px solid var(--separator);
+  }
+
+  /* Bottom tab bar -> left sidebar */
+  .tabbar {
+    order: -1;
+    flex: none;
+    width: 248px;
+    height: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 14px 10px calc(14px + var(--safe-bottom));
+    border-top: none;
+    border-right: 0.5px solid var(--separator);
+    background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+  }
+  .tabbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px 18px; font-size: 21px; font-weight: 800; color: var(--tint);
+  }
+  .tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: var(--label);
+  }
+  .tab.active { background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint); }
+  .tab:hover:not(.active) { background: color-mix(in srgb, var(--secondary-label) 10%, transparent); }
+  .tab-icon { width: 24px; justify-content: center; }
+  .tab-label { font-size: 15px; font-weight: 600; }
+
+  .content { min-width: 0; }
+  .scroll { padding-left: 6px; padding-right: 6px; }
+
+  /* Lists become a responsive card grid that fills the width */
+  .list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 14px;
+    margin: 22px;
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .list .row {
+    border: 0.5px solid var(--separator);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    transition: box-shadow .15s, transform .15s;
+  }
+  .list .row.tappable:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .list .row-chevron { display: none; }
+
+  /* Search bar + forms: comfortable, centered reading width */
+  .search-wrap { max-width: 1120px; margin: 0 auto; }
+  .form { max-width: 720px; margin-left: auto; margin-right: auto; }
+
+  /* Statistics: a two-column dashboard */
+  .stats {
+    max-width: 1120px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start;
+  }
+  .stat-total { grid-column: 1 / -1; }
+  .stats > p.caption { grid-column: 1 / -1; }
+
+  /* Centered content for the focused screens */
+  .practice-view, .practice-setup, .practice-summary, .center-state { max-width: 720px; margin: 0 auto; }
+
+  /* Sheets become centered modal dialogs */
+  .sheet-overlay { align-items: center; }
+  .sheet {
+    max-width: 540px; max-height: 86%;
+    border-radius: 16px;
+    transform: translateY(14px) scale(.985);
+  }
+  .sheet-overlay.open .sheet { transform: none; }
+
+  .toast { bottom: 28px; }
+}
+
+/* Extra room on large desktops: three list columns feel natural. */
+@media (min-width: 1180px) {
+  .stats { grid-template-columns: 1.2fr 1fr; }
+}
