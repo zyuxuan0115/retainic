@@ -365,7 +365,7 @@ async function ListDetailScreen(content, list) {
       : listName;
     let trailing;
     if (selecting) {
-      trailing = textButton(t("Done"), endSelection, { kind: "bold" });
+      trailing = iconButton(icon("check", 24), endSelection, { label: t("Done") });
     } else {
       trailing = el(".navbar-actions", {},
         iconButton(icon("settings", 22), openListSettings, { label: t("Settings") }),
