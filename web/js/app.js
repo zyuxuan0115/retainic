@@ -108,7 +108,11 @@ function AuthScreen() {
       }
     };
 
+    const langSel = el("select.picker", { onchange: (e) => setPreferredLanguage(e.target.value) },
+      ...LANGUAGES.map((l) => el("option", { value: l.code, selected: l.code === preferredLanguage() }, autonym(l.code))));
+
     wrap.appendChild(el(".auth-card", {},
+      el(".auth-lang", {}, icon("language", 18), langSel),
       el(".auth-header", {},
         el(".auth-logo", {}, bookIcon(44)),
         el("h1", {}, "Retainic"),
