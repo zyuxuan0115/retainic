@@ -75,7 +75,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
   background: transparent;
   position: sticky; top: 0; z-index: 5;
 }
-.navbar-title { font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.navbar-title { font-size: 27px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .navbar-side { display: flex; align-items: center; }
 .navbar-side.trailing { justify-content: flex-end; }
 .navbar-actions { display: flex; align-items: center; gap: 2px; }
@@ -267,6 +267,7 @@ textarea.field-input { resize: vertical; }
 .muted { color: var(--secondary-label); }
 .muted.center { text-align: center; }
 .setup-card { width: 100%; max-width: 420px; background: var(--bg-elevated); border-radius: var(--radius); overflow: hidden; }
+.practice-setup .btn.primary.large { width: 100%; max-width: 420px; margin: 16px 0 0; }
 .section-label { font-size: 13px; color: var(--secondary-label); padding: 12px 14px 4px; }
 
 .practice-view { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 20px; }
