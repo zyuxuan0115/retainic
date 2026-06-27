@@ -888,9 +888,10 @@ async function StatsScreen(content) {
     return;
   }
 
-  // Aggregate stats (LearningStats)
+  // Aggregate stats (LearningStats). A word counts as memorized only once it is
+  // fully remembered: 8× word, 10× translation, 7× pronunciation (remember_final).
   const totalWords = words.length;
-  const totalMemorized = words.filter(M.isMemorized).length;
+  const totalMemorized = words.filter(M.isRemembered).length;
   const dates = words.map((w) => w.createdAt).filter(Boolean);
   const start = dates.length ? new Date(Math.min(...dates.map((d) => +d))) : null;
   let activeDays = 1;
