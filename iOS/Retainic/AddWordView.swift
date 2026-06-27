@@ -141,8 +141,13 @@ struct AddWordView: View {
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
-                    .disabled(!canSave)
+                Button {
+                    save()
+                } label: {
+                    Image(systemName: "checkmark")
+                }
+                .accessibilityLabel(Text("Save"))
+                .disabled(!canSave)
             }
         }
     }

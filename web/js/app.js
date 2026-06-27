@@ -585,7 +585,7 @@ function presentWordSheet({ list, word, onSaved }) {
     const notes = el("textarea.field-input", { rows: 3, placeholder: t("Example sentence or memory hint") }, word?.notes || "");
     const errorEl = el(".form-footer-error");
     const pinyinFooter = el(".form-note");
-    const saveBtn = el("button.txt-btn.bold", { onclick: save }, t("Save"));
+    const saveBtn = el("button.icon-btn", { onclick: save, title: t("Save"), "aria-label": t("Save") }, icon("check", 24));
 
     function validate() {
       const ok = term.value.trim() && translation.value.trim() && (!isZh || pinyin.value.trim());

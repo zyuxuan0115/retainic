@@ -230,7 +230,12 @@ struct ListDetailView: View {
     private var toolbarContent: some ToolbarContent {
         if isSelecting {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Done") { endSelection() }
+                Button {
+                    endSelection()
+                } label: {
+                    Image(systemName: "checkmark")
+                }
+                .accessibilityLabel(Text("Done"))
             }
             ToolbarItemGroup(placement: .bottomBar) {
                 Button {
