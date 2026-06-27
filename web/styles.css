@@ -260,6 +260,9 @@ textarea.field-input { resize: vertical; }
 .sheet-side { display: flex; }
 .sheet-side.trailing { justify-content: flex-end; }
 .sheet .form, .sheet .scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(24px + var(--safe-bottom)); }
+/* Inside a sheet the form must fill the panel (not center/shrink like the
+   Settings page), so its scrollbar sits flush against the panel's right edge. */
+.sheet .form { max-width: none; margin: 0; align-self: stretch; }
 
 /* Flashcards */
 .practice-setup { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 32px 20px; text-align: center; }
