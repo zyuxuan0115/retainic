@@ -155,6 +155,7 @@ function Shell() {
     el(".tabbar", {},
       el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
       tabItem("lists", listsGlyph(), t("My Lists")),
+      practiceItem(),
       tabItem("stats", chartGlyph(), t("Statistics")),
       tabItem("settings", gearGlyph(), t("Settings")),
       tabItem("about", icon("info", 24), t("About")),
@@ -168,12 +169,23 @@ function Shell() {
       onclick: () => { state.tab = tab; if (tab === "lists" && state.stack.length === 0) state.stack = [{ name: "lists" }]; renderApp(); },
     }, el(".tab-icon", {}, icon), el(".tab-label", {}, label));
   }
+
+  function practiceItem() {
+    practiceNavEl = el(".tab.action" + (currentPractice ? "" : ".disabled"), {
+      onclick: startCurrentPractice,
+      title: t("Practice"),
+    }, el(".tab-icon", {}, icon("style", 24)), el(".tab-label", {}, t("Practice")));
+    return practiceNavEl;
+  }
 }
 
 function renderTab(content) {
   clear(content);
+  const top = state.tab === "lists" ? state.stack[state.stack.length - 1] : null;
+  // Practice is only available while browsing a list's words; the detail screen
+  // re-enables it once its words load.
+  if (!(top && top.name === "detail")) setPractice(null);
   if (state.tab === "lists") {
-    const top = state.stack[state.stack.length - 1];
     if (top.name === "lists") ListsScreen(content);
     else if (top.name === "detail") ListDetailScreen(content, top.list);
     else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage);
@@ -188,6 +200,28 @@ function renderTab(content) {
 
 function navPush(screen) { state.stack.push(screen); renderApp(); }
 function navPop() { state.stack.pop(); renderApp(); }
+
+// The sidebar "Practice" action is only usable while browsing a list's words.
+// `currentPractice` holds that list's cards (or null); `practiceNavEl` is the
+// sidebar button, toggled enabled/disabled to match.
+let currentPractice = null;
+let practiceNavEl = null;
+
+function setPractice(ctx) {
+  currentPractice = ctx;
+  updatePracticeNav();
+}
+function updatePracticeNav() {
+  if (!practiceNavEl) return;
+  const enabled = !!currentPractice;
+  practiceNavEl.classList.toggle("disabled", !enabled);
+  practiceNavEl.setAttribute("aria-disabled", String(!enabled));
+}
+function startCurrentPractice() {
+  if (!currentPractice) return;
+  state.tab = "lists";
+  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage });
+}
 
 // MARK: - Lists screen
 
@@ -305,6 +339,13 @@ async function ListDetailScreen(content, list) {
   catch (e) { clear(body); body.appendChild(errorState(e)); return; }
   renderAll();
 
+  // Keep the sidebar Practice action in sync with this list's words.
+  function syncPractice() {
+    setPractice(words.length
+      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "" }
+      : null);
+  }
+
   function filteredWords() {
     let r = words;
     if (filter === "remembered") r = r.filter(M.isRemembered);
@@ -315,6 +356,7 @@ async function ListDetailScreen(content, list) {
   }
 
   function renderAll() {
+    syncPractice();
     // Nav bar
     clear(header);
     const title = selecting
@@ -394,11 +436,8 @@ async function ListDetailScreen(content, list) {
         el(".spacer"),
         el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, icon("delete", 20), t("Delete")),
       ));
-    } else if (words.length) {
-      toolbarHost.appendChild(el(".bottom-toolbar", {},
-        el("button.tool", { onclick: startPractice }, icon("style", 20), t("Practice")),
-      ));
     }
+    // Non-selecting: no bottom toolbar — Practice now lives in the sidebar.
   }
 
   // Selection
@@ -468,10 +507,6 @@ async function ListDetailScreen(content, list) {
     });
   }
 
-  function startPractice() {
-    const cards = words.map((w) => ({ word: w, listId: list.id }));
-    navPush({ name: "practice", cards, learningLanguage: list.learningLanguage || "" });
-  }
 }
 
 function presentMoveSheet(targets, count, onSelect) {
