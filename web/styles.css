@@ -74,6 +74,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .navbar-title { font-size: 17px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .navbar-side { display: flex; align-items: center; }
 .navbar-side.trailing { justify-content: flex-end; }
+.navbar-actions { display: flex; align-items: center; gap: 2px; }
 
 .icon-btn {
   border: none; background: transparent; color: var(--tint);

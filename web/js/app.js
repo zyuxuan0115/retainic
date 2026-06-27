@@ -314,11 +314,19 @@ async function ListDetailScreen(content, list) {
     const title = selecting
       ? (selection.size === 0 ? t("Select Words") : tn("%lld Selected", selection.size))
       : listName;
+    let trailing;
+    if (selecting) {
+      trailing = textButton(t("Done"), endSelection, { kind: "bold" });
+    } else {
+      trailing = el(".navbar-actions", {},
+        iconButton(icon("settings", 22), openListSettings, { label: t("Settings") }),
+        iconButton(icon("add", 24), openAdd, { label: t("Add Word") }),
+        words.length ? textButton(t("Select"), beginSelection, { kind: "plain" }) : null,
+      );
+    }
     header.appendChild(navBar(title, {
       leading: selecting ? null : iconButton(icon("arrow_back", 22), () => navPop(), { label: "Back" }),
-      trailing: words.length === 0 ? null : (selecting
-        ? textButton(t("Done"), endSelection, { kind: "bold" })
-        : textButton(t("Select"), beginSelection, { kind: "plain" })),
+      trailing,
     }));
 
     // Body
@@ -380,12 +388,9 @@ async function ListDetailScreen(content, list) {
         el(".spacer"),
         el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, icon("delete", 20), t("Delete")),
       ));
-    } else {
+    } else if (words.length) {
       toolbarHost.appendChild(el(".bottom-toolbar", {},
-        words.length ? el("button.tool", { onclick: startPractice }, icon("style", 20), t("Practice")) : null,
-        el(".spacer"),
-        el("button.tool", { onclick: openListSettings }, icon("settings", 20), t("Settings")),
-        el("button.tool", { onclick: openAdd }, icon("add", 20), t("Add Word")),
+        el("button.tool", { onclick: startPractice }, icon("style", 20), t("Practice")),
       ));
     }
   }
