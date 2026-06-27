@@ -241,7 +241,9 @@ textarea.field-input { resize: vertical; }
 
 /* Sheets */
 .sheet-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  position: fixed; inset: 0; background: rgba(0,0,0,.3);
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
   display: flex; align-items: flex-end; justify-content: center;
   opacity: 0; transition: opacity .18s; z-index: 50;
 }
