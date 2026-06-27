@@ -38,7 +38,9 @@ struct LearningStats {
 
     init(words: [VocabWord]) {
         totalWords = words.count
-        let memorized = words.filter { $0.isMemorized }
+        // Fully memorized = recalled enough times in every aspect (remember_final:
+        // 8× word, 10× translation, 7× pronunciation).
+        let memorized = words.filter { $0.isRemembered }
         totalMemorized = memorized.count
 
         let now = Date()
@@ -262,7 +264,7 @@ struct StatsView: View {
             .chartForegroundStyleScale(domain: styleDomain, range: styleRange)
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day)) { _ in
-                    AxisGridLine()
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
                     AxisValueLabel(format: .dateTime.weekday(.narrow))
                 }
             }

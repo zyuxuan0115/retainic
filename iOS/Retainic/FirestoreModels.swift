@@ -101,8 +101,7 @@ struct VocabWord: Codable, Identifiable {
     var memoryStats: [String: MemoryStat]?
     var createdAt: Date
 
-    // Spaced-repetition tracking (Leitner system).
-    var box: Int
+    // Spaced-repetition tracking (per-aspect; see review-gap schedules below).
     var lastReviewed: Date?
     /// The last time the word was recalled correctly in practice, split by mode.
     /// Optional so older documents (and never-remembered words) decode.
@@ -130,7 +129,6 @@ struct VocabWord: Codable, Identifiable {
         audioPath: String? = nil,
         memoryStats: [String: MemoryStat]? = nil,
         createdAt: Date = Date(),
-        box: Int = 1,
         lastReviewed: Date? = nil,
         lastWordRemembered: Date? = nil,
         lastPronounciationRemembered: Date? = nil,
@@ -152,7 +150,6 @@ struct VocabWord: Codable, Identifiable {
         self.audioPath = audioPath
         self.memoryStats = memoryStats
         self.createdAt = createdAt
-        self.box = box
         self.lastReviewed = lastReviewed
         self.lastWordRemembered = lastWordRemembered
         self.lastPronounciationRemembered = lastPronounciationRemembered
@@ -191,16 +188,6 @@ extension VocabWord {
         }
         return nil
     }
-
-    /// Highest Leitner box; a word that reaches it counts as memorized.
-    static let memorizedBox = 5
-
-    /// Whether the word has graduated to the final Leitner box, i.e. it's been
-    /// recalled correctly enough times to count as memorized.
-    var isMemorized: Bool { box >= Self.memorizedBox }
-
-    /// The day the word was memorized (its last review), if memorized.
-    var memorizedDate: Date? { isMemorized ? lastReviewed : nil }
 
     /// Whether the word is fully remembered (the `remember_final` flag in
     /// Firebase). Drives the "show remembered only" list filter.
@@ -254,25 +241,6 @@ extension VocabWord {
         return days >= gaps[count]
     }
 
-    /// Whether this card is due for review based on its Leitner box.
-    var isDue: Bool {
-        guard let lastReviewed else { return true }
-        return Date() >= lastReviewed.addingTimeInterval(Self.reviewInterval(forBox: box))
-    }
-
-    /// Seconds between reviews for each box level.
-    static func reviewInterval(forBox box: Int) -> TimeInterval {
-        let days: Double
-        switch box {
-        case 1: days = 0
-        case 2: days = 1
-        case 3: days = 3
-        case 4: days = 7
-        default: days = 16
-        }
-        return days * 24 * 60 * 60
-    }
-
     mutating func markCorrect(aspect: String? = nil) {
         let now = Date()
         timesSeen += 1
@@ -290,14 +258,12 @@ extension VocabWord {
         default: break
         }
         updateRememberFinal()
-        box = min(box + 1, 5)
         lastReviewed = now
         record(aspect: aspect, correct: true, now: now)
     }
 
     mutating func markIncorrect(aspect: String? = nil) {
         timesSeen += 1
-        box = 1
         lastReviewed = Date()
         record(aspect: aspect, correct: false, now: Date())
     }
@@ -305,7 +271,6 @@ extension VocabWord {
     /// Resets all spaced-repetition progress so the word counts as never
     /// remembered (it will reappear in practice for every aspect).
     mutating func resetMemory() {
-        box = 1
         lastReviewed = nil
         lastWordRemembered = nil
         lastPronounciationRemembered = nil
