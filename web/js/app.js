@@ -372,7 +372,7 @@ async function ListDetailScreen(content, list) {
       trailing = el(".navbar-actions", {},
         iconButton(icon("drive_file_move", 22), beginMove, { label: t("Move"), disabled: !can }),
         iconButton(icon("delete", 22), deleteSelected, { label: t("Delete"), danger: true, disabled: !can }),
-        iconButton(icon("check", 24), endSelection, { label: t("Done") }),
+        iconButton(icon("check", 22), endSelection, { label: t("Done") }),
       );
     } else {
       trailing = el(".navbar-actions", {},
@@ -445,6 +445,9 @@ async function ListDetailScreen(content, list) {
 
   async function deleteSelected() {
     const ids = new Set(selection);
+    if (ids.size === 0) return;
+    const message = ids.size === 1 ? t("Delete this word?") : tn("Delete %lld words?", ids.size);
+    if (!confirm(message)) return;
     try {
       for (const id of ids) await Repo.deleteWord(authState.uid, list.id, id);
       words = words.filter((w) => !ids.has(w.id));

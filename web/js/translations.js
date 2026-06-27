@@ -1,6 +1,20 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
 // (plus web-only strings for the About page, appended below.)
 export default {
+ "Delete this word?": {
+  "en": "Delete this word?",
+  "es": "¿Eliminar esta palabra?",
+  "zh": "删除这个单词？",
+  "ja": "この単語を削除しますか？",
+  "ko": "이 단어를 삭제할까요?"
+ },
+ "Delete %lld words?": {
+  "en": "Delete %lld words?",
+  "es": "¿Eliminar %lld palabras?",
+  "zh": "删除这 %lld 个单词？",
+  "ja": "%lld 個の単語を削除しますか？",
+  "ko": "단어 %lld개를 삭제할까요?"
+ },
  "About": {
   "en": "About",
   "es": "Acerca de",

@@ -84,7 +84,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
   border: none; background: transparent; color: var(--tint);
   font-size: 22px; line-height: 1; padding: 4px 8px; border-radius: 8px; min-width: 34px;
 }
-.icon-btn.danger { color: var(--danger); font-size: 17px; }
+.icon-btn.danger { color: var(--danger); }
 .icon-btn:disabled, .icon-btn.disabled { color: var(--secondary-label); opacity: 0.4; cursor: default; pointer-events: none; }
 .txt-btn { border: none; background: transparent; color: var(--tint); font-size: 17px; padding: 4px 6px; }
 .txt-btn.bold { font-weight: 600; }
