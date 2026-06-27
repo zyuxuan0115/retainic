@@ -255,6 +255,7 @@ textarea.field-input { resize: vertical; }
 .sheet {
   width: 100%; max-width: var(--maxw); max-height: 92%;
   background: var(--grouped-bg); border-radius: 16px 16px 0 0;
+  border: 1px solid var(--separator);
   transform: translateY(100%); transition: transform .22s cubic-bezier(.32,.72,0,1);
   display: flex; flex-direction: column; overflow: hidden;
 }
