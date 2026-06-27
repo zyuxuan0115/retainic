@@ -53,8 +53,9 @@ function navBar(title, { leading = null, trailing = null } = {}) {
   );
 }
 
-function iconButton(symbol, onClick, { label = "", danger = false } = {}) {
-  return el("button.icon-btn" + (danger ? ".danger" : ""), { onclick: onClick, title: label, "aria-label": label }, symbol);
+function iconButton(symbol, onClick, { label = "", danger = false, disabled = false } = {}) {
+  return el("button.icon-btn" + (danger ? ".danger" : "") + (disabled ? ".disabled" : ""),
+    { onclick: onClick, title: label, "aria-label": label, disabled }, symbol);
 }
 
 function textButton(label, onClick, { kind = "plain" } = {}) {
@@ -333,11 +334,9 @@ async function ListDetailScreen(content, list) {
   let listName = list.name;
 
   const header = el(".navbar-host");
-  const body = el(".scroll.with-toolbar");
-  const toolbarHost = el(".bottom-toolbar-host");
+  const body = el(".scroll");
   content.appendChild(header);
   content.appendChild(body);
-  content.appendChild(toolbarHost);
 
   body.appendChild(spinner(t("Loading…")));
   try { words = await Repo.fetchWords(authState.uid, list.id); }
@@ -369,7 +368,12 @@ async function ListDetailScreen(content, list) {
       : listName;
     let trailing;
     if (selecting) {
-      trailing = iconButton(icon("check", 24), endSelection, { label: t("Done") });
+      const can = selection.size > 0;
+      trailing = el(".navbar-actions", {},
+        iconButton(icon("drive_file_move", 22), beginMove, { label: t("Move"), disabled: !can }),
+        iconButton(icon("delete", 22), deleteSelected, { label: t("Delete"), danger: true, disabled: !can }),
+        iconButton(icon("check", 24), endSelection, { label: t("Done") }),
+      );
     } else {
       trailing = el(".navbar-actions", {},
         iconButton(icon("settings", 22), openListSettings, { label: t("Settings") }),
@@ -388,7 +392,6 @@ async function ListDetailScreen(content, list) {
       body.appendChild(emptyState(bookClosedGlyph(), t("No Words Yet"),
         tf("Add the words you're learning to “%@”.", listName),
         el("button.btn.primary", { onclick: openAdd }, t("Add Your First Word"))));
-      renderToolbar();
       return;
     }
     const search = el("input.search", { type: "search", placeholder: t("Search words"), value: searchText });
@@ -397,7 +400,6 @@ async function ListDetailScreen(content, list) {
     const rowsHost = el(".list", { id: "rows-host" });
     body.appendChild(rowsHost);
     renderRows();
-    renderToolbar();
 
     function renderRows() {
       const host = body.querySelector("#rows-host");
@@ -432,18 +434,6 @@ async function ListDetailScreen(content, list) {
     return row;
   }
 
-  function renderToolbar() {
-    clear(toolbarHost);
-    if (selecting) {
-      const can = selection.size > 0;
-      toolbarHost.appendChild(el(".bottom-toolbar", {},
-        el("button.tool" + (can ? "" : ".disabled"), { disabled: !can, onclick: beginMove }, icon("drive_file_move", 20), t("Move")),
-        el(".spacer"),
-        el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, icon("delete", 20), t("Delete")),
-      ));
-    }
-    // Non-selecting: no bottom toolbar — Practice now lives in the sidebar.
-  }
 
   // Selection
   function beginSelection() { selecting = true; selection = new Set(); renderAll(); }
