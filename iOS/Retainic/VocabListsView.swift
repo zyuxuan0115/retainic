@@ -203,13 +203,21 @@ private struct NewListSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(Text("Cancel"))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
+                    Button {
                         onCreate(name, learningLanguage, originalLanguage)
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(Text("Create"))
                     .disabled(!canCreate)
                 }
             }

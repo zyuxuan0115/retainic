@@ -137,7 +137,12 @@ struct AddWordView: View {
         .toolbar {
             if !isEditing {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(Text("Cancel"))
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
