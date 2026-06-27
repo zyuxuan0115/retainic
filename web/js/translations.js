@@ -47,7 +47,11 @@ export default {
   "ko": "%lld개 선택됨"
  },
  "%lld cards due for review.": {
-  "en": "%lld cards due for review."
+  "en": "%lld cards due for review.",
+  "es": "%lld tarjetas pendientes de repaso.",
+  "zh": "有 %lld 张卡片待复习。",
+  "ja": "復習予定のカードが %lld 枚あります。",
+  "ko": "복습할 카드가 %lld장 있습니다."
  },
  "%lld of %lld": {
   "en": "%lld of %lld",
@@ -116,7 +120,11 @@ export default {
   "ko": "오디오"
  },
  "Audio is only used for words with a recorded pronunciation.": {
-  "en": "Audio is only used for words with a recorded pronunciation."
+  "en": "Audio is only used for words with a recorded pronunciation.",
+  "es": "El audio solo se usa para palabras con pronunciación grabada.",
+  "zh": "音频仅用于已录制发音的单词。",
+  "ja": "音声は録音された発音がある単語にのみ使用されます。",
+  "ko": "오디오는 발음이 녹음된 단어에만 사용됩니다."
  },
  "Average pace": {
   "en": "Average pace",
@@ -126,7 +134,11 @@ export default {
   "ko": "평균 속도"
  },
  "Based on %lld days of learning since %@.": {
-  "en": "Based on %lld days of learning since %@."
+  "en": "Based on %lld days of learning since %@.",
+  "es": "Basado en %lld días de aprendizaje desde el %@.",
+  "zh": "基于 %lld 天的学习（自 %@ 起）。",
+  "ja": "%lld 日間の学習に基づいています（%@ 以降）。",
+  "ko": "%lld일간의 학습을 기반으로 합니다 (%@부터)."
  },
  "Cancel": {
   "en": "Cancel",
