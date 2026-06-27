@@ -187,7 +187,7 @@ function navPop() { state.stack.pop(); renderApp(); }
 
 async function ListsScreen(content) {
   content.appendChild(navBar(t("My Lists"), {
-    trailing: iconButton("+", () => presentNewListSheet(reload), { label: t("New List") }),
+    trailing: iconButton(icon("add", 24), () => presentNewListSheet(reload), { label: t("New List") }),
   }));
   const body = el(".scroll");
   content.appendChild(body);
@@ -212,13 +212,13 @@ async function ListsScreen(content) {
           el(".row-title", {}, list.name),
           el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
         ),
-        iconButton("🗑", async (e) => {
+        iconButton(icon("delete", 22), async (e) => {
           e.stopPropagation();
           if (!confirm(`${t("Delete")} “${list.name}”?`)) return;
           try { await Repo.deleteList(authState.uid, list.id); reload(); }
           catch (err) { toast(Auth.friendlyMessage(err)); }
         }, { label: t("Delete"), danger: true }),
-        el(".row-chevron", {}, "›"),
+        el(".row-chevron", {}, icon("chevron_right", 22)),
       ));
     }
     body.appendChild(listEl);
@@ -315,7 +315,7 @@ async function ListDetailScreen(content, list) {
       ? (selection.size === 0 ? t("Select Words") : tn("%lld Selected", selection.size))
       : listName;
     header.appendChild(navBar(title, {
-      leading: selecting ? null : iconButton("‹", () => navPop(), { label: "Back" }),
+      leading: selecting ? null : iconButton(icon("arrow_back", 22), () => navPop(), { label: "Back" }),
       trailing: words.length === 0 ? null : (selecting
         ? textButton(t("Done"), endSelection, { kind: "bold" })
         : textButton(t("Select"), beginSelection, { kind: "plain" })),
@@ -356,7 +356,7 @@ async function ListDetailScreen(content, list) {
         else openEdit(w);
       },
     },
-      selecting ? el(".select-dot" + (checked ? ".on" : ""), {}, checked ? "✓" : "") : null,
+      selecting ? el(".select-dot" + (checked ? ".on" : ""), {}, checked ? icon("check", 16) : null) : null,
       el(".row-main", {},
         el(".word-top", {},
           el("span.word-term", {}, w.term),
@@ -366,7 +366,7 @@ async function ListDetailScreen(content, list) {
         el(".row-sub", {}, w.translation),
       ),
       audioBtn,
-      !selecting ? el(".row-chevron", {}, "›") : null,
+      !selecting ? el(".row-chevron", {}, icon("chevron_right", 22)) : null,
     );
     return row;
   }
@@ -376,16 +376,16 @@ async function ListDetailScreen(content, list) {
     if (selecting) {
       const can = selection.size > 0;
       toolbarHost.appendChild(el(".bottom-toolbar", {},
-        el("button.tool" + (can ? "" : ".disabled"), { disabled: !can, onclick: beginMove }, "📁 " + t("Move")),
+        el("button.tool" + (can ? "" : ".disabled"), { disabled: !can, onclick: beginMove }, icon("drive_file_move", 20), t("Move")),
         el(".spacer"),
-        el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, "🗑 " + t("Delete")),
+        el("button.tool.danger" + (can ? "" : ".disabled"), { disabled: !can, onclick: deleteSelected }, icon("delete", 20), t("Delete")),
       ));
     } else {
       toolbarHost.appendChild(el(".bottom-toolbar", {},
-        words.length ? el("button.tool", { onclick: startPractice }, "🃏 " + t("Practice")) : null,
+        words.length ? el("button.tool", { onclick: startPractice }, icon("style", 20), t("Practice")) : null,
         el(".spacer"),
-        el("button.tool", { onclick: openListSettings }, "⚙ " + t("Settings")),
-        el("button.tool", { onclick: openAdd }, "+ " + t("Add Word")),
+        el("button.tool", { onclick: openListSettings }, icon("settings", 20), t("Settings")),
+        el("button.tool", { onclick: openAdd }, icon("add", 20), t("Add Word")),
       ));
     }
   }
@@ -503,7 +503,7 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset })
               onclick: () => {
                 if (confirm(t("Mark all words as not remembered?"))) { onReset(); api.close(); }
               },
-            }, "↺ " + t("Mark all as not remembered")),
+            }, icon("replay", 20), t("Mark all as not remembered")),
           ),
           el(".form-note", {}, t("Every word in this list will show up again in practice for all methods."))),
       ),
@@ -548,11 +548,12 @@ function presentWordSheet({ list, word, onSaved }) {
     function renderPron() {
       clear(pronHost);
       pronHost.appendChild(el("button.form-action", { onclick: () => recorder.toggleRecording() },
-        recorder.isRecording ? "⏹ " + t("Stop Recording") : (recorder.hasAudio ? "🎤 " + t("Re-record") : "🎤 " + t("Record"))));
+        icon(recorder.isRecording ? "stop" : "mic", 20),
+        recorder.isRecording ? t("Stop Recording") : (recorder.hasAudio ? t("Re-record") : t("Record"))));
       if (recorder.hasAudio && !recorder.isRecording) {
         pronHost.appendChild(el("button.form-action", { onclick: () => recorder.isPlaying ? recorder.stopPlayback() : recorder.play() },
-          recorder.isPlaying ? "⏹ " + t("Stop") : "▶ " + t("Play")));
-        pronHost.appendChild(el("button.form-action.danger", { onclick: () => recorder.clear() }, "🗑 " + t("Delete Recording")));
+          icon(recorder.isPlaying ? "stop" : "play_arrow", 20), recorder.isPlaying ? t("Stop") : t("Play")));
+        pronHost.appendChild(el("button.form-action.danger", { onclick: () => recorder.clear() }, icon("delete", 20), t("Delete Recording")));
       }
       const note = recorder.permissionDenied ? t("Microphone access is off. Enable it in Settings to record.")
         : recorder.recordingWasEmpty ? t("No audio was captured. On the Simulator, enable I/O ▸ Audio Input; otherwise try recording on a real device.")
@@ -569,7 +570,7 @@ function presentWordSheet({ list, word, onSaved }) {
         const on = selectedPOS.has(p);
         posHost.appendChild(el(".check-row", {
           onclick: () => { on ? selectedPOS.delete(p) : selectedPOS.add(p); renderPOS(); },
-        }, el("span", {}, M.posLabel(p, preferredLanguage())), el("span.check", {}, on ? "✓" : "")));
+        }, el("span", {}, M.posLabel(p, preferredLanguage())), el("span.check", {}, on ? icon("check", 18) : null)));
       }
     }
     renderPOS();
@@ -682,7 +683,7 @@ function FlashcardScreen(content, cards, learningLanguage) {
   function renderHeader() {
     clear(header);
     header.appendChild(navBar(t("Practice"), {
-      leading: iconButton("‹", () => { playback.stop(); navPop(); }, { label: "Back" }),
+      leading: iconButton(icon("arrow_back", 22), () => { playback.stop(); navPop(); }, { label: "Back" }),
       trailing: (session.length && !finished) ? textButton(t("End"), () => { finished = true; render(); }) : null,
     }));
   }
@@ -691,7 +692,7 @@ function FlashcardScreen(content, cards, learningLanguage) {
     renderHeader();
     clear(body);
     if (cards.length === 0) {
-      body.appendChild(emptyState("🃏", t("Nothing to Practice"),
+      body.appendChild(emptyState(icon("style", 46), t("Nothing to Practice"),
         t("Add some words to a list first, then come back to review them.")));
     } else if (session.length === 0) {
       renderSetup();
@@ -709,14 +710,14 @@ function FlashcardScreen(content, cards, learningLanguage) {
       const on = selectedModes.has(mode.id);
       modeList.appendChild(el(".check-row", {
         onclick: () => { on ? selectedModes.delete(mode.id) : selectedModes.add(mode.id); render(); },
-      }, el(".radio" + (on ? ".on" : ""), {}, on ? "✓" : ""), el("span", {}, t(mode.labelKey))));
+      }, el(".radio" + (on ? ".on" : ""), {}, on ? icon("check", 16) : null), el("span", {}, t(mode.labelKey))));
     }
     const dailyToggle = el(".toggle-row", {},
       el("span", {}, t("Daily assignment")),
       el(".switch" + (dueOnly ? ".on" : ""), { onclick: () => { dueOnly = !dueOnly; render(); } }, el(".knob")),
     );
     body.appendChild(el(".practice-setup", {},
-      el(".big-icon", {}, "🃏"),
+      el(".big-icon", {}, icon("style", 52)),
       el("h2", {}, t("Ready to practice?")),
       el("p.muted", {}, due > 0 ? tn("%lld cards due for review.", due) : t("You finished your daily assignment.")),
       el(".setup-card", {},
@@ -758,7 +759,7 @@ function FlashcardScreen(content, cards, learningLanguage) {
         word.notes ? el(".answer-notes", {}, word.notes) : null,
       ));
     } else if (frontIsPron) {
-      card.appendChild(el(".card-front-pron", {}, el(".big-icon", {}, "🔊"), el("p.muted", {}, t("Listen and recall"))));
+      card.appendChild(el(".card-front-pron", {}, el(".big-icon", {}, icon("volume_up", 52)), el("p.muted", {}, t("Listen and recall"))));
     } else {
       card.appendChild(el(".card-prompt", {}, mode === "translation" ? word.translation : word.term));
     }
@@ -772,8 +773,8 @@ function FlashcardScreen(content, cards, learningLanguage) {
       showAudio ? playbackButton(word.audioPath, true) : el(".audio-placeholder"),
       isFlipped
         ? el(".answer-actions", {},
-            el("button.btn.warn.large", { onclick: () => answer(false) }, "↺ " + t("Practice Again")),
-            el("button.btn.good.large", { onclick: () => answer(true) }, "✓ " + t("Got It")),
+            el("button.btn.warn.large", { onclick: () => answer(false) }, icon("replay", 20), t("Practice Again")),
+            el("button.btn.good.large", { onclick: () => answer(true) }, icon("check", 20), t("Got It")),
           )
         : el("p.muted.center", {}, t("Tap the card to reveal the answer")),
     ));
@@ -800,7 +801,7 @@ function FlashcardScreen(content, cards, learningLanguage) {
 
   function renderSummary() {
     body.appendChild(el(".practice-summary", {},
-      el(".big-icon.good", {}, "✅"),
+      el(".big-icon.good", {}, icon("check_circle", 64)),
       el("h2", {}, t("Session Complete!")),
       el("p.muted", {}, tf("You got %lld of %lld right.", correctCount, totalCards)),
       el("button.btn.primary.large", { onclick: () => { session = []; index = 0; correctCount = 0; finished = false; render(); } }, t("Done")),
@@ -828,7 +829,7 @@ async function StatsScreen(content) {
 
   clear(body);
   if (words.length === 0) {
-    body.appendChild(emptyState(chartGlyph(28), t("No Stats Yet"),
+    body.appendChild(emptyState(icon("bar_chart", 46), t("No Stats Yet"),
       t("Add words and practice them. Once you've memorized some, your progress shows up here.")));
     return;
   }
@@ -863,7 +864,7 @@ async function StatsScreen(content) {
   body.appendChild(el(".stats", {},
     // total card
     el(".stat-total", {},
-      el(".big-icon", {}, "🧠"),
+      el(".big-icon", {}, icon("psychology", 44)),
       el(".stat-number", {}, `${totalMemorized}`),
       el(".stat-caption", {}, t("words memorized")),
       el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
@@ -1009,26 +1010,27 @@ function sheetHeader(title, api, confirmBtn, cancelLabel) {
   );
 }
 function errorState(e) {
-  return emptyState("⚠️", t("Something went wrong"), Auth.friendlyMessage(e));
+  return emptyState(icon("error", 46), t("Something went wrong"), Auth.friendlyMessage(e));
 }
 
-// MARK: - Icons (inline SVG / glyphs)
+// MARK: - Icons (Google Material Symbols)
 
-function bookIcon(size = 24) {
-  return svgEl("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "currentColor" },
-    svgEl("path", { d: "M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17zM6.5 17H18V4H6.5a.5.5 0 0 0-.5.5V17z" }));
+/** A Material Symbols glyph. `name` is the symbol's ligature name; `size` (px)
+ *  is optional and otherwise inherits from the context. */
+function icon(name, size) {
+  const s = el("span.msym", {}, name);
+  if (size) s.style.fontSize = size + "px";
+  return s;
 }
+function bookIcon(size = 24) { return icon("menu_book", size); }
 function glyph(name) {
-  const map = { person: "👤", envelope: "✉️", lock: "🔒" };
-  return map[name] || "";
+  const map = { person: "person", envelope: "mail", lock: "lock" };
+  return icon(map[name] || "circle", 20);
 }
-function listsGlyph() { return svgIcon("M4 6h16M4 12h16M4 18h16"); }
-function chartGlyph(size) { return svgIcon("M4 20V10M10 20V4M16 20v-7M22 20H2", size); }
-function gearGlyph() { return svgIcon("M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"); }
-function rectStackGlyph() { return el(".glyph", {}, "🗂"); }
-function bookClosedGlyph() { return el(".glyph", {}, "📕"); }
-function speakerGlyph() { return el("span.glyph", {}, "🔊"); }
-function stopGlyph() { return el("span.glyph", {}, "⏹"); }
-function svgIcon(d, size = 24) {
-  return svgEl("svg", { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round" }, svgEl("path", { d }));
-}
+function listsGlyph() { return icon("view_list", 24); }
+function chartGlyph(size = 24) { return icon("bar_chart", size); }
+function gearGlyph() { return icon("settings", 24); }
+function rectStackGlyph() { return icon("stacks", 24); }
+function bookClosedGlyph() { return icon("menu_book", 24); }
+function speakerGlyph() { return icon("volume_up", 18); }
+function stopGlyph() { return icon("stop", 18); }

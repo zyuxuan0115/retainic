@@ -125,7 +125,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 
-.audio-btn { border: none; background: transparent; color: var(--tint); font-size: 18px; padding: 4px 8px; border-radius: 8px; }
+.audio-btn { display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent; color: var(--tint); font-size: 18px; padding: 4px 8px; border-radius: 8px; }
 .audio-btn.large { background: color-mix(in srgb, var(--tint) 10%, transparent); padding: 8px 16px; border-radius: 10px; font-size: 15px; font-weight: 500; }
 .audio-placeholder { height: 44px; }
 
@@ -143,18 +143,18 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
   border-top: 0.5px solid var(--separator);
 }
 .bottom-toolbar .spacer { flex: 1; }
-.tool { border: none; background: transparent; color: var(--tint); font-size: 15px; font-weight: 500; padding: 8px 10px; border-radius: 8px; }
+.tool { display: inline-flex; align-items: center; gap: 6px; border: none; background: transparent; color: var(--tint); font-size: 15px; font-weight: 500; padding: 8px 10px; border-radius: 8px; }
 .tool.danger { color: var(--danger); }
 .tool.disabled, .tool:disabled { color: var(--secondary-label); opacity: .5; }
 
 /* Buttons */
-.btn { border: none; border-radius: 12px; font-size: 16px; font-weight: 600; padding: 10px 16px; color: #fff; background: var(--tint); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; padding: 10px 16px; color: #fff; background: var(--tint); }
 .btn.primary { background: var(--tint); }
 .btn.large { padding: 14px 18px; font-size: 17px; }
 .btn.good { background: var(--good); }
 .btn.warn { background: var(--warn); }
 .btn:disabled { opacity: 0.45; }
-.btn.primary.large { display: block; width: calc(100% - 32px); margin: 16px auto; }
+.btn.primary.large { display: flex; width: calc(100% - 32px); margin: 16px auto; }
 
 /* Center states */
 .center-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 48px 32px; color: var(--secondary-label); min-height: 50%; }
@@ -162,6 +162,21 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .center-state p { max-width: 320px; }
 .empty-icon { font-size: 46px; color: var(--tint); display: flex; }
 .glyph { font-size: 22px; line-height: 1; }
+
+/* Google Material Symbols */
+.msym {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal; font-style: normal;
+  font-size: 20px; line-height: 1;
+  letter-spacing: normal; text-transform: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap; word-wrap: normal; direction: ltr;
+  vertical-align: middle; user-select: none; flex: none;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  -webkit-font-feature-settings: "liga"; -webkit-font-smoothing: antialiased;
+}
+.big-icon { display: flex; justify-content: center; }
+.auth-logo { display: flex; }
 
 .spinner { width: 28px; height: 28px; border: 3px solid var(--separator); border-top-color: var(--tint); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -194,7 +209,7 @@ textarea.field-input { resize: vertical; }
 .form-card > *:last-child { border-bottom: none; }
 .form-note { font-size: 13px; color: var(--secondary-label); padding: 0 4px; }
 .form-footer-error, .danger-text { color: var(--danger); font-size: 13px; padding: 0 4px; }
-.form-action { width: 100%; text-align: left; border: none; background: transparent; color: var(--tint); padding: 12px 14px; font-size: 16px; border-bottom: 0.5px solid var(--separator); }
+.form-action { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: transparent; color: var(--tint); padding: 12px 14px; font-size: 16px; border-bottom: 0.5px solid var(--separator); }
 .form-action.danger { color: var(--danger); }
 .form-action:last-child { border-bottom: none; }
 
@@ -315,10 +330,9 @@ textarea.field-input { resize: vertical; }
    =========================================================================== */
 @media (min-width: 860px) {
   .shell {
-    max-width: 1280px;
+    max-width: none;
+    margin: 0;
     flex-direction: row;
-    border-left: 0.5px solid var(--separator);
-    border-right: 0.5px solid var(--separator);
   }
 
   /* Bottom tab bar -> left sidebar */
