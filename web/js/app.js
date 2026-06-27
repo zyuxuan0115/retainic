@@ -321,7 +321,7 @@ async function ListDetailScreen(content, list) {
       trailing = el(".navbar-actions", {},
         iconButton(icon("settings", 22), openListSettings, { label: t("Settings") }),
         iconButton(icon("add", 24), openAdd, { label: t("Add Word") }),
-        words.length ? textButton(t("Select"), beginSelection, { kind: "plain" }) : null,
+        words.length ? iconButton(icon("checklist", 22), beginSelection, { label: t("Select") }) : null,
       );
     }
     header.appendChild(navBar(title, {
