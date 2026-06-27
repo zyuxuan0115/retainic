@@ -166,6 +166,7 @@ function Shell() {
 
   function tabItem(tab, icon, label) {
     return el(".tab" + (state.tab === tab ? ".active" : ""), {
+      title: label,
       onclick: () => { state.tab = tab; if (tab === "lists" && state.stack.length === 0) state.stack = [{ name: "lists" }]; renderApp(); },
     }, el(".tab-icon", {}, icon), el(".tab-label", {}, label));
   }
