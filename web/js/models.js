@@ -27,9 +27,8 @@ export function posLabel(raw, code = "en") {
   return table[raw] || (raw.charAt(0).toUpperCase() + raw.slice(1));
 }
 
-// MARK: - Spaced-repetition schedules (must match FirestoreModels.swift)
+// MARK: - Spaced-repetition schedules
 
-export const MEMORIZED_BOX = 5;
 const TRANSLATION_GAPS = [0, 1, 1, 1, 2, 2, 3, 4, 5, 10];
 const WORD_GAPS = [0, 1, 1, 2, 3, 4, 6, 9];
 const PRONUNCIATION_GAPS = [0, 1, 2, 3, 4, 6, 8];
@@ -90,10 +89,6 @@ export function readingFor(word, learningLanguage) {
   return value && value.length ? value : null;
 }
 
-export function isMemorized(word) {
-  return (word.box ?? 1) >= MEMORIZED_BOX;
-}
-
 export function isRemembered(word) {
   return word.remember_final === true;
 }
@@ -151,21 +146,18 @@ export function markCorrect(word, aspect) {
       break;
   }
   updateRememberFinal(word);
-  word.box = Math.min((word.box ?? 1) + 1, 5);
   word.lastReviewed = now;
   record(word, aspect, true, now);
 }
 
 export function markIncorrect(word, aspect) {
   word.timesSeen = (word.timesSeen ?? 0) + 1;
-  word.box = 1;
   word.lastReviewed = new Date();
   record(word, aspect, false, new Date());
 }
 
 /** Resets all spaced-repetition progress so the word counts as never remembered. */
 export function resetMemory(word) {
-  word.box = 1;
   word.lastReviewed = null;
   word.lastWordRemembered = null;
   word.lastPronounciationRemembered = null;
@@ -190,7 +182,6 @@ export function newWord({ term, translation, notes = "", partsOfSpeech = [], hir
     audioPath: null,
     memoryStats: null,
     createdAt: new Date(),
-    box: 1,
     lastReviewed: null,
     lastWordRemembered: null,
     lastPronounciationRemembered: null,

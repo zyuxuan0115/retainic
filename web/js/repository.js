@@ -37,11 +37,13 @@ function fromFirestore(value) {
   return value;
 }
 
-/** Strip the local-only `id` field and any `undefined`s before writing. */
+/** Strip the local-only `id` field, the retired `box` field, and any
+ *  `undefined`s before writing. Dropping `box` here means it's removed from a
+ *  word document the next time that word is saved. */
 function toFirestore(word) {
   const out = {};
   for (const [k, v] of Object.entries(word)) {
-    if (k === "id" || v === undefined) continue;
+    if (k === "id" || k === "box" || v === undefined) continue;
     out[k] = v;
   }
   return out;
