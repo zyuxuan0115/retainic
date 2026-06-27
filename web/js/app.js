@@ -992,7 +992,7 @@ function weekChart(dailyStats, today, aspectKeys, aspectLabel, colors) {
   const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", preserveAspectRatio: "xMidYMid meet" });
   // gridlines + weekday labels
   days.forEach((d, i) => {
-    svg.appendChild(svgEl("line", { x1: x(i), y1: padY, x2: x(i), y2: padY + innerH, stroke: "#e6e6ec", "stroke-width": 1 }));
+    svg.appendChild(svgEl("line", { x1: x(i), y1: padY, x2: x(i), y2: padY + innerH, stroke: "#e6e6ec", "stroke-width": 1, "stroke-dasharray": "4 4" }));
     const lbl = svgEl("text", { x: x(i), y: H - 8, "text-anchor": "middle", class: "chart-lbl" });
     lbl.appendChild(document.createTextNode(d.date.toLocaleDateString(i18n.preferredLanguage(), { weekday: "narrow" })));
     svg.appendChild(lbl);
