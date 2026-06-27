@@ -53,9 +53,10 @@ export function svgEl(tag, attrs = {}, ...children) {
   return node;
 }
 
-/** A simple modal sheet. Returns { close }. */
-export function presentSheet(contentBuilder) {
-  const overlay = el(".sheet-overlay");
+/** A simple modal sheet. Returns { close }. `variant` adds a class to the
+ *  overlay (e.g. "alert" for a compact centered confirm dialog). */
+export function presentSheet(contentBuilder, { variant = "" } = {}) {
+  const overlay = el(".sheet-overlay" + (variant ? "." + variant : ""));
   const sheet = el(".sheet");
   const api = {
     close() {

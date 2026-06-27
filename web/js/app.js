@@ -258,11 +258,15 @@ async function ListsScreen(content) {
           el(".row-title", {}, list.name),
           el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
         ),
-        iconButton(icon("delete", 22), async (e) => {
+        iconButton(icon("delete", 22), (e) => {
           e.stopPropagation();
-          if (!confirm(`${t("Delete")} “${list.name}”?`)) return;
-          try { await Repo.deleteList(authState.uid, list.id); reload(); }
-          catch (err) { toast(Auth.friendlyMessage(err)); }
+          confirmDialog({
+            message: `${t("Delete")} “${list.name}”?`, confirmLabel: t("Delete"), danger: true,
+            onConfirm: async () => {
+              try { await Repo.deleteList(authState.uid, list.id); reload(); }
+              catch (err) { toast(Auth.friendlyMessage(err)); }
+            },
+          });
         }, { label: t("Delete"), danger: true }),
         el(".row-chevron", {}, icon("chevron_right", 22)),
       ));
@@ -443,16 +447,20 @@ async function ListDetailScreen(content, list) {
     renderAll();
   }
 
-  async function deleteSelected() {
+  function deleteSelected() {
     const ids = new Set(selection);
     if (ids.size === 0) return;
     const message = ids.size === 1 ? t("Delete this word?") : tn("Delete %lld words?", ids.size);
-    if (!confirm(message)) return;
-    try {
-      for (const id of ids) await Repo.deleteWord(authState.uid, list.id, id);
-      words = words.filter((w) => !ids.has(w.id));
-    } catch (e) { toast(Auth.friendlyMessage(e)); }
-    endSelection();
+    confirmDialog({
+      message, confirmLabel: t("Delete"), danger: true,
+      onConfirm: async () => {
+        try {
+          for (const id of ids) await Repo.deleteWord(authState.uid, list.id, id);
+          words = words.filter((w) => !ids.has(w.id));
+        } catch (e) { toast(Auth.friendlyMessage(e)); }
+        endSelection();
+      },
+    });
   }
 
   async function beginMove() {
@@ -544,9 +552,11 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset })
         formSection(null,
           el(".form-card", {},
             el("button.form-action.danger", {
-              onclick: () => {
-                if (confirm(t("Mark all words as not remembered?"))) { onReset(); api.close(); }
-              },
+              onclick: () => confirmDialog({
+                message: t("Mark all words as not remembered?"),
+                confirmLabel: t("Mark All as Not Remembered"), danger: true,
+                onConfirm: () => { onReset(); api.close(); },
+              }),
             }, icon("replay", 20), t("Mark all as not remembered")),
           ),
           el(".form-note", {}, t("Every word in this list will show up again in practice for all methods."))),
@@ -1015,7 +1025,10 @@ function SettingsScreen(content) {
     formSection(t("Language"), el(".form-card", {}, pickerRow(t("Preferred language"), langSel))),
     formSection(null, el(".form-card", {},
       el("button.form-action.danger", {
-        onclick: () => { if (confirm(t("Sign out of Retainic?"))) Auth.signOut(); },
+        onclick: () => confirmDialog({
+          message: t("Sign out of Retainic?"), confirmLabel: t("Sign Out"), danger: true,
+          onConfirm: () => Auth.signOut(),
+        }),
       }, t("Sign Out")))),
   ));
 }
@@ -1085,6 +1098,19 @@ function sheetHeader(title, api, confirmBtn, cancelLabel) {
 }
 function errorState(e) {
   return emptyState(icon("error", 46), t("Something went wrong"), Auth.friendlyMessage(e));
+}
+
+/** An in-app confirmation panel (replaces the browser's native confirm()). */
+function confirmDialog({ message, confirmLabel, danger = false, onConfirm }) {
+  presentSheet((api) => el(".confirm", {},
+    el(".confirm-msg", {}, message),
+    el(".confirm-actions", {},
+      el("button.btn.subtle", { onclick: () => api.close() }, t("Cancel")),
+      el("button.btn." + (danger ? "destructive" : "primary"), {
+        onclick: () => { api.close(); onConfirm(); },
+      }, confirmLabel || t("OK")),
+    ),
+  ), { variant: "alert" });
 }
 
 // MARK: - Icons (Google Material Symbols)
