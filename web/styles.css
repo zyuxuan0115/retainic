@@ -404,9 +404,9 @@ a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: e
   .search-wrap { max-width: 1120px; margin: 0 auto; }
   .form { max-width: 720px; margin-left: auto; margin-right: auto; }
 
-  /* Statistics: a two-column dashboard */
+  /* Statistics: a two-column dashboard, matching the Settings/About page width */
   .stats {
-    max-width: 1120px; margin: 0 auto;
+    max-width: 720px; margin: 0 auto;
     display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start;
   }
   .stat-total { grid-column: 1 / -1; }
