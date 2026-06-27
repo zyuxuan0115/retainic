@@ -1,5 +1,41 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
+// (plus web-only strings for the About page, appended below.)
 export default {
+ "About": {
+  "en": "About",
+  "es": "Acerca de",
+  "zh": "关于",
+  "ja": "アプリについて",
+  "ko": "정보"
+ },
+ "Version": {
+  "en": "Version",
+  "es": "Versión",
+  "zh": "版本",
+  "ja": "バージョン",
+  "ko": "버전"
+ },
+ "Source code": {
+  "en": "Source code",
+  "es": "Código fuente",
+  "zh": "源代码",
+  "ja": "ソースコード",
+  "ko": "소스 코드"
+ },
+ "Vocabulary learning with spaced-repetition flashcards.": {
+  "en": "Vocabulary learning with spaced-repetition flashcards.",
+  "es": "Aprende vocabulario con tarjetas de repetición espaciada.",
+  "zh": "通过间隔重复闪卡学习词汇。",
+  "ja": "間隔反復のフラッシュカードで語彙を学習。",
+  "ko": "간격 반복 플래시카드로 어휘를 학습하세요."
+ },
+ "Retainic lets you build vocabulary lists, add words with translations, readings, parts of speech and recorded pronunciation, then practice them with per-aspect spaced repetition. This web app shares the same account and data as the Retainic iOS app.": {
+  "en": "Retainic lets you build vocabulary lists, add words with translations, readings, parts of speech and recorded pronunciation, then practice them with per-aspect spaced repetition. This web app shares the same account and data as the Retainic iOS app.",
+  "es": "Retainic te permite crear listas de vocabulario, añadir palabras con traducciones, lecturas, categorías gramaticales y pronunciación grabada, y practicarlas con repetición espaciada por aspecto. Esta aplicación web comparte la misma cuenta y los mismos datos que la app de Retainic para iOS.",
+  "zh": "Retainic 让你创建词汇表，添加带有翻译、读音、词性和录音发音的单词，然后通过分项的间隔重复来练习它们。此网页应用与 Retainic iOS 应用共享相同的账户和数据。",
+  "ja": "Retainic では単語リストを作成し、翻訳・読み・品詞・録音した発音付きの単語を追加して、項目ごとの間隔反復で練習できます。このウェブアプリは Retainic iOS アプリと同じアカウントとデータを共有します。",
+  "ko": "Retainic에서는 단어 목록을 만들고 번역, 읽기, 품사, 녹음된 발음이 포함된 단어를 추가한 다음 항목별 간격 반복으로 연습할 수 있습니다. 이 웹 앱은 Retainic iOS 앱과 동일한 계정 및 데이터를 공유합니다."
+ },
  "%lld": {
   "en": "%lld"
  },
