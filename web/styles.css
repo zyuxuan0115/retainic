@@ -325,6 +325,16 @@ textarea.field-input { resize: vertical; }
 
 .navbar-host { position: sticky; top: 0; z-index: 5; }
 
+/* About */
+.about { max-width: 640px; margin: 0 auto; }
+.about-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 20px 8px; text-align: center; }
+.about-logo { color: var(--tint); }
+.about-hero h1 { font-size: 30px; font-weight: 800; }
+.about-version { font-size: 13px; color: var(--secondary-label); }
+.about-text { padding: 14px; color: var(--label); line-height: 1.5; }
+a.form-action.link { text-decoration: none; }
+a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ===========================================================================
    Wide screens: sidebar navigation + content that uses the browser's width.
    Phones (below the breakpoint) keep the bottom tab bar above.
