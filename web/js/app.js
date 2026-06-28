@@ -89,6 +89,7 @@ function AuthScreen() {
     const username = el("input.field-input", { type: "text", placeholder: t("Username"), autocomplete: "username" });
     const email = el("input.field-input", { type: "email", placeholder: t("Email"), autocomplete: "email" });
     const password = el("input.field-input", { type: "password", placeholder: t("Password"), autocomplete: isRegister ? "new-password" : "current-password" });
+    const invite = el("input.field-input", { type: "text", placeholder: t("Invitation code"), autocomplete: "off", autocapitalize: "off", spellcheck: "false" });
 
     const submit = async () => {
       error = null;
@@ -96,10 +97,11 @@ function AuthScreen() {
       const emailOK = em.includes("@") && em.includes(".");
       const passOK = password.value.length >= 6;
       const userOK = !isRegister || username.value.trim().length > 0;
-      if (!emailOK || !passOK || !userOK) return;
+      const inviteOK = !isRegister || invite.value.trim().length > 0;
+      if (!emailOK || !passOK || !userOK || !inviteOK) return;
       working = true; render();
       try {
-        if (isRegister) await Auth.register(em, password.value, username.value.trim());
+        if (isRegister) await Auth.register(em, password.value, username.value.trim(), invite.value.trim());
         else await Auth.signIn(em, password.value);
         // onAuthChange re-renders the app.
       } catch (e) {
@@ -127,6 +129,7 @@ function AuthScreen() {
         isRegister ? fieldRow("person", username) : null,
         fieldRow("envelope", email),
         fieldRow("lock", password),
+        isRegister ? fieldRow("key", invite) : null,
       ),
       error ? el(".form-error", {}, error) : null,
       el("button.btn.primary.large", {
@@ -136,7 +139,7 @@ function AuthScreen() {
       isRegister ? el(".caption.center", {}, t("Password must be at least 6 characters.")) : null,
     ));
 
-    [username, email, password].forEach((inp) =>
+    [username, email, password, invite].forEach((inp) =>
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); }));
   }
 
@@ -1125,7 +1128,7 @@ function icon(name, size) {
 }
 function bookIcon(size = 24) { return icon("menu_book", size); }
 function glyph(name) {
-  const map = { person: "person", envelope: "mail", lock: "lock" };
+  const map = { person: "person", envelope: "mail", lock: "lock", key: "key" };
   return icon(map[name] || "circle", 20);
 }
 function listsGlyph() { return icon("view_list", 24); }

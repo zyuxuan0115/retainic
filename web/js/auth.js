@@ -11,7 +11,8 @@ import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut as fbSignOut,
   updateProfile, onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-import { createProfile, fetchProfile } from "./repository.js";
+import { createProfile, fetchProfile, isValidInvitationCode } from "./repository.js";
+import { t } from "./i18n.js";
 
 export const authState = {
   user: null,
@@ -35,7 +36,13 @@ export function onAuthChange(callback) {
   });
 }
 
-export async function register(email, password, username) {
+export async function register(email, password, username, invitationCode) {
+  // Gate registration on a valid invitation code before creating the account.
+  if (!(await isValidInvitationCode(invitationCode))) {
+    const err = new Error("Invalid invitation code.");
+    err.code = "app/invalid-invitation";
+    throw err;
+  }
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(result.user, { displayName: username });
   const profile = { username, email, createdAt: new Date() };
@@ -54,6 +61,7 @@ export async function signOut() {
 /** Maps Firebase Auth error codes to the same friendly copy the iOS app uses. */
 export function friendlyMessage(error) {
   switch (error?.code) {
+    case "app/invalid-invitation": return t("That invitation code isn't valid.");
     case "auth/email-already-in-use": return "That email is already registered. Try logging in.";
     case "auth/invalid-email": return "Please enter a valid email address.";
     case "auth/weak-password": return "Password must be at least 6 characters.";

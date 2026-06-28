@@ -95,6 +95,23 @@ export async function createProfile(uid, profile) {
   await setDoc(userDoc(uid), profile);
 }
 
+// MARK: - Invitation codes
+
+/** Whether the given invitation code exists. Codes are stored as document IDs
+ *  under `invitationCodes`; the security rules allow a single-doc `get` (so a
+ *  code you already know can be verified, even before signing in) but forbid
+ *  listing, so the set can't be enumerated. */
+export async function isValidInvitationCode(code) {
+  const trimmed = (code || "").trim();
+  if (!trimmed) return false;
+  try {
+    const snap = await getDoc(doc(db, "invitationCodes", trimmed));
+    return snap.exists();
+  } catch {
+    return false;
+  }
+}
+
 // MARK: - Lists
 
 export async function fetchLists(uid) {

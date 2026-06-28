@@ -9,5 +9,14 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // Invitation codes used to gate registration. Each code is a document whose
+    // ID is the code itself. Anyone may `get` a code they already know (to
+    // verify it before signing up), but listing/enumerating and any writes are
+    // forbidden — codes are added by an admin (Firebase console / Admin SDK).
+    match /invitationCodes/{code} {
+      allow get: if true;
+      allow list, write: if false;
+    }
   }
 }

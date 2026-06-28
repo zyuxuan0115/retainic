@@ -1,6 +1,20 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
 // (plus web-only strings for the About page, appended below.)
 export default {
+ "Invitation code": {
+  "en": "Invitation code",
+  "es": "Código de invitación",
+  "zh": "邀请码",
+  "ja": "招待コード",
+  "ko": "초대 코드"
+ },
+ "That invitation code isn't valid.": {
+  "en": "That invitation code isn't valid.",
+  "es": "Ese código de invitación no es válido.",
+  "zh": "邀请码无效。",
+  "ja": "招待コードが無効です。",
+  "ko": "초대 코드가 올바르지 않습니다."
+ },
  "Delete this word?": {
   "en": "Delete this word?",
   "es": "¿Eliminar esta palabra?",
