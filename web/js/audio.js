@@ -8,6 +8,18 @@
 
 import { audioURL } from "./repository.js";
 
+/** MediaRecorder options tuned for speech: an efficient codec (Opus when
+ *  available) at a low bitrate, so recordings are small before upload. */
+function recorderOptions() {
+  const opts = { audioBitsPerSecond: 24000 };
+  const types = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4", "audio/webm"];
+  if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported) {
+    const m = types.find((t) => MediaRecorder.isTypeSupported(t));
+    if (m) opts.mimeType = m;
+  }
+  return opts;
+}
+
 // MARK: - Shared playback store (play a recording by its Storage path)
 
 class AudioPlaybackStore {
@@ -78,14 +90,17 @@ export class PronunciationRecorder {
     if (this.isRecording) { this._stopRecording(); return; }
     this.recordingWasEmpty = false;
     try {
-      this._stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Mono + voice processing keeps pronunciation clips small.
+      this._stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
     } catch (e) {
       this.permissionDenied = true;
       this.onChange();
       return;
     }
     this._chunks = [];
-    this._mediaRecorder = new MediaRecorder(this._stream);
+    this._mediaRecorder = new MediaRecorder(this._stream, recorderOptions());
     this._mediaRecorder.ondataavailable = (e) => { if (e.data.size) this._chunks.push(e.data); };
     this._mediaRecorder.onstop = () => {
       const blob = new Blob(this._chunks, { type: this._mediaRecorder.mimeType || "audio/webm" });

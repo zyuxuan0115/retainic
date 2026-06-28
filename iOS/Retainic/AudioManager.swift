@@ -66,11 +66,14 @@ final class PronunciationRecorder: NSObject, ObservableObject {
 
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("retainic-rec-\(UUID().uuidString).m4a")
+            // Compress for speech: mono, lower sample rate, and a modest AAC
+            // bitrate. Keeps pronunciation clips small (~4 KB/s) before upload.
             let settings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: 44_100,
+                AVSampleRateKey: 22_050,
                 AVNumberOfChannelsKey: 1,
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+                AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
+                AVEncoderBitRateKey: 32_000,
             ]
             let recorder = try AVAudioRecorder(url: url, settings: settings)
             recorder.prepareToRecord()

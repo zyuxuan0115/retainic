@@ -195,6 +195,8 @@ enum VocabRepository {
     private static func uploadAudio(localURL: URL, to path: String) async throws {
         let metadata = StorageMetadata()
         metadata.contentType = "audio/mp4"
+        // Cache the clip on-device/CDN so repeat playback doesn't re-download.
+        metadata.cacheControl = "public, max-age=604800"
         _ = try await Storage.storage().reference(withPath: path)
             .putFileAsync(from: localURL, metadata: metadata)
     }

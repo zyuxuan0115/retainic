@@ -184,7 +184,13 @@ export function audioStoragePath(uid, listId, wordId) {
 }
 
 async function uploadAudio(blob, path) {
-  await uploadBytes(storageRef(storage, path), blob, { contentType: blob.type || "audio/mp4" });
+  await uploadBytes(storageRef(storage, path), blob, {
+    contentType: blob.type || "audio/mp4",
+    // Let browsers/CDN cache the clip so repeat plays don't re-download. A
+    // re-recording overwrites the path and gets a fresh download token, so a
+    // long max-age is safe (each version has its own tokenized URL).
+    cacheControl: "public, max-age=604800",
+  });
 }
 
 export async function audioURL(path) {
