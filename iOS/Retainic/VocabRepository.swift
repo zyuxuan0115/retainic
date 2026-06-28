@@ -16,6 +16,20 @@ enum VocabRepository {
         db.collection("users").document(uid)
     }
 
+    /// Whether the given invitation code exists (registration gate). Codes are
+    /// stored as document IDs under `invitationCodes`; security rules allow a
+    /// single-doc `get` but forbid listing, so the set can't be enumerated.
+    static func isValidInvitationCode(_ code: String) async -> Bool {
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        do {
+            let snapshot = try await db.collection("invitationCodes").document(trimmed).getDocument()
+            return snapshot.exists
+        } catch {
+            return false
+        }
+    }
+
     private static func listsRef(_ uid: String) -> CollectionReference {
         userDoc(uid).collection("lists")
     }

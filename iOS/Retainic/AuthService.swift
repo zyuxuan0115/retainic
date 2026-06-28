@@ -44,10 +44,17 @@ final class AuthService: ObservableObject {
 
     // MARK: - Actions
 
-    func register(email: String, password: String, username: String) async {
+    func register(email: String, password: String, username: String, invitationCode: String) async {
         errorMessage = nil
         isWorking = true
         defer { isWorking = false }
+
+        // Gate registration on a valid invitation code before creating the account.
+        guard await VocabRepository.isValidInvitationCode(invitationCode) else {
+            errorMessage = String(localized: "That invitation code isn't valid.")
+            return
+        }
+
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
 

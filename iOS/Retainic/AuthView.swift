@@ -20,6 +20,7 @@ struct AuthView: View {
     @State private var username = ""
     @State private var email = ""
     @State private var password = ""
+    @State private var invitationCode = ""
 
     private var isRegistering: Bool { mode == .register }
 
@@ -27,7 +28,8 @@ struct AuthView: View {
         let emailOK = email.contains("@") && email.contains(".")
         let passwordOK = password.count >= 6
         let usernameOK = !isRegistering || !username.trimmingCharacters(in: .whitespaces).isEmpty
-        return emailOK && passwordOK && usernameOK
+        let inviteOK = !isRegistering || !invitationCode.trimmingCharacters(in: .whitespaces).isEmpty
+        return emailOK && passwordOK && usernameOK && inviteOK
     }
 
     var body: some View {
@@ -51,6 +53,11 @@ struct AuthView: View {
                             .keyboardType(.emailAddress)
                             .textContentType(.emailAddress)
                         secureField("Password", text: $password)
+                        if isRegistering {
+                            field("Invitation code", text: $invitationCode, systemImage: "key")
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        }
                     }
 
                     if let error = auth.errorMessage {
@@ -124,7 +131,12 @@ struct AuthView: View {
         let email = self.email.trimmingCharacters(in: .whitespaces)
         Task {
             if isRegistering {
-                await auth.register(email: email, password: password, username: username.trimmingCharacters(in: .whitespaces))
+                await auth.register(
+                    email: email,
+                    password: password,
+                    username: username.trimmingCharacters(in: .whitespaces),
+                    invitationCode: invitationCode.trimmingCharacters(in: .whitespaces)
+                )
             } else {
                 await auth.signIn(email: email, password: password)
             }

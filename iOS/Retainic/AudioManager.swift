@@ -44,8 +44,8 @@ final class PronunciationRecorder: NSObject, ObservableObject {
     }
 
     private func requestAndStartRecording() {
-        AVAudioApplication.requestRecordPermission { [weak self] granted in
-            Task { @MainActor in
+        AVAudioApplication.requestRecordPermission { granted in
+            Task { @MainActor [weak self] in
                 guard let self else { return }
                 if granted {
                     self.beginRecording()
