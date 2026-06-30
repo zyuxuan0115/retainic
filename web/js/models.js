@@ -105,13 +105,25 @@ export function isPronunciationDue(word, now = new Date()) {
   return isDue(word.timesPronounciationCorrect ?? 0, word.lastPronounciationRemembered, PRONUNCIATION_GAPS, now);
 }
 
-/** Marks the word finally remembered once each mode has enough correct recalls. */
+/** Re-evaluates whether the word is finally remembered from its correct counts.
+ *  Authoritative: a word only counts as remembered while every required aspect
+ *  still meets its threshold (8× word, 10× translation, and — once the word has
+ *  a recording — 7× pronunciation). */
 function updateRememberFinal(word) {
   const w = word.timesWordCorrect ?? 0;
   const tr = word.timesTranslationCorrect ?? 0;
   const pr = word.timesPronounciationCorrect ?? 0;
   const pronunciationOK = word.audioPath == null || pr >= 7;
-  if (w >= 8 && tr >= 10 && pronunciationOK) word.remember_final = true;
+  word.remember_final = w >= 8 && tr >= 10 && pronunciationOK;
+}
+
+/** Re-evaluates mastery after a word's recording is added or removed. Adding a
+ *  recording introduces the 7× pronunciation requirement, so a word that was
+ *  mastered without one is demoted until it is recalled 7 more times by
+ *  pronunciation; removing a recording drops that requirement again. Call this
+ *  whenever `audioPath` changes. */
+export function refreshMemorizationForAudio(word) {
+  updateRememberFinal(word);
 }
 
 function record(word, aspect, correct, now) {

@@ -20,6 +20,7 @@ import {
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
+import { refreshMemorizationForAudio } from "./models.js";
 
 // MARK: - Date / document normalization
 
@@ -167,9 +168,11 @@ export async function updateWord(uid, listId, word, { audioBlob = null, removeAu
   if (audioBlob) {
     await uploadAudio(audioBlob, path);
     w.audioPath = path;
+    refreshMemorizationForAudio(w);
   } else if (removeAudio) {
     await deleteAudio(path);
     w.audioPath = null;
+    refreshMemorizationForAudio(w);
   }
   await setDoc(doc(wordsRef(uid, listId), word.id), toFirestore(w));
 }

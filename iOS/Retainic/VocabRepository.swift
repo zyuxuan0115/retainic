@@ -161,9 +161,11 @@ enum VocabRepository {
         if let newAudioFileURL {
             try await uploadAudio(localURL: newAudioFileURL, to: path)
             word.audioPath = path
+            word.refreshMemorizationForAudio()
         } else if removeAudio {
             await deleteAudio(path: path)
             word.audioPath = nil
+            word.refreshMemorizationForAudio()
         }
         // Full overwrite (no merge) so a cleared audioPath is actually removed.
         try wordsRef(uid, listId).document(id).setData(from: word)
