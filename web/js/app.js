@@ -806,7 +806,13 @@ function FlashcardScreen(content, cards, learningLanguage) {
   function renderHeader() {
     clear(header);
     header.appendChild(navBar(t("Practice"), {
-      leading: iconButton(icon("arrow_back", 22), () => { playback.stop(); navPop(); }, { label: "Back" }),
+      leading: iconButton(icon("arrow_back", 22), () => {
+        playback.stop();
+        // Mid-session, the back button acts like "End": show the summary
+        // (results) instead of dropping straight back to the word list.
+        if (session.length && !finished) { finished = true; render(); }
+        else { navPop(); }
+      }, { label: "Back" }),
       trailing: (session.length && !finished) ? textButton(t("End"), () => { finished = true; render(); }) : null,
     }));
   }
