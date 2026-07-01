@@ -13,12 +13,13 @@ service cloud.firestore {
     // Cross-user READ access so a signed-in user can import a wordlist shared
     // with them by its public ID: the collection-group lookup on `publicId`
     // and the word copy both need to read another account's lists/words.
-    // Writes stay owner-only via the rules above.
-    match /users/{userId}/lists/{listId} {
+    // The recursive-wildcard prefix ({path=**}) is required to authorize the
+    // collection-group query on `lists`. Writes stay owner-only (rules above).
+    match /{path=**}/lists/{listId} {
       allow read: if request.auth != null;
-      match /words/{wordId} {
-        allow read: if request.auth != null;
-      }
+    }
+    match /{path=**}/words/{wordId} {
+      allow read: if request.auth != null;
     }
 
     // Invitation codes used to gate registration. Each code is a document whose
