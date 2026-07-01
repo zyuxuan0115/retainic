@@ -24,6 +24,13 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
+
+            NavigationStack {
+                AboutView()
+            }
+            .tabItem {
+                Label("About", systemImage: "info.circle")
+            }
         }
     }
 }

@@ -234,6 +234,27 @@ export default {
   "ja": "単語を削除",
   "ko": "단어 삭제"
  },
+ "Download CSV": {
+  "en": "Download CSV",
+  "es": "Descargar CSV",
+  "zh": "下载 CSV",
+  "ja": "CSVをダウンロード",
+  "ko": "CSV 다운로드"
+ },
+ "Reading": {
+  "en": "Reading",
+  "es": "Lectura",
+  "zh": "读音",
+  "ja": "読み",
+  "ko": "발음"
+ },
+ "Notes": {
+  "en": "Notes",
+  "es": "Notas",
+  "zh": "笔记",
+  "ja": "メモ",
+  "ko": "메모"
+ },
  "Move to Trash": {
   "en": "Move to Trash",
   "es": "Mover a la papelera",

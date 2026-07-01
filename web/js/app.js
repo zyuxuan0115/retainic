@@ -264,6 +264,10 @@ async function ListsScreen(content) {
           el(".row-title", {}, list.name),
           el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
         ),
+        iconButton(icon("download", 22), (e) => {
+          e.stopPropagation();
+          downloadListCSV(list);
+        }, { label: t("Download CSV") }),
         iconButton(icon("delete", 22), (e) => {
           e.stopPropagation();
           confirmDialog({
@@ -280,6 +284,49 @@ async function ListsScreen(content) {
     body.appendChild(listEl);
   }
   reload();
+}
+
+// MARK: - CSV export
+
+/** Escapes one CSV field per RFC 4180: wrap in quotes when it contains a comma,
+ *  quote, or newline, doubling any interior quotes. */
+function csvEscape(value) {
+  const s = value == null ? "" : String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Fetches a list's words and downloads them as a UTF-8 .csv file. Columns:
+ *  Word, Reading, Translation, Part of speech, Notes. */
+async function downloadListCSV(list) {
+  let words;
+  try { words = await Repo.fetchWords(authState.uid, list.id); }
+  catch (e) { toast(Auth.friendlyMessage(e)); return; }
+
+  const rows = [[t("Word"), t("Reading"), t("Translation"), t("Part of speech"), t("Notes")]];
+  for (const w of words) {
+    rows.push([
+      w.term || "",
+      M.readingFor(w, list.learningLanguage) || "",
+      w.translation || "",
+      M.partOfSpeechValues(w).map((p) => M.posLabel(p, preferredLanguage())).join("; "),
+      w.notes || "",
+    ]);
+  }
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
+  // Prepend a BOM so Excel opens UTF-8 (e.g. CJK text) correctly.
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const safeName = (list.name || "wordlist").replace(/[\\/:*?"<>|]+/g, "_").trim() || "wordlist";
+  triggerDownload(blob, `${safeName}.csv`);
+}
+
+/** Downloads a Blob under the given filename via a temporary anchor. */
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // MARK: - Trash screen

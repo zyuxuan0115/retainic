@@ -290,7 +290,7 @@ struct ListDetailView: View {
         List(selection: $selection) {
             ForEach(filteredWords, id: \.idValue) { word in
                 NavigationLink {
-                    AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, word: word)
+                    AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, word: word, onDelete: reload)
                 } label: {
                     WordRow(word: word)
                 }

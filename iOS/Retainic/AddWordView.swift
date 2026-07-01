@@ -15,6 +15,8 @@ struct AddWordView: View {
     let originalLanguage: String
     /// Existing word when editing; nil when creating.
     private let existingWord: VocabWord?
+    /// Called after the word is deleted, so the presenter can refresh its list.
+    private let onDelete: (() -> Void)?
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
 
@@ -29,13 +31,15 @@ struct AddWordView: View {
     @State private var pinyin: String
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showingDeleteConfirm = false
     @StateObject private var recorder = PronunciationRecorder()
 
-    init(listId: String, learningLanguage: String, originalLanguage: String, word: VocabWord? = nil) {
+    init(listId: String, learningLanguage: String, originalLanguage: String, word: VocabWord? = nil, onDelete: (() -> Void)? = nil) {
         self.listId = listId
         self.learningLanguage = learningLanguage
         self.originalLanguage = originalLanguage
         self.existingWord = word
+        self.onDelete = onDelete
         _term = State(initialValue: word?.term ?? "")
         _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
@@ -129,9 +133,27 @@ struct AddWordView: View {
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
+
+            if isEditing {
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteConfirm = true
+                    } label: {
+                        Label("Delete Word", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .disabled(isSaving)
+                }
+            }
         }
         .navigationTitle((isEditing ? "Edit Word" : "New Word").localized(preferredLanguage))
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete Word".localized(preferredLanguage), isPresented: $showingDeleteConfirm) {
+            Button("Delete".localized(preferredLanguage), role: .destructive) { deleteWord() }
+            Button("Cancel".localized(preferredLanguage), role: .cancel) {}
+        } message: {
+            Text("This word will be permanently deleted.")
+        }
         .task { recorder.configure(existingAudioPath: existingWord?.audioPath) }
         .onDisappear { recorder.stopPlayback() }
         .toolbar {
@@ -247,6 +269,22 @@ struct AddWordView: View {
                     )
                     try await VocabRepository.addWord(uid: uid, listId: listId, word: word, audioFileURL: newAudioURL)
                 }
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+                isSaving = false
+            }
+        }
+    }
+
+    private func deleteWord() {
+        guard let uid = auth.uid, let wordId = existingWord?.id else { return }
+        isSaving = true
+        errorMessage = nil
+        Task {
+            do {
+                try await VocabRepository.deleteWord(uid: uid, listId: listId, wordId: wordId)
+                onDelete?()
                 dismiss()
             } catch {
                 errorMessage = error.localizedDescription

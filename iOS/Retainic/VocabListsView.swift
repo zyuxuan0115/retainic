@@ -56,6 +56,8 @@ struct VocabListsView: View {
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var showingNewList = false
     @State private var showingTrash = false
+    @State private var pendingTrash: [VocabularyList] = []
+    @State private var showingTrashConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -113,6 +115,22 @@ struct VocabListsView: View {
             } message: {
                 Text(vm.errorMessage ?? "")
             }
+            .alert(
+                "Move to Trash".localized(preferredLanguage),
+                isPresented: $showingTrashConfirm,
+                presenting: pendingTrash
+            ) { lists in
+                Button("Move to Trash".localized(preferredLanguage), role: .destructive) {
+                    confirmTrash(lists)
+                }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) { pendingTrash = [] }
+            } message: { lists in
+                if lists.count == 1 {
+                    Text("“\(lists[0].name)” will be moved to the Trash.")
+                } else {
+                    Text("The selected lists will be moved to the Trash.")
+                }
+            }
         }
     }
 
@@ -156,11 +174,17 @@ struct VocabListsView: View {
     }
 
     private func deleteLists(at offsets: IndexSet) {
-        guard let uid = auth.uid else { return }
-        let toTrash = offsets.map { vm.lists[$0] }
+        // Confirm before removing: stash the lists and ask the user first.
+        pendingTrash = offsets.map { vm.lists[$0] }
+        showingTrashConfirm = true
+    }
+
+    private func confirmTrash(_ lists: [VocabularyList]) {
+        guard let uid = auth.uid else { pendingTrash = []; return }
         Task {
-            for list in toTrash { await vm.trash(uid: uid, list: list) }
+            for list in lists { await vm.trash(uid: uid, list: list) }
         }
+        pendingTrash = []
     }
 }
 
@@ -327,8 +351,9 @@ struct TrashView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Done")
+                        Image(systemName: "checkmark")
                     }
+                    .accessibilityLabel(Text("Done"))
                 }
             }
             .task(id: auth.uid) {
