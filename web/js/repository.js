@@ -115,26 +115,50 @@ export async function isValidInvitationCode(code) {
 
 // MARK: - Lists
 
+/** A stable per-list identifier: a 64-character SHA-256 hex string (letters and
+ *  numbers only), independent of the Firestore document ID. */
+async function generateListPublicId() {
+  const seed = crypto.getRandomValues(new Uint8Array(32));
+  const digest = await crypto.subtle.digest("SHA-256", seed);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Ensures each list has a `publicId`, generating and persisting one for any
+ *  that predate the field. Best-effort: a failed write won't break the read. */
+async function backfillPublicIds(uid, lists) {
+  for (const list of lists) {
+    if (list.publicId) continue;
+    const publicId = await generateListPublicId();
+    list.publicId = publicId;
+    try { await updateDoc(doc(listsRef(uid), list.id), { publicId }); } catch {}
+  }
+}
+
 /** Active (non-trashed) lists, newest first. Trashed lists carry a `deletedAt`
  *  timestamp and are filtered out here — see `fetchTrashedLists`. */
 export async function fetchLists(uid) {
   const snap = await getDocs(query(listsRef(uid), orderBy("createdAt", "desc")));
-  return snap.docs
+  const lists = snap.docs
     .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
     .filter((list) => !list.deletedAt);
+  await backfillPublicIds(uid, lists);
+  return lists;
 }
 
 /** Lists currently in the trash, most recently deleted first. */
 export async function fetchTrashedLists(uid) {
   const snap = await getDocs(listsRef(uid));
-  return snap.docs
+  const lists = snap.docs
     .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
     .filter((list) => list.deletedAt)
     .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
+  await backfillPublicIds(uid, lists);
+  return lists;
 }
 
 export async function createList(uid, name, learningLanguage, originalLanguage) {
-  const list = { name, createdAt: new Date(), wordCount: 0, learningLanguage, originalLanguage };
+  const publicId = await generateListPublicId();
+  const list = { name, createdAt: new Date(), wordCount: 0, learningLanguage, originalLanguage, publicId };
   const ref = await addDoc(listsRef(uid), list);
   return ref.id;
 }

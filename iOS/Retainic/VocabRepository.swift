@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 import FirebaseFirestore
 import FirebaseStorage
 
@@ -83,24 +84,46 @@ enum VocabRepository {
 
     // MARK: - Lists
 
+    /// A stable per-list identifier: a 64-character SHA-256 hex string (letters
+    /// and numbers only), independent of the Firestore document ID.
+    static func generateListPublicId() -> String {
+        let seed = Data((0..<32).map { _ in UInt8.random(in: 0...255) })
+        return SHA256.hash(data: seed).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Ensures each list has a `publicId`, generating and persisting one for any
+    /// that predate the field. Best-effort: a failed write won't break the read.
+    private static func backfillPublicIds(uid: String, lists: inout [VocabularyList]) async {
+        for i in lists.indices where (lists[i].publicId?.isEmpty ?? true) {
+            guard let id = lists[i].id else { continue }
+            let publicId = generateListPublicId()
+            lists[i].publicId = publicId
+            try? await listsRef(uid).document(id).updateData(["publicId": publicId])
+        }
+    }
+
     /// Active (non-trashed) lists, newest first. Trashed lists carry a
     /// `deletedAt` timestamp and are filtered out here — see `fetchTrashedLists`.
     static func fetchLists(uid: String) async throws -> [VocabularyList] {
         let snapshot = try await listsRef(uid)
             .order(by: "createdAt", descending: true)
             .getDocuments()
-        return snapshot.documents
+        var lists = snapshot.documents
             .compactMap { try? $0.data(as: VocabularyList.self) }
             .filter { $0.deletedAt == nil }
+        await backfillPublicIds(uid: uid, lists: &lists)
+        return lists
     }
 
     /// Lists currently in the trash, most recently deleted first.
     static func fetchTrashedLists(uid: String) async throws -> [VocabularyList] {
         let snapshot = try await listsRef(uid).getDocuments()
-        return snapshot.documents
+        var lists = snapshot.documents
             .compactMap { try? $0.data(as: VocabularyList.self) }
             .filter { $0.deletedAt != nil }
             .sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
+        await backfillPublicIds(uid: uid, lists: &lists)
+        return lists
     }
 
     @discardableResult
@@ -115,7 +138,8 @@ enum VocabRepository {
             createdAt: Date(),
             wordCount: 0,
             learningLanguage: learningLanguage,
-            originalLanguage: originalLanguage
+            originalLanguage: originalLanguage,
+            publicId: generateListPublicId()
         )
         let ref = try listsRef(uid).addDocument(from: list)
         return ref.documentID

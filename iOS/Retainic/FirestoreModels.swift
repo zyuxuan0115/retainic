@@ -35,6 +35,10 @@ struct VocabularyList: Codable, Identifiable {
     /// When the list was moved to the trash, or nil if it's active. Trashed
     /// lists are hidden from the main list and kept until restored or purged.
     var deletedAt: Date?
+    /// A stable per-list identifier: a 64-character SHA-256 hex string (letters
+    /// and numbers only), independent of the Firestore document ID. Optional so
+    /// older documents still decode; backfilled on fetch.
+    var publicId: String?
 
     init(
         id: String? = nil,
@@ -43,7 +47,8 @@ struct VocabularyList: Codable, Identifiable {
         wordCount: Int,
         learningLanguage: String? = nil,
         originalLanguage: String? = nil,
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        publicId: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -52,6 +57,7 @@ struct VocabularyList: Codable, Identifiable {
         self.learningLanguage = learningLanguage
         self.originalLanguage = originalLanguage
         self.deletedAt = deletedAt
+        self.publicId = publicId
     }
 }
 
