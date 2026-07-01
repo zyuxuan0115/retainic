@@ -23,8 +23,11 @@ const POS_LABELS = {
 };
 
 export function posLabel(raw, code = "en") {
+  // Normalize case so legacy/mixed-case stored values (e.g. "Noun") still match
+  // the lowercase keys and localize, rather than falling back to English.
+  const key = String(raw).toLowerCase();
   const table = POS_LABELS[code] || POS_LABELS.en;
-  return table[raw] || (raw.charAt(0).toUpperCase() + raw.slice(1));
+  return table[key] || (key.charAt(0).toUpperCase() + key.slice(1));
 }
 
 // MARK: - Spaced-repetition schedules
@@ -65,10 +68,15 @@ function isDue(count, last, gaps, now) {
 
 /** Selected parts of speech, reading the array field then the legacy single. */
 export function partOfSpeechValues(word) {
+  // Normalize to lowercase keys so display, filtering, and the edit-sheet
+  // checkbox matching all work regardless of how the value was stored.
   if (Array.isArray(word.partsOfSpeech) && word.partsOfSpeech.length) {
-    return word.partsOfSpeech.filter((p) => p && p !== "unspecified");
+    return word.partsOfSpeech.map((p) => String(p).toLowerCase()).filter((p) => p && p !== "unspecified");
   }
-  if (word.partOfSpeech && word.partOfSpeech !== "unspecified") return [word.partOfSpeech];
+  if (word.partOfSpeech) {
+    const single = String(word.partOfSpeech).toLowerCase();
+    if (single !== "unspecified") return [single];
+  }
   return [];
 }
 
