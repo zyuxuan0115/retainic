@@ -248,6 +248,41 @@ export default {
   "ja": "このリストの単語を .csv ファイルとして保存します。",
   "ko": "이 목록의 단어를 .csv 파일로 저장합니다."
  },
+ "Share List": {
+  "en": "Share List",
+  "es": "Compartir lista",
+  "zh": "分享列表",
+  "ja": "リストを共有",
+  "ko": "목록 공유"
+ },
+ "Copies this list's unique ID so others can recreate it.": {
+  "en": "Copies this list's unique ID so others can recreate it.",
+  "es": "Copia el ID único de esta lista para que otros puedan recrearla.",
+  "zh": "复制此列表的唯一 ID，以便他人重新创建它。",
+  "ja": "このリストの一意のIDをコピーし、他の人が同じリストを再作成できるようにします。",
+  "ko": "이 목록의 고유 ID를 복사하여 다른 사람이 동일하게 만들 수 있도록 합니다."
+ },
+ "Unique ID copied to clipboard. Share it with others so they can create the exact same wordlist.": {
+  "en": "Unique ID copied to clipboard. Share it with others so they can create the exact same wordlist.",
+  "es": "ID único copiado al portapapeles. Compártelo con otros para que puedan crear exactamente la misma lista de palabras.",
+  "zh": "唯一 ID 已复制到剪贴板。将它分享给他人，他们就能创建完全相同的单词列表。",
+  "ja": "一意のIDをクリップボードにコピーしました。他の人と共有すると、まったく同じ単語リストを作成できます。",
+  "ko": "고유 ID가 클립보드에 복사되었습니다. 다른 사람과 공유하면 완전히 동일한 단어 목록을 만들 수 있습니다."
+ },
+ "This list isn't ready to share yet. Reopen it and try again.": {
+  "en": "This list isn't ready to share yet. Reopen it and try again.",
+  "es": "Esta lista aún no está lista para compartir. Vuelve a abrirla e inténtalo de nuevo.",
+  "zh": "此列表尚不能分享。请重新打开后再试。",
+  "ja": "このリストはまだ共有できません。開き直してからもう一度お試しください。",
+  "ko": "이 목록은 아직 공유할 수 없습니다. 다시 연 후 다시 시도하세요."
+ },
+ "Couldn't copy automatically. Your list's unique ID is:": {
+  "en": "Couldn't copy automatically. Your list's unique ID is:",
+  "es": "No se pudo copiar automáticamente. El ID único de tu lista es:",
+  "zh": "无法自动复制。你的列表唯一 ID 为：",
+  "ja": "自動でコピーできませんでした。リストの一意のIDは次のとおりです：",
+  "ko": "자동으로 복사하지 못했습니다. 목록의 고유 ID는 다음과 같습니다:"
+ },
  "Reading": {
   "en": "Reading",
   "es": "Lectura",

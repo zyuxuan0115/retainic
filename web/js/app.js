@@ -311,6 +311,38 @@ async function downloadListCSV(list) {
   triggerDownload(blob, `${safeName}.csv`);
 }
 
+// MARK: - Share
+
+/** Copies text to the clipboard, with a fallback for insecure contexts and
+ *  older browsers. Resolves to whether the copy succeeded. */
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = el("textarea", { value: text, style: "position:fixed;top:-1000px;opacity:0;" });
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch { return false; }
+}
+
+/** Copies a list's unique ID to the clipboard so it can be shared with others. */
+async function shareListId(list) {
+  const id = list.publicId;
+  if (!id) { toast(t("This list isn't ready to share yet. Reopen it and try again.")); return; }
+  const ok = await copyToClipboard(id);
+  toast(ok
+    ? t("Unique ID copied to clipboard. Share it with others so they can create the exact same wordlist.")
+    : `${t("Couldn't copy automatically. Your list's unique ID is:")} ${id}`);
+}
+
 /** Downloads a Blob under the given filename via a temporary anchor. */
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -603,6 +635,7 @@ async function ListDetailScreen(content, list) {
         renderAll();
       },
       onDownload: () => downloadListCSV(list),
+      onShare: () => shareListId(list),
       onTrash: async () => {
         try { await Repo.trashList(authState.uid, list.id); }
         catch (e) { toast(Auth.friendlyMessage(e)); return; }
@@ -634,7 +667,7 @@ function presentMoveSheet(targets, count, onSelect) {
   });
 }
 
-function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, onDownload, onTrash }) {
+function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, onDownload, onShare, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -655,6 +688,13 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, o
             }, icon("download", 20), t("Download CSV")),
           ),
           el(".form-note", {}, t("Save this list's words as a .csv file."))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action", {
+              onclick: () => onShare(),
+            }, icon("share", 20), t("Share List")),
+          ),
+          el(".form-note", {}, t("Copies this list's unique ID so others can recreate it."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action.danger", {
