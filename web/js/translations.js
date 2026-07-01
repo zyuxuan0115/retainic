@@ -255,6 +255,69 @@ export default {
   "ja": "リストを共有",
   "ko": "목록 공유"
  },
+ "Create new": {
+  "en": "Create new",
+  "es": "Crear nueva",
+  "zh": "新建",
+  "ja": "新規作成",
+  "ko": "새로 만들기"
+ },
+ "Import by ID": {
+  "en": "Import by ID",
+  "es": "Importar por ID",
+  "zh": "通过 ID 导入",
+  "ja": "IDでインポート",
+  "ko": "ID로 가져오기"
+ },
+ "Import": {
+  "en": "Import",
+  "es": "Importar",
+  "zh": "导入",
+  "ja": "インポート",
+  "ko": "가져오기"
+ },
+ "Unique ID": {
+  "en": "Unique ID",
+  "es": "ID único",
+  "zh": "唯一 ID",
+  "ja": "一意のID",
+  "ko": "고유 ID"
+ },
+ "Paste the unique ID": {
+  "en": "Paste the unique ID",
+  "es": "Pega el ID único",
+  "zh": "粘贴唯一 ID",
+  "ja": "一意のIDを貼り付け",
+  "ko": "고유 ID 붙여넣기"
+ },
+ "Enter the unique ID someone shared with you to add a copy of their wordlist.": {
+  "en": "Enter the unique ID someone shared with you to add a copy of their wordlist.",
+  "es": "Introduce el ID único que alguien compartió contigo para añadir una copia de su lista de palabras.",
+  "zh": "输入他人分享给你的唯一 ID，即可添加其单词列表的副本。",
+  "ja": "共有された一意のIDを入力すると、その単語リストのコピーを追加できます。",
+  "ko": "누군가 공유한 고유 ID를 입력하면 해당 단어 목록의 사본을 추가합니다."
+ },
+ "No wordlist found for that ID. Check it and try again.": {
+  "en": "No wordlist found for that ID. Check it and try again.",
+  "es": "No se encontró ninguna lista con ese ID. Verifícalo e inténtalo de nuevo.",
+  "zh": "找不到该 ID 对应的单词列表。请检查后重试。",
+  "ja": "そのIDに一致する単語リストが見つかりません。確認してもう一度お試しください。",
+  "ko": "해당 ID의 단어 목록을 찾을 수 없습니다. 확인 후 다시 시도하세요."
+ },
+ "Imported list": {
+  "en": "Imported list",
+  "es": "Lista importada",
+  "zh": "导入的列表",
+  "ja": "インポートしたリスト",
+  "ko": "가져온 목록"
+ },
+ "Imported “%@” with %lld words.": {
+  "en": "Imported “%@” with %lld words.",
+  "es": "Se importó “%@” con %lld palabras.",
+  "zh": "已导入“%@”，共 %lld 个单词。",
+  "ja": "「%@」を %lld 語でインポートしました。",
+  "ko": "“%@”을(를) %lld개 단어와 함께 가져왔습니다."
+ },
  "Copies this list's unique ID so others can recreate it.": {
   "en": "Copies this list's unique ID so others can recreate it.",
   "es": "Copia el ID único de esta lista para que otros puedan recrearla.",

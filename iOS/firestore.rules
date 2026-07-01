@@ -10,6 +10,17 @@ service cloud.firestore {
       }
     }
 
+    // Cross-user READ access so a signed-in user can import a wordlist shared
+    // with them by its public ID: the collection-group lookup on `publicId`
+    // and the word copy both need to read another account's lists/words.
+    // Writes stay owner-only via the rules above.
+    match /users/{userId}/lists/{listId} {
+      allow read: if request.auth != null;
+      match /words/{wordId} {
+        allow read: if request.auth != null;
+      }
+    }
+
     // Invitation codes used to gate registration. Each code is a document whose
     // ID is the code itself. Anyone may `get` a code they already know (to
     // verify it before signing up), but listing/enumerating and any writes are

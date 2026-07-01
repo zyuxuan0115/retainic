@@ -402,25 +402,74 @@ async function TrashScreen(content) {
 
 function presentNewListSheet(onCreated) {
   presentSheet((api) => {
+    let mode = "create"; // or "import"
+
+    // --- Create form ---
     let learning = "";
     let original = preferredLanguage();
     const name = el("input.field-input", { type: "text", placeholder: t("e.g. Kitchen vocabulary") });
     const learnSel = languageSelect(learning, t("Select…"), (v) => { learning = v; validate(); });
     const origSel = languageSelect(original, t("Select…"), (v) => { original = v; validate(); });
     const footer = el(".form-footer-error");
-    const createBtn = el("button.txt-btn.bold", { onclick: create }, t("Create"));
+    name.addEventListener("input", validate);
+    const createForm = el(".form", {},
+      formSection(t("List name"), el(".form-card", {}, name)),
+      formSection(t("Languages"),
+        el(".form-card", {},
+          pickerRow(t("I'm learning"), learnSel),
+          pickerRow(t("Translated into"), origSel),
+        ), footer),
+    );
+
+    // --- Import form ---
+    const idInput = el("input.field-input", { type: "text", placeholder: t("Paste the unique ID"), autocapitalize: "off", spellcheck: false });
+    const importFooter = el(".form-footer-error");
+    idInput.addEventListener("input", () => { importFooter.textContent = ""; validate(); });
+    const importForm = el(".form", { style: "display:none" },
+      formSection(t("Unique ID"),
+        el(".form-card", {}, idInput),
+        el(".form-note", {}, t("Enter the unique ID someone shared with you to add a copy of their wordlist.")),
+        importFooter),
+    );
+
+    const actionBtn = el("button.txt-btn.bold", { onclick: submit }, t("Create"));
+
+    const segCreate = el("button.seg.active", { onclick: () => setMode("create") }, t("Create new"));
+    const segImport = el("button.seg", { onclick: () => setMode("import") }, t("Import by ID"));
+    const seg = el(".segmented", {}, segCreate, segImport);
+
+    function setMode(m) {
+      if (mode === m) return;
+      mode = m;
+      const creating = m === "create";
+      createForm.style.display = creating ? "" : "none";
+      importForm.style.display = creating ? "none" : "";
+      segCreate.classList.toggle("active", creating);
+      segImport.classList.toggle("active", !creating);
+      actionBtn.textContent = creating ? t("Create") : t("Import");
+      validate();
+    }
 
     function validate() {
-      const same = learning !== "" && learning === original;
-      footer.textContent = same ? t("The two languages must be different.") : "";
-      const ok = name.value.trim() && learning && original && !same;
-      createBtn.disabled = !ok;
-      createBtn.classList.toggle("disabled", !ok);
+      let ok;
+      if (mode === "create") {
+        const same = learning !== "" && learning === original;
+        footer.textContent = same ? t("The two languages must be different.") : "";
+        ok = name.value.trim() && learning && original && !same;
+      } else {
+        ok = idInput.value.trim().length > 0;
+      }
+      actionBtn.disabled = !ok;
+      actionBtn.classList.toggle("disabled", !ok);
     }
-    name.addEventListener("input", validate);
 
-    async function create() {
-      if (createBtn.disabled) return;
+    async function submit() {
+      if (actionBtn.disabled) return;
+      if (mode === "create") await doCreate();
+      else await doImport();
+    }
+
+    async function doCreate() {
       try {
         await Repo.createList(authState.uid, name.value.trim(), learning, original);
         api.close();
@@ -428,17 +477,46 @@ function presentNewListSheet(onCreated) {
       } catch (e) { toast(Auth.friendlyMessage(e)); }
     }
 
+    async function doImport() {
+      const id = idInput.value.trim();
+      actionBtn.disabled = true;
+      actionBtn.classList.add("disabled");
+      try {
+        const shared = await Repo.fetchSharedList(id);
+        if (!shared) {
+          importFooter.textContent = t("No wordlist found for that ID. Check it and try again.");
+          validate();
+          return;
+        }
+        const src = shared.list;
+        const newListId = await Repo.createList(
+          authState.uid, src.name || t("Imported list"), src.learningLanguage || "", src.originalLanguage || "");
+        for (const sw of shared.words) {
+          const w = M.newWord({
+            term: sw.term || "",
+            translation: sw.translation || "",
+            notes: sw.notes || "",
+            partsOfSpeech: M.partOfSpeechValues(sw),
+            hiragana: sw.hiragana || null,
+            pinyin: sw.pinyin || null,
+          });
+          await Repo.addWord(authState.uid, newListId, w);
+        }
+        api.close();
+        onCreated();
+        toast(tf("Imported “%@” with %lld words.", src.name || t("Imported list"), shared.words.length));
+      } catch (e) {
+        importFooter.textContent = Auth.friendlyMessage(e);
+        validate();
+      }
+    }
+
     setTimeout(validate, 0);
     return el(".sheet-content", {},
-      sheetHeader(t("New List"), api, createBtn),
-      el(".form", {},
-        formSection(t("List name"), el(".form-card", {}, name)),
-        formSection(t("Languages"),
-          el(".form-card", {},
-            pickerRow(t("I'm learning"), learnSel),
-            pickerRow(t("Translated into"), origSel),
-          ), footer),
-      ),
+      sheetHeader(t("New List"), api, actionBtn),
+      el(".form", {}, formSection(null, seg)),
+      createForm,
+      importForm,
     );
   });
 }

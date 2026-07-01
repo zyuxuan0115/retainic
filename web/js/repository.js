@@ -14,8 +14,8 @@
 
 import { db, storage } from "./firebase.js";
 import {
-  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, orderBy, limit, increment, Timestamp, deleteField,
+  collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy, limit, increment, Timestamp, deleteField,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -165,6 +165,22 @@ export async function createList(uid, name, learningLanguage, originalLanguage) 
 
 export async function renameList(uid, listId, name) {
   await updateDoc(doc(listsRef(uid), listId), { name });
+}
+
+/** Finds any user's list by its shared `publicId` and returns its metadata and
+ *  words (raw), or null if no list has that ID. Uses a collection-group query,
+ *  so it can read another account's list (the security rules allow cross-user
+ *  reads of lists/words; writes stay owner-only). */
+export async function fetchSharedList(publicId) {
+  const trimmed = (publicId || "").trim();
+  if (!trimmed) return null;
+  const snap = await getDocs(query(collectionGroup(db, "lists"), where("publicId", "==", trimmed), limit(1)));
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const list = { id: d.id, ...fromFirestore(d.data()) };
+  const wordsSnap = await getDocs(collection(d.ref, "words"));
+  const words = wordsSnap.docs.map((w) => ({ id: w.id, ...fromFirestore(w.data()) }));
+  return { list, words };
 }
 
 /** Soft-delete: move a list to the trash by stamping `deletedAt`. Its words and
