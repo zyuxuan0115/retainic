@@ -163,6 +163,7 @@ function Shell() {
     el(".tabbar", {},
       el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
       tabItem("lists", listsGlyph(), t("My Lists")),
+      tabItem("trash", icon("delete", 24), t("Trash")),
       practiceItem(),
       tabItem("stats", chartGlyph(), t("Statistics")),
       tabItem("settings", gearGlyph(), t("Settings")),
@@ -196,9 +197,10 @@ function renderTab(content) {
   if (!(top && top.name === "detail")) setPractice(null);
   if (state.tab === "lists") {
     if (top.name === "lists") ListsScreen(content);
-    else if (top.name === "trash") TrashScreen(content);
     else if (top.name === "detail") ListDetailScreen(content, top.list);
     else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage);
+  } else if (state.tab === "trash") {
+    TrashScreen(content);
   } else if (state.tab === "stats") {
     StatsScreen(content);
   } else if (state.tab === "about") {
@@ -237,7 +239,6 @@ function startCurrentPractice() {
 
 async function ListsScreen(content) {
   content.appendChild(navBar(t("My Lists"), {
-    leading: iconButton(icon("delete", 24), () => navPush({ name: "trash" }), { label: t("Trash") }),
     trailing: iconButton(icon("add", 24), () => presentNewListSheet(reload), { label: t("New List") }),
   }));
   const body = el(".scroll");
@@ -284,9 +285,7 @@ async function ListsScreen(content) {
 // MARK: - Trash screen
 
 async function TrashScreen(content) {
-  content.appendChild(navBar(t("Trash"), {
-    leading: iconButton(icon("arrow_back", 22), () => navPop(), { label: "Back" }),
-  }));
+  content.appendChild(navBar(t("Trash"), {}));
   const body = el(".scroll");
   content.appendChild(body);
   body.appendChild(spinner(t("Loading…")));
