@@ -288,11 +288,17 @@ async function downloadListCSV(list) {
   try { words = await Repo.fetchWords(authState.uid, list.id); }
   catch (e) { toast(Auth.friendlyMessage(e)); return; }
 
-  const rows = [[t("Word"), t("Reading"), t("Translation"), t("Part of speech"), t("Notes")]];
+  // The Reading column (pinyin / hiragana) only applies to Chinese and Japanese.
+  const hasReading = list.learningLanguage === "zh" || list.learningLanguage === "ja";
+  const rows = [[
+    t("Word"),
+    ...(hasReading ? [t("Reading")] : []),
+    t("Translation"), t("Part of speech"), t("Notes"),
+  ]];
   for (const w of words) {
     rows.push([
       w.term || "",
-      M.readingFor(w, list.learningLanguage) || "",
+      ...(hasReading ? [M.readingFor(w, list.learningLanguage) || ""] : []),
       w.translation || "",
       M.partOfSpeechValues(w).map((p) => M.posLabel(p, preferredLanguage())).join("; "),
       w.notes || "",
