@@ -227,6 +227,13 @@ export default {
   "ja": "完全に削除",
   "ko": "영구 삭제"
  },
+ "Delete Word": {
+  "en": "Delete Word",
+  "es": "Eliminar palabra",
+  "zh": "删除单词",
+  "ja": "単語を削除",
+  "ko": "단어 삭제"
+ },
  "Move to Trash": {
   "en": "Move to Trash",
   "es": "Mover a la papelera",

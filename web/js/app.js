@@ -163,8 +163,8 @@ function Shell() {
     el(".tabbar", {},
       el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
       tabItem("lists", listsGlyph(), t("My Lists")),
-      tabItem("trash", icon("delete", 24), t("Trash")),
       practiceItem(),
+      tabItem("trash", icon("delete", 24), t("Trash")),
       tabItem("stats", chartGlyph(), t("Statistics")),
       tabItem("settings", gearGlyph(), t("Settings")),
       tabItem("about", icon("info", 24), t("About")),
@@ -720,6 +720,20 @@ function presentWordSheet({ list, word, onSaved }) {
       }
     }
 
+    function deleteThisWord() {
+      confirmDialog({
+        message: t("Delete this word?"), confirmLabel: t("Delete"), danger: true,
+        onConfirm: async () => {
+          try {
+            recorder.stopPlayback();
+            await Repo.deleteWord(authState.uid, list.id, word.id);
+            api.close();
+            onSaved();
+          } catch (e) { toast(Auth.friendlyMessage(e)); }
+        },
+      });
+    }
+
     setTimeout(validate, 0);
     const learnTitle = displayNameIn(learning) || t("Word");
     const origTitle = displayNameIn(original) || t("Translation");
@@ -734,6 +748,8 @@ function presentWordSheet({ list, word, onSaved }) {
         formSection(t("Part of speech"), posHost, el(".form-note", {}, t("Select all that apply."))),
         formSection(t("Pronunciation (optional)"), pronHost, pronNote),
         formSection(t("Notes (optional)"), el(".form-card", {}, notes)),
+        isEditing ? formSection(null, el(".form-card", {},
+          el("button.form-action.danger", { onclick: deleteThisWord }, icon("delete", 20), t("Delete Word")))) : null,
         errorEl,
       ),
     );
