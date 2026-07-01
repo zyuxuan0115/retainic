@@ -83,11 +83,24 @@ enum VocabRepository {
 
     // MARK: - Lists
 
+    /// Active (non-trashed) lists, newest first. Trashed lists carry a
+    /// `deletedAt` timestamp and are filtered out here — see `fetchTrashedLists`.
     static func fetchLists(uid: String) async throws -> [VocabularyList] {
         let snapshot = try await listsRef(uid)
             .order(by: "createdAt", descending: true)
             .getDocuments()
-        return snapshot.documents.compactMap { try? $0.data(as: VocabularyList.self) }
+        return snapshot.documents
+            .compactMap { try? $0.data(as: VocabularyList.self) }
+            .filter { $0.deletedAt == nil }
+    }
+
+    /// Lists currently in the trash, most recently deleted first.
+    static func fetchTrashedLists(uid: String) async throws -> [VocabularyList] {
+        let snapshot = try await listsRef(uid).getDocuments()
+        return snapshot.documents
+            .compactMap { try? $0.data(as: VocabularyList.self) }
+            .filter { $0.deletedAt != nil }
+            .sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
     }
 
     @discardableResult
@@ -112,7 +125,21 @@ enum VocabRepository {
         try await listsRef(uid).document(listId).updateData(["name": name])
     }
 
-    static func deleteList(uid: String, listId: String) async throws {
+    /// Soft-delete: move a list to the trash by stamping `deletedAt`. Its words
+    /// and audio are left untouched so the list can be restored intact.
+    static func trashList(uid: String, listId: String) async throws {
+        try await listsRef(uid).document(listId)
+            .updateData(["deletedAt": FieldValue.serverTimestamp()])
+    }
+
+    /// Restore a trashed list by clearing its `deletedAt` stamp.
+    static func restoreList(uid: String, listId: String) async throws {
+        try await listsRef(uid).document(listId)
+            .updateData(["deletedAt": FieldValue.delete()])
+    }
+
+    /// Permanently delete a list, its words, and any pronunciation audio.
+    static func purgeList(uid: String, listId: String) async throws {
         // Remove the words subcollection (and any pronunciation audio) first,
         // then the list document.
         let words = try await wordsRef(uid, listId).getDocuments()

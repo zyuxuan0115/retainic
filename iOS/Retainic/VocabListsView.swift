@@ -38,10 +38,10 @@ final class ListsViewModel: ObservableObject {
         }
     }
 
-    func delete(uid: String, list: VocabularyList) async {
+    func trash(uid: String, list: VocabularyList) async {
         guard let id = list.id else { return }
         do {
-            try await VocabRepository.deleteList(uid: uid, listId: id)
+            try await VocabRepository.trashList(uid: uid, listId: id)
             lists.removeAll { $0.id == id }
         } catch {
             errorMessage = error.localizedDescription
@@ -55,6 +55,7 @@ struct VocabListsView: View {
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var showingNewList = false
+    @State private var showingTrash = false
 
     var body: some View {
         NavigationStack {
@@ -69,6 +70,13 @@ struct VocabListsView: View {
             }
             .navigationTitle("My Lists".localized(preferredLanguage))
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingTrash = true
+                    } label: {
+                        Label("Trash", systemImage: "trash")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingNewList = true
@@ -88,6 +96,14 @@ struct VocabListsView: View {
                     createList(name: name, learningLanguage: learning, originalLanguage: original)
                 }
                 .preferredLocale(preferredLanguage)
+            }
+            .sheet(isPresented: $showingTrash, onDismiss: {
+                // A restore puts a list back into the active set, so refresh.
+                if let uid = auth.uid { Task { await vm.load(uid: uid) } }
+            }) {
+                TrashView()
+                    .environmentObject(auth)
+                    .preferredLocale(preferredLanguage)
             }
             .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
                 get: { vm.errorMessage != nil },
@@ -141,9 +157,9 @@ struct VocabListsView: View {
 
     private func deleteLists(at offsets: IndexSet) {
         guard let uid = auth.uid else { return }
-        let toDelete = offsets.map { vm.lists[$0] }
+        let toTrash = offsets.map { vm.lists[$0] }
         Task {
-            for list in toDelete { await vm.delete(uid: uid, list: list) }
+            for list in toTrash { await vm.trash(uid: uid, list: list) }
         }
     }
 }
@@ -241,6 +257,152 @@ private struct ListRow: View {
             }
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Trash
+
+@MainActor
+final class TrashViewModel: ObservableObject {
+    @Published var lists: [VocabularyList] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    func load(uid: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            lists = try await VocabRepository.fetchTrashedLists(uid: uid)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func restore(uid: String, list: VocabularyList) async {
+        guard let id = list.id else { return }
+        do {
+            try await VocabRepository.restoreList(uid: uid, listId: id)
+            lists.removeAll { $0.id == id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func purge(uid: String, list: VocabularyList) async {
+        guard let id = list.id else { return }
+        do {
+            try await VocabRepository.purgeList(uid: uid, listId: id)
+            lists.removeAll { $0.id == id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Lists that have been moved to the trash. Each can be restored (put back into
+/// "My Lists") or permanently deleted.
+struct TrashView: View {
+    @EnvironmentObject private var auth: AuthService
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var vm = TrashViewModel()
+
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
+    @State private var pendingPurge: VocabularyList?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if vm.isLoading && vm.lists.isEmpty {
+                    ProgressView("Loading…")
+                } else if vm.lists.isEmpty {
+                    emptyState
+                } else {
+                    listContent
+                }
+            }
+            .navigationTitle("Trash".localized(preferredLanguage))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Done")
+                    }
+                }
+            }
+            .task(id: auth.uid) {
+                if let uid = auth.uid { await vm.load(uid: uid) }
+            }
+            .refreshable {
+                if let uid = auth.uid { await vm.load(uid: uid) }
+            }
+            .alert(
+                "Delete Forever".localized(preferredLanguage),
+                isPresented: Binding(
+                    get: { pendingPurge != nil },
+                    set: { if !$0 { pendingPurge = nil } }
+                ),
+                presenting: pendingPurge
+            ) { list in
+                Button("Delete Forever".localized(preferredLanguage), role: .destructive) {
+                    purge(list)
+                }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) { pendingPurge = nil }
+            } message: { list in
+                Text("“\(list.name)” will be permanently deleted. This can't be undone.")
+            }
+            .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
+                get: { vm.errorMessage != nil },
+                set: { if !$0 { vm.errorMessage = nil } }
+            )) {
+                Button("OK".localized(preferredLanguage), role: .cancel) { vm.errorMessage = nil }
+            } message: {
+                Text(vm.errorMessage ?? "")
+            }
+        }
+    }
+
+    private var listContent: some View {
+        List {
+            ForEach(vm.lists) { list in
+                ListRow(list: list)
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            restore(list)
+                        } label: {
+                            Label("Restore", systemImage: "arrow.uturn.backward")
+                        }
+                        .tint(.green)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            pendingPurge = list
+                        } label: {
+                            Label("Delete Forever", systemImage: "trash")
+                        }
+                    }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label("Trash is Empty", systemImage: "trash")
+        } description: {
+            Text("Deleted lists are kept here until you restore or permanently delete them.")
+        }
+    }
+
+    private func restore(_ list: VocabularyList) {
+        guard let uid = auth.uid else { return }
+        Task { await vm.restore(uid: uid, list: list) }
+    }
+
+    private func purge(_ list: VocabularyList) {
+        guard let uid = auth.uid else { return }
+        pendingPurge = nil
+        Task { await vm.purge(uid: uid, list: list) }
     }
 }
 

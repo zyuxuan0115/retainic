@@ -196,6 +196,7 @@ function renderTab(content) {
   if (!(top && top.name === "detail")) setPractice(null);
   if (state.tab === "lists") {
     if (top.name === "lists") ListsScreen(content);
+    else if (top.name === "trash") TrashScreen(content);
     else if (top.name === "detail") ListDetailScreen(content, top.list);
     else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage);
   } else if (state.tab === "stats") {
@@ -236,6 +237,7 @@ function startCurrentPractice() {
 
 async function ListsScreen(content) {
   content.appendChild(navBar(t("My Lists"), {
+    leading: iconButton(icon("delete", 24), () => navPush({ name: "trash" }), { label: t("Trash") }),
     trailing: iconButton(icon("add", 24), () => presentNewListSheet(reload), { label: t("New List") }),
   }));
   const body = el(".scroll");
@@ -264,14 +266,63 @@ async function ListsScreen(content) {
         iconButton(icon("delete", 22), (e) => {
           e.stopPropagation();
           confirmDialog({
-            message: `${t("Delete")} “${list.name}”?`, confirmLabel: t("Delete"), danger: true,
+            message: `${t("Move to Trash")} “${list.name}”?`, confirmLabel: t("Move to Trash"), danger: true,
             onConfirm: async () => {
-              try { await Repo.deleteList(authState.uid, list.id); reload(); }
+              try { await Repo.trashList(authState.uid, list.id); reload(); }
               catch (err) { toast(Auth.friendlyMessage(err)); }
             },
           });
-        }, { label: t("Delete"), danger: true }),
+        }, { label: t("Move to Trash"), danger: true }),
         el(".row-chevron", {}, icon("chevron_right", 22)),
+      ));
+    }
+    body.appendChild(listEl);
+  }
+  reload();
+}
+
+// MARK: - Trash screen
+
+async function TrashScreen(content) {
+  content.appendChild(navBar(t("Trash"), {
+    leading: iconButton(icon("arrow_back", 22), () => navPop(), { label: "Back" }),
+  }));
+  const body = el(".scroll");
+  content.appendChild(body);
+  body.appendChild(spinner(t("Loading…")));
+
+  async function reload() {
+    let lists = [];
+    try { lists = await Repo.fetchTrashedLists(authState.uid); }
+    catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+    clear(body);
+    if (lists.length === 0) {
+      body.appendChild(emptyState(icon("delete", 46), t("Trash is Empty"),
+        t("Deleted lists are kept here until you restore or permanently delete them.")));
+      return;
+    }
+    const listEl = el(".list");
+    for (const list of lists) {
+      listEl.appendChild(el(".row", {},
+        el(".row-lead", {}, rectStackGlyph()),
+        el(".row-main", {},
+          el(".row-title", {}, list.name),
+          el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
+        ),
+        iconButton(icon("restore_from_trash", 22), async () => {
+          try { await Repo.restoreList(authState.uid, list.id); reload(); }
+          catch (err) { toast(Auth.friendlyMessage(err)); }
+        }, { label: t("Restore") }),
+        iconButton(icon("delete_forever", 22), () => {
+          confirmDialog({
+            message: `${t("Delete Forever")} “${list.name}”? ${t("This can't be undone.")}`,
+            confirmLabel: t("Delete Forever"), danger: true,
+            onConfirm: async () => {
+              try { await Repo.purgeList(authState.uid, list.id); reload(); }
+              catch (err) { toast(Auth.friendlyMessage(err)); }
+            },
+          });
+        }, { label: t("Delete Forever"), danger: true }),
       ));
     }
     body.appendChild(listEl);

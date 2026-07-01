@@ -15,7 +15,7 @@
 import { db, storage } from "./firebase.js";
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, orderBy, limit, increment, Timestamp,
+  query, orderBy, limit, increment, Timestamp, deleteField,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -115,9 +115,22 @@ export async function isValidInvitationCode(code) {
 
 // MARK: - Lists
 
+/** Active (non-trashed) lists, newest first. Trashed lists carry a `deletedAt`
+ *  timestamp and are filtered out here — see `fetchTrashedLists`. */
 export async function fetchLists(uid) {
   const snap = await getDocs(query(listsRef(uid), orderBy("createdAt", "desc")));
-  return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
+    .filter((list) => !list.deletedAt);
+}
+
+/** Lists currently in the trash, most recently deleted first. */
+export async function fetchTrashedLists(uid) {
+  const snap = await getDocs(listsRef(uid));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
+    .filter((list) => list.deletedAt)
+    .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
 }
 
 export async function createList(uid, name, learningLanguage, originalLanguage) {
@@ -130,7 +143,19 @@ export async function renameList(uid, listId, name) {
   await updateDoc(doc(listsRef(uid), listId), { name });
 }
 
-export async function deleteList(uid, listId) {
+/** Soft-delete: move a list to the trash by stamping `deletedAt`. Its words and
+ *  audio are left untouched so the list can be restored intact. */
+export async function trashList(uid, listId) {
+  await updateDoc(doc(listsRef(uid), listId), { deletedAt: new Date() });
+}
+
+/** Restore a trashed list by clearing its `deletedAt` stamp. */
+export async function restoreList(uid, listId) {
+  await updateDoc(doc(listsRef(uid), listId), { deletedAt: deleteField() });
+}
+
+/** Permanently delete a list, its words, and any pronunciation audio. */
+export async function purgeList(uid, listId) {
   const words = await getDocs(wordsRef(uid, listId));
   for (const d of words.docs) {
     await deleteAudio(audioStoragePath(uid, listId, d.id));

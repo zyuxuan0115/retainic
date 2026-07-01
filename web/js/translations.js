@@ -220,6 +220,55 @@ export default {
   "ja": "削除",
   "ko": "삭제"
  },
+ "Delete Forever": {
+  "en": "Delete Forever",
+  "es": "Eliminar definitivamente",
+  "zh": "永久删除",
+  "ja": "完全に削除",
+  "ko": "영구 삭제"
+ },
+ "Move to Trash": {
+  "en": "Move to Trash",
+  "es": "Mover a la papelera",
+  "zh": "移到回收站",
+  "ja": "ゴミ箱に移動",
+  "ko": "휴지통으로 이동"
+ },
+ "Restore": {
+  "en": "Restore",
+  "es": "Restaurar",
+  "zh": "恢复",
+  "ja": "復元",
+  "ko": "복원"
+ },
+ "Trash": {
+  "en": "Trash",
+  "es": "Papelera",
+  "zh": "回收站",
+  "ja": "ゴミ箱",
+  "ko": "휴지통"
+ },
+ "Trash is Empty": {
+  "en": "Trash is Empty",
+  "es": "La papelera está vacía",
+  "zh": "回收站是空的",
+  "ja": "ゴミ箱は空です",
+  "ko": "휴지통이 비어 있습니다"
+ },
+ "Deleted lists are kept here until you restore or permanently delete them.": {
+  "en": "Deleted lists are kept here until you restore or permanently delete them.",
+  "es": "Las listas eliminadas se guardan aquí hasta que las restaures o las elimines definitivamente.",
+  "zh": "删除的列表会保留在这里，直到你恢复或永久删除它们。",
+  "ja": "削除したリストは、復元または完全に削除するまでここに保管されます。",
+  "ko": "삭제된 목록은 복원하거나 영구적으로 삭제할 때까지 여기에 보관됩니다."
+ },
+ "This can't be undone.": {
+  "en": "This can't be undone.",
+  "es": "Esta acción no se puede deshacer.",
+  "zh": "此操作无法撤销。",
+  "ja": "この操作は取り消せません。",
+  "ko": "이 작업은 취소할 수 없습니다."
+ },
  "Delete Recording": {
   "en": "Delete Recording",
   "es": "Eliminar grabación",

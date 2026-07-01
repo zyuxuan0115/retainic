@@ -32,6 +32,9 @@ struct VocabularyList: Codable, Identifiable {
     /// Language the words are translated into (the `translation` side).
     /// Optional so older documents still decode.
     var originalLanguage: String?
+    /// When the list was moved to the trash, or nil if it's active. Trashed
+    /// lists are hidden from the main list and kept until restored or purged.
+    var deletedAt: Date?
 
     init(
         id: String? = nil,
@@ -39,7 +42,8 @@ struct VocabularyList: Codable, Identifiable {
         createdAt: Date,
         wordCount: Int,
         learningLanguage: String? = nil,
-        originalLanguage: String? = nil
+        originalLanguage: String? = nil,
+        deletedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -47,6 +51,7 @@ struct VocabularyList: Codable, Identifiable {
         self.wordCount = wordCount
         self.learningLanguage = learningLanguage
         self.originalLanguage = originalLanguage
+        self.deletedAt = deletedAt
     }
 }
 
