@@ -241,6 +241,13 @@ export default {
   "ja": "CSVをダウンロード",
   "ko": "CSV 다운로드"
  },
+ "Save this list's words as a .csv file.": {
+  "en": "Save this list's words as a .csv file.",
+  "es": "Guarda las palabras de esta lista como un archivo .csv.",
+  "zh": "将此列表的单词保存为 .csv 文件。",
+  "ja": "このリストの単語を .csv ファイルとして保存します。",
+  "ko": "이 목록의 단어를 .csv 파일로 저장합니다."
+ },
  "Reading": {
   "en": "Reading",
   "es": "Lectura",

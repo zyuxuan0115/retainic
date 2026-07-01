@@ -264,20 +264,6 @@ async function ListsScreen(content) {
           el(".row-title", {}, list.name),
           el(".row-sub", {}, tn("%lld words", list.wordCount ?? 0)),
         ),
-        iconButton(icon("download", 22), (e) => {
-          e.stopPropagation();
-          downloadListCSV(list);
-        }, { label: t("Download CSV") }),
-        iconButton(icon("delete", 22), (e) => {
-          e.stopPropagation();
-          confirmDialog({
-            message: `${t("Move to Trash")} “${list.name}”?`, confirmLabel: t("Move to Trash"), danger: true,
-            onConfirm: async () => {
-              try { await Repo.trashList(authState.uid, list.id); reload(); }
-              catch (err) { toast(Auth.friendlyMessage(err)); }
-            },
-          });
-        }, { label: t("Move to Trash"), danger: true }),
         el(".row-chevron", {}, icon("chevron_right", 22)),
       ));
     }
@@ -610,6 +596,13 @@ async function ListDetailScreen(content, list) {
         } catch (e) { toast(Auth.friendlyMessage(e)); }
         renderAll();
       },
+      onDownload: () => downloadListCSV(list),
+      onTrash: async () => {
+        try { await Repo.trashList(authState.uid, list.id); }
+        catch (e) { toast(Auth.friendlyMessage(e)); return; }
+        // The list is gone from the active set; return to the list overview.
+        navPop();
+      },
     });
   }
 
@@ -635,7 +628,7 @@ function presentMoveSheet(targets, count, onSelect) {
   });
 }
 
-function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset }) {
+function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, onDownload, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -651,6 +644,13 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset })
         formSection(t("Show words"), el(".form-card", {}, pickerRow(t("Show words"), filterSel))),
         formSection(null,
           el(".form-card", {},
+            el("button.form-action", {
+              onclick: () => { onDownload(); api.close(); },
+            }, icon("download", 20), t("Download CSV")),
+          ),
+          el(".form-note", {}, t("Save this list's words as a .csv file."))),
+        formSection(null,
+          el(".form-card", {},
             el("button.form-action.danger", {
               onclick: () => confirmDialog({
                 message: t("Mark all words as not remembered?"),
@@ -660,6 +660,15 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset })
             }, icon("replay", 20), t("Mark all as not remembered")),
           ),
           el(".form-note", {}, t("Every word in this list will show up again in practice for all methods."))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action.danger", {
+              onclick: () => confirmDialog({
+                message: `${t("Move to Trash")} “${name}”?`, confirmLabel: t("Move to Trash"), danger: true,
+                onConfirm: () => { api.close(); onTrash(); },
+              }),
+            }, icon("delete", 20), t("Move to Trash")),
+          )),
       ),
     );
   });
