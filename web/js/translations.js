@@ -325,6 +325,13 @@ export default {
   "ja": "インポートに成功しました",
   "ko": "가져오기 성공"
  },
+ "Adding…": {
+  "en": "Adding…",
+  "es": "Añadiendo…",
+  "zh": "正在添加…",
+  "ja": "追加中…",
+  "ko": "추가 중…"
+ },
  "Found a wordlist with %lld words. Name your copy below.": {
   "en": "Found a wordlist with %lld words. Name your copy below.",
   "es": "Se encontró una lista con %lld palabras. Ponle nombre a tu copia abajo.",

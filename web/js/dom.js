@@ -58,13 +58,17 @@ export function svgEl(tag, attrs = {}, ...children) {
 export function presentSheet(contentBuilder, { variant = "" } = {}) {
   const overlay = el(".sheet-overlay" + (variant ? "." + variant : ""));
   const sheet = el(".sheet");
+  let dismissible = true;
   const api = {
     close() {
       overlay.classList.add("closing");
       setTimeout(() => overlay.remove(), 180);
     },
+    // Toggle whether a click outside the sheet dismisses it (e.g. disabled while
+    // a non-interruptible operation runs). `close()` still works programmatically.
+    setDismissible(value) { dismissible = value; },
   };
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) api.close(); });
+  overlay.addEventListener("click", (e) => { if (e.target === overlay && dismissible) api.close(); });
   sheet.appendChild(contentBuilder(api));
   overlay.appendChild(sheet);
   document.body.appendChild(overlay);

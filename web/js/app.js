@@ -518,17 +518,31 @@ function presentImportNameSheet(shared, onCreated) {
     const footer = el(".form-footer-error");
     nameInput.addEventListener("input", validate);
     const addBtn = el("button.txt-btn.bold", { onclick: finish }, t("Add"));
+    const cancelBtn = textButton(t("Cancel"), () => api.close());
 
     function validate() {
+      if (importing) return;
       const ok = nameInput.value.trim().length > 0;
       addBtn.disabled = !ok;
       addBtn.classList.toggle("disabled", !ok);
     }
 
+    // While the copy runs, lock the panel: no outside-click dismiss, no Cancel,
+    // and a disabled Add button — so the import can't be interrupted midway.
+    let importing = false;
+    function setLocked(locked) {
+      importing = locked;
+      api.setDismissible(!locked);
+      cancelBtn.disabled = locked;
+      cancelBtn.classList.toggle("disabled", locked);
+      addBtn.disabled = locked;
+      addBtn.classList.toggle("disabled", locked);
+    }
+
     async function finish() {
       if (addBtn.disabled) return;
-      addBtn.disabled = true;
-      addBtn.classList.add("disabled");
+      setLocked(true);
+      addBtn.textContent = t("Adding…");
       const finalName = nameInput.value.trim() || src.name || t("Imported list");
       try {
         const newListId = await Repo.createList(
@@ -549,14 +563,19 @@ function presentImportNameSheet(shared, onCreated) {
         toast(tf("Imported “%@” with %lld words.", finalName, shared.words.length));
       } catch (e) {
         footer.textContent = Auth.friendlyMessage(e);
-        addBtn.disabled = false;
-        addBtn.classList.remove("disabled");
+        addBtn.textContent = t("Add");
+        setLocked(false);
+        validate();
       }
     }
 
     setTimeout(validate, 0);
     return el(".sheet-content", {},
-      sheetHeader(t("New List"), api, addBtn),
+      el(".sheet-header", {},
+        el(".sheet-side", {}, cancelBtn),
+        el(".sheet-title", {}, t("New List")),
+        el(".sheet-side.trailing", {}, addBtn),
+      ),
       el(".form", {},
         el(".center-state", {},
           el(".empty-icon", {}, icon("check_circle", 44)),
