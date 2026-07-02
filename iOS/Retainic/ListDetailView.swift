@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 /// Filters which words are shown in a list.
 enum WordFilter: String, CaseIterable, Identifiable {
@@ -205,6 +206,7 @@ struct ListDetailView: View {
             ListSettingsSheet(
                 name: listName,
                 filter: $wordFilter,
+                publicId: list.publicId,
                 onSave: { renameList(to: $0) },
                 onResetMemory: { resetMemory() }
             )
@@ -426,12 +428,15 @@ private struct ListSettingsSheet: View {
     @State private var name: String
     @Binding private var filter: WordFilter
     @State private var showingResetConfirm = false
+    @State private var showingShareConfirm = false
+    let publicId: String?
     let onSave: (String) -> Void
     let onResetMemory: () -> Void
 
-    init(name: String, filter: Binding<WordFilter>, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
+    init(name: String, filter: Binding<WordFilter>, publicId: String?, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
         _name = State(initialValue: name)
         _filter = filter
+        self.publicId = publicId
         self.onSave = onSave
         self.onResetMemory = onResetMemory
     }
@@ -453,6 +458,17 @@ private struct ListSettingsSheet: View {
                 }
 
                 Section {
+                    Button {
+                        shareUniqueId()
+                    } label: {
+                        Label("Share List", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled((publicId ?? "").isEmpty)
+                } footer: {
+                    Text("Copies this list's unique ID so others can recreate it.")
+                }
+
+                Section {
                     Button(role: .destructive) {
                         showingResetConfirm = true
                     } label: {
@@ -464,6 +480,11 @@ private struct ListSettingsSheet: View {
             }
             .navigationTitle("List Settings".localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
+            .alert("Unique ID copied".localized(preferredLanguage), isPresented: $showingShareConfirm) {
+                Button("OK".localized(preferredLanguage), role: .cancel) {}
+            } message: {
+                Text("Share it with others so they can create the exact same wordlist.")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -488,6 +509,13 @@ private struct ListSettingsSheet: View {
                 Button("Cancel".localized(preferredLanguage), role: .cancel) {}
             }
         }
+    }
+
+    /// Copies the list's unique ID to the clipboard so it can be shared.
+    private func shareUniqueId() {
+        guard let id = publicId, !id.isEmpty else { return }
+        UIPasteboard.general.string = id
+        showingShareConfirm = true
     }
 }
 

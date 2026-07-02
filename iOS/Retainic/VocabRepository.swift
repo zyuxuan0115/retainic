@@ -149,6 +149,24 @@ enum VocabRepository {
         try await listsRef(uid).document(listId).updateData(["name": name])
     }
 
+    /// Finds any user's list by its shared `publicId` and returns its metadata
+    /// and words, or nil if no list has that ID. Uses a collection-group query,
+    /// so it can read another account's list (the security rules allow cross-user
+    /// reads of lists/words; writes stay owner-only).
+    static func fetchSharedList(publicId: String) async throws -> SharedList? {
+        let trimmed = publicId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let snapshot = try await db.collectionGroup("lists")
+            .whereField("publicId", isEqualTo: trimmed)
+            .limit(to: 1)
+            .getDocuments()
+        guard let doc = snapshot.documents.first,
+              let list = try? doc.data(as: VocabularyList.self) else { return nil }
+        let wordsSnapshot = try await doc.reference.collection("words").getDocuments()
+        let words = wordsSnapshot.documents.compactMap { try? $0.data(as: VocabWord.self) }
+        return SharedList(list: list, words: words)
+    }
+
     /// Soft-delete: move a list to the trash by stamping `deletedAt`. Its words
     /// and audio are left untouched so the list can be restored intact.
     static func trashList(uid: String, listId: String) async throws {

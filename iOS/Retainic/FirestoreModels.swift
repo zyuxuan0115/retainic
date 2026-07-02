@@ -61,6 +61,13 @@ struct VocabularyList: Codable, Identifiable {
     }
 }
 
+/// A list found by its shared `publicId`, together with its words — the payload
+/// for importing another person's wordlist by ID.
+struct SharedList {
+    let list: VocabularyList
+    let words: [VocabWord]
+}
+
 /// Memory stats for one aspect of a word (translation, pronunciation, or
 /// spelling): how many times it was tested, how many times it was recalled
 /// correctly, and when it was last recalled correctly.
