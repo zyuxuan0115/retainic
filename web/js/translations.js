@@ -311,6 +311,27 @@ export default {
   "ja": "インポートしたリスト",
   "ko": "가져온 목록"
  },
+ "Add": {
+  "en": "Add",
+  "es": "Añadir",
+  "zh": "添加",
+  "ja": "追加",
+  "ko": "추가"
+ },
+ "Import successful": {
+  "en": "Import successful",
+  "es": "Importación correcta",
+  "zh": "导入成功",
+  "ja": "インポートに成功しました",
+  "ko": "가져오기 성공"
+ },
+ "Found a wordlist with %lld words. Name your copy below.": {
+  "en": "Found a wordlist with %lld words. Name your copy below.",
+  "es": "Se encontró una lista con %lld palabras. Ponle nombre a tu copia abajo.",
+  "zh": "找到一个包含 %lld 个单词的列表。请在下方为你的副本命名。",
+  "ja": "%lld 語の単語リストが見つかりました。下でコピーに名前を付けてください。",
+  "ko": "%lld개 단어의 목록을 찾았습니다. 아래에서 사본의 이름을 지정하세요."
+ },
  "Imported “%@” with %lld words.": {
   "en": "Imported “%@” with %lld words.",
   "es": "Se importó “%@” con %lld palabras.",

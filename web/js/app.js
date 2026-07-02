@@ -466,7 +466,7 @@ function presentNewListSheet(onCreated) {
     async function submit() {
       if (actionBtn.disabled) return;
       if (mode === "create") await doCreate();
-      else await doImport();
+      else await doLookup();
     }
 
     async function doCreate() {
@@ -477,20 +477,62 @@ function presentNewListSheet(onCreated) {
       } catch (e) { toast(Auth.friendlyMessage(e)); }
     }
 
-    async function doImport() {
+    async function doLookup() {
       const id = idInput.value.trim();
       actionBtn.disabled = true;
       actionBtn.classList.add("disabled");
+      actionBtn.textContent = t("Loading…");
       try {
         const shared = await Repo.fetchSharedList(id);
         if (!shared) {
           importFooter.textContent = t("No wordlist found for that ID. Check it and try again.");
+          actionBtn.textContent = t("Import");
           validate();
           return;
         }
-        const src = shared.list;
+        api.close();
+        presentImportNameSheet(shared, onCreated);
+      } catch (e) {
+        importFooter.textContent = Auth.friendlyMessage(e);
+        actionBtn.textContent = t("Import");
+        validate();
+      }
+    }
+
+    setTimeout(validate, 0);
+    return el(".sheet-content", {},
+      sheetHeader(t("New List"), api, actionBtn),
+      el(".form", {}, formSection(null, seg)),
+      createForm,
+      importForm,
+    );
+  });
+}
+
+/** Import step 2: confirm a name for the copy (defaulting to the original), then
+ *  create the list and copy its words. Shown after a successful ID lookup. */
+function presentImportNameSheet(shared, onCreated) {
+  presentSheet((api) => {
+    const src = shared.list;
+    const nameInput = el("input.field-input", { type: "text", value: src.name || "" });
+    const footer = el(".form-footer-error");
+    nameInput.addEventListener("input", validate);
+    const addBtn = el("button.txt-btn.bold", { onclick: finish }, t("Add"));
+
+    function validate() {
+      const ok = nameInput.value.trim().length > 0;
+      addBtn.disabled = !ok;
+      addBtn.classList.toggle("disabled", !ok);
+    }
+
+    async function finish() {
+      if (addBtn.disabled) return;
+      addBtn.disabled = true;
+      addBtn.classList.add("disabled");
+      const finalName = nameInput.value.trim() || src.name || t("Imported list");
+      try {
         const newListId = await Repo.createList(
-          authState.uid, src.name || t("Imported list"), src.learningLanguage || "", src.originalLanguage || "");
+          authState.uid, finalName, src.learningLanguage || "", src.originalLanguage || "");
         for (const sw of shared.words) {
           const w = M.newWord({
             term: sw.term || "",
@@ -504,19 +546,24 @@ function presentNewListSheet(onCreated) {
         }
         api.close();
         onCreated();
-        toast(tf("Imported “%@” with %lld words.", src.name || t("Imported list"), shared.words.length));
+        toast(tf("Imported “%@” with %lld words.", finalName, shared.words.length));
       } catch (e) {
-        importFooter.textContent = Auth.friendlyMessage(e);
-        validate();
+        footer.textContent = Auth.friendlyMessage(e);
+        addBtn.disabled = false;
+        addBtn.classList.remove("disabled");
       }
     }
 
     setTimeout(validate, 0);
     return el(".sheet-content", {},
-      sheetHeader(t("New List"), api, actionBtn),
-      el(".form", {}, formSection(null, seg)),
-      createForm,
-      importForm,
+      sheetHeader(t("New List"), api, addBtn),
+      el(".form", {},
+        el(".center-state", {},
+          el(".empty-icon", {}, icon("check_circle", 44)),
+          el("h2", {}, t("Import successful")),
+          el("p", {}, tn("Found a wordlist with %lld words. Name your copy below.", shared.words.length))),
+        formSection(t("List name"), el(".form-card", {}, nameInput), footer),
+      ),
     );
   });
 }
