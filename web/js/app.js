@@ -513,6 +513,10 @@ function presentNewListSheet(onCreated) {
  *  create the list and copy its words. Shown after a successful ID lookup. */
 function presentImportNameSheet(shared, onCreated) {
   presentSheet((api) => {
+    // A click outside never closes this panel — importing writes many words and
+    // must not be interrupted. Exit is only via Cancel (before the copy starts).
+    api.setDismissible(false);
+
     const src = shared.list;
     const nameInput = el("input.field-input", { type: "text", value: src.name || "" });
     const footer = el(".form-footer-error");
@@ -527,12 +531,11 @@ function presentImportNameSheet(shared, onCreated) {
       addBtn.classList.toggle("disabled", !ok);
     }
 
-    // While the copy runs, lock the panel: no outside-click dismiss, no Cancel,
-    // and a disabled Add button — so the import can't be interrupted midway.
+    // While the copy runs, lock the panel completely: no Cancel and a disabled
+    // Add button, so the import can't be interrupted midway.
     let importing = false;
     function setLocked(locked) {
       importing = locked;
-      api.setDismissible(!locked);
       cancelBtn.disabled = locked;
       cancelBtn.classList.toggle("disabled", locked);
       addBtn.disabled = locked;
