@@ -332,6 +332,13 @@ export default {
   "ja": "追加中…",
   "ko": "추가 중…"
  },
+ "Deleting…": {
+  "en": "Deleting…",
+  "es": "Eliminando…",
+  "zh": "正在删除…",
+  "ja": "削除中…",
+  "ko": "삭제 중…"
+ },
  "Found a wordlist with %lld words. Name your copy below.": {
   "en": "Found a wordlist with %lld words. Name your copy below.",
   "es": "Se encontró una lista con %lld palabras. Ponle nombre a tu copia abajo.",

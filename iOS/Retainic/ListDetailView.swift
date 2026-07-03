@@ -132,6 +132,9 @@ struct ListDetailView: View {
     @State private var showingMoveSheet = false
     @State private var showingListSettings = false
     @State private var wordFilter: WordFilter = .all
+    @State private var pendingDeleteWords: [VocabWord] = []
+    @State private var pendingDeleteIsSelection = false
+    @State private var showingDeleteConfirm = false
 
     init(list: VocabularyList) {
         self.list = list
@@ -220,6 +223,19 @@ struct ListDetailView: View {
         } message: {
             Text(vm.errorMessage ?? "")
         }
+        .alert(
+            deletePrompt(count: pendingDeleteWords.count),
+            isPresented: $showingDeleteConfirm
+        ) {
+            Button("Cancel".localized(preferredLanguage), role: .cancel) { cancelDelete() }
+            Button("Delete".localized(preferredLanguage), role: .destructive) { confirmDelete() }
+        }
+    }
+
+    private func deletePrompt(count: Int) -> String {
+        count == 1
+            ? "Delete this word?".localized(preferredLanguage)
+            : "Delete %lld words?".localized(preferredLanguage, count)
     }
 
     private var selectionTitle: String {
@@ -250,7 +266,9 @@ struct ListDetailView: View {
                 Spacer()
 
                 Button(role: .destructive) {
-                    deleteSelected()
+                    pendingDeleteWords = vm.words.filter { selection.contains($0.id ?? "") }
+                    pendingDeleteIsSelection = true
+                    showingDeleteConfirm = true
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
@@ -319,11 +337,27 @@ struct ListDetailView: View {
     }
 
     private func deleteWords(at offsets: IndexSet) {
-        guard let uid = auth.uid else { return }
-        let toDelete = offsets.map { filteredWords[$0] }
+        // Confirm before removing: stash the words and ask the user first.
+        pendingDeleteWords = offsets.map { filteredWords[$0] }
+        pendingDeleteIsSelection = false
+        showingDeleteConfirm = true
+    }
+
+    private func cancelDelete() {
+        pendingDeleteWords = []
+        pendingDeleteIsSelection = false
+    }
+
+    private func confirmDelete() {
+        guard let uid = auth.uid else { cancelDelete(); return }
+        let toDelete = pendingDeleteWords
+        let wasSelection = pendingDeleteIsSelection
         Task {
             for word in toDelete { await vm.delete(uid: uid, listId: listId, word: word) }
+            if wasSelection { endSelection() }
         }
+        pendingDeleteWords = []
+        pendingDeleteIsSelection = false
     }
 
     private func renameList(to name: String) {
@@ -354,15 +388,6 @@ struct ListDetailView: View {
         Task {
             await vm.loadMoveTargets(uid: uid, current: list)
             showingMoveSheet = true
-        }
-    }
-
-    private func deleteSelected() {
-        guard let uid = auth.uid else { return }
-        let ids = selection
-        Task {
-            await vm.deleteSelected(uid: uid, listId: listId, ids: ids)
-            endSelection()
         }
     }
 
@@ -429,6 +454,7 @@ private struct ListSettingsSheet: View {
     @Binding private var filter: WordFilter
     @State private var showingResetConfirm = false
     @State private var showingShareConfirm = false
+    private let originalName: String
     let publicId: String?
     let onSave: (String) -> Void
     let onResetMemory: () -> Void
@@ -436,9 +462,17 @@ private struct ListSettingsSheet: View {
     init(name: String, filter: Binding<WordFilter>, publicId: String?, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
         _name = State(initialValue: name)
         _filter = filter
+        self.originalName = name
         self.publicId = publicId
         self.onSave = onSave
         self.onResetMemory = onResetMemory
+    }
+
+    /// Save is enabled only once the name is non-empty and actually differs from
+    /// the list's current name — nothing to save otherwise.
+    private var canSave: Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        return !trimmed.isEmpty && trimmed != originalName.trimmingCharacters(in: .whitespaces)
     }
 
     var body: some View {
@@ -487,14 +521,18 @@ private struct ListSettingsSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(Text("Cancel"))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button {
                         onSave(name)
                         dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityLabel(Text("Save"))
+                    .disabled(!canSave)
                 }
             }
             .confirmationDialog(

@@ -386,10 +386,12 @@ async function TrashScreen(content) {
         iconButton(icon("delete_forever", 22), () => {
           confirmDialog({
             message: `${t("Delete Forever")} “${list.name}”? ${t("This can't be undone.")}`,
-            confirmLabel: t("Delete Forever"), danger: true,
+            confirmLabel: t("Delete Forever"), workingLabel: t("Deleting…"), danger: true,
+            // Let errors propagate so the dialog re-enables and toasts; on
+            // success the dialog closes only after the list is fully purged.
             onConfirm: async () => {
-              try { await Repo.purgeList(authState.uid, list.id); reload(); }
-              catch (err) { toast(Auth.friendlyMessage(err)); }
+              await Repo.purgeList(authState.uid, list.id);
+              await reload();
             },
           });
         }, { label: t("Delete Forever"), danger: true }),
@@ -1425,16 +1427,42 @@ function errorState(e) {
 }
 
 /** An in-app confirmation panel (replaces the browser's native confirm()). */
-function confirmDialog({ message, confirmLabel, danger = false, onConfirm }) {
-  presentSheet((api) => el(".confirm", {},
-    el(".confirm-msg", {}, message),
-    el(".confirm-actions", {},
-      el("button.btn.subtle", { onclick: () => api.close() }, t("Cancel")),
-      el("button.btn." + (danger ? "destructive" : "primary"), {
-        onclick: () => { api.close(); onConfirm(); },
-      }, confirmLabel || t("OK")),
-    ),
-  ), { variant: "alert" });
+/** An in-app confirmation panel. By default the confirm button closes the panel
+ *  and runs `onConfirm`. If `workingLabel` is given, the action is treated as a
+ *  non-interruptible async task: the confirm button shows `workingLabel` and
+ *  greys out, Cancel is disabled, a click outside does nothing, and the panel
+ *  closes only once `onConfirm` resolves (re-enabling on failure). */
+function confirmDialog({ message, confirmLabel, workingLabel, danger = false, onConfirm }) {
+  presentSheet((api) => {
+    const cancelBtn = el("button.btn.subtle", { onclick: () => api.close() }, t("Cancel"));
+    const confirmBtn = el("button.btn." + (danger ? "destructive" : "primary"), {}, confirmLabel || t("OK"));
+
+    if (workingLabel) {
+      api.setDismissible(false); // clicking outside the panel does nothing
+      confirmBtn.addEventListener("click", async () => {
+        if (confirmBtn.disabled) return;
+        cancelBtn.disabled = true;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = workingLabel;
+        try {
+          await onConfirm();
+          api.close();
+        } catch (e) {
+          cancelBtn.disabled = false;
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = confirmLabel || t("OK");
+          toast(Auth.friendlyMessage(e));
+        }
+      });
+    } else {
+      confirmBtn.addEventListener("click", () => { api.close(); onConfirm(); });
+    }
+
+    return el(".confirm", {},
+      el(".confirm-msg", {}, message),
+      el(".confirm-actions", {}, cancelBtn, confirmBtn),
+    );
+  }, { variant: "alert" });
 }
 
 // MARK: - Icons (Google Material Symbols)

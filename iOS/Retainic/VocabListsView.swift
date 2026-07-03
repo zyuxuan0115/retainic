@@ -531,7 +531,7 @@ struct TrashView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "checkmark")
+                        Image(systemName: "xmark")
                     }
                     .accessibilityLabel(Text("Done"))
                 }
