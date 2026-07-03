@@ -501,6 +501,16 @@ final class TrashViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Permanently deletes every list currently in the trash.
+    func purgeAll(uid: String) async {
+        for list in lists {
+            guard let id = list.id else { continue }
+            do { try await VocabRepository.purgeList(uid: uid, listId: id) }
+            catch { errorMessage = error.localizedDescription }
+        }
+        lists.removeAll()
+    }
 }
 
 /// Lists that have been moved to the trash. Each can be restored (put back into
@@ -513,6 +523,7 @@ struct TrashView: View {
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var pendingPurge: VocabularyList?
     @State private var isPurging = false
+    @State private var showingEmptyConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -528,6 +539,16 @@ struct TrashView: View {
             .navigationTitle("Trash".localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if !vm.lists.isEmpty {
+                        Button(role: .destructive) {
+                            showingEmptyConfirm = true
+                        } label: {
+                            Label("Empty Trash", systemImage: "trash.slash")
+                        }
+                        .disabled(isPurging)
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         dismiss()
@@ -537,6 +558,12 @@ struct TrashView: View {
                     .accessibilityLabel(Text("Done"))
                     .disabled(isPurging)
                 }
+            }
+            .alert("Empty Trash".localized(preferredLanguage), isPresented: $showingEmptyConfirm) {
+                Button("Empty Trash".localized(preferredLanguage), role: .destructive) { emptyTrash() }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) {}
+            } message: {
+                Text("Permanently delete all lists in the Trash? This can't be undone.")
             }
             .task(id: auth.uid) {
                 if let uid = auth.uid { await vm.load(uid: uid) }
@@ -629,6 +656,17 @@ struct TrashView: View {
             // perceptible, then perform it and only then dismiss the overlay.
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             await vm.purge(uid: uid, list: list)
+            withAnimation { isPurging = false }
+        }
+    }
+
+    private func emptyTrash() {
+        guard let uid = auth.uid else { return }
+        // Show the blocking "Deleting…" overlay and keep the user here until
+        // every trashed list has been permanently removed.
+        withAnimation { isPurging = true }
+        Task {
+            await vm.purgeAll(uid: uid)
             withAnimation { isPurging = false }
         }
     }

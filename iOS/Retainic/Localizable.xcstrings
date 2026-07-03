@@ -1113,6 +1113,22 @@
         }
       }
     },
+    "Empty Trash" : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vaciar papelera" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ゴミ箱を空にする" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "휴지통 비우기" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "清空回收站" } }
+      }
+    },
+    "Permanently delete all lists in the Trash? This can't be undone." : {
+      "localizations" : {
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Eliminar definitivamente todas las listas de la papelera? Esta acción no se puede deshacer." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "ゴミ箱内のすべてのリストを完全に削除しますか？この操作は取り消せません。" } },
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "휴지통의 모든 목록을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "永久删除回收站中的所有列表？此操作无法撤销。" } }
+      }
+    },
     "Deleting…" : {
       "extractionState" : "stale",
       "localizations" : {

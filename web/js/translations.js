@@ -416,6 +416,20 @@ export default {
   "ja": "ゴミ箱",
   "ko": "휴지통"
  },
+ "Empty Trash": {
+  "en": "Empty Trash",
+  "es": "Vaciar papelera",
+  "zh": "清空回收站",
+  "ja": "ゴミ箱を空にする",
+  "ko": "휴지통 비우기"
+ },
+ "Permanently delete all lists in the Trash?": {
+  "en": "Permanently delete all lists in the Trash?",
+  "es": "¿Eliminar definitivamente todas las listas de la papelera?",
+  "zh": "永久删除回收站中的所有列表？",
+  "ja": "ゴミ箱内のすべてのリストを完全に削除しますか？",
+  "ko": "휴지통의 모든 목록을 영구적으로 삭제할까요?"
+ },
  "Trash is Empty": {
   "en": "Trash is Empty",
   "es": "La papelera está vacía",

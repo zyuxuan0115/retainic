@@ -356,15 +356,33 @@ function triggerDownload(blob, filename) {
 // MARK: - Trash screen
 
 async function TrashScreen(content) {
-  content.appendChild(navBar(t("Trash"), {}));
+  let currentLists = [];
+  const emptyBtn = iconButton(icon("delete_sweep", 24), () => confirmEmptyTrash(), { label: t("Empty Trash"), danger: true });
+  emptyBtn.style.display = "none";
+  content.appendChild(navBar(t("Trash"), { trailing: emptyBtn }));
   const body = el(".scroll");
   content.appendChild(body);
   body.appendChild(spinner(t("Loading…")));
+
+  function confirmEmptyTrash() {
+    if (!currentLists.length) return;
+    confirmDialog({
+      message: `${t("Permanently delete all lists in the Trash?")} ${t("This can't be undone.")}`,
+      confirmLabel: t("Empty Trash"), workingLabel: t("Deleting…"), danger: true,
+      // Non-interruptible: the dialog stays (and blocks) until every list is gone.
+      onConfirm: async () => {
+        for (const l of currentLists) await Repo.purgeList(authState.uid, l.id);
+        await reload();
+      },
+    });
+  }
 
   async function reload() {
     let lists = [];
     try { lists = await Repo.fetchTrashedLists(authState.uid); }
     catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+    currentLists = lists;
+    emptyBtn.style.display = lists.length ? "" : "none";
     clear(body);
     if (lists.length === 0) {
       body.appendChild(emptyState(icon("delete", 46), t("Trash is Empty"),
@@ -922,12 +940,28 @@ function presentWordSheet({ list, word, onSaved }) {
     const saveBtn = el("button.icon-btn", { onclick: save, title: t("Save"), "aria-label": t("Save") }, icon("check", 24));
 
     function validate() {
-      const ok = term.value.trim() && translation.value.trim() && (!isZh || pinyin.value.trim());
+      const filled = term.value.trim() && translation.value.trim() && (!isZh || pinyin.value.trim());
+      const ok = filled && hasChanges();
       saveBtn.disabled = !ok;
       saveBtn.classList.toggle("disabled", !ok);
       if (isZh) pinyinFooter.innerHTML = pinyin.value.trim() ? "" : `<span class="danger-text">${t("Pinyin is required for Chinese words.")}</span>`;
     }
-    [term, translation, pinyin].forEach((i) => i.addEventListener("input", validate));
+    // When editing, Save stays disabled until something actually changes.
+    function hasChanges() {
+      if (!isEditing) return true;
+      if (term.value.trim() !== (word.term || "")) return true;
+      if (translation.value.trim() !== (word.translation || "")) return true;
+      if (notes.value.trim() !== (word.notes || "")) return true;
+      if (hiragana.value.trim() !== (word.hiragana || "")) return true;
+      if (pinyin.value.trim() !== (word.pinyin || "")) return true;
+      const origPOS = new Set(M.partOfSpeechValues(word));
+      if (origPOS.size !== selectedPOS.size) return true;
+      for (const p of selectedPOS) if (!origPOS.has(p)) return true;
+      if (recorder.recordedBlob) return true;              // new recording
+      if (word.audioPath && !recorder.hasAudio) return true; // removed audio
+      return false;
+    }
+    [term, translation, pinyin, hiragana, notes].forEach((i) => i.addEventListener("input", validate));
 
     // Pronunciation section
     const pronHost = el(".form-card");
@@ -947,6 +981,7 @@ function presentWordSheet({ list, word, onSaved }) {
         : recorder.recordingWasEmpty ? t("No audio was captured. On the Simulator, enable I/O ▸ Audio Input; otherwise try recording on a real device.")
         : "";
       pronNote.innerHTML = note ? `<span class="danger-text">${note}</span>` : "";
+      validate();
     }
     const pronNote = el(".form-note");
 
@@ -957,7 +992,7 @@ function presentWordSheet({ list, word, onSaved }) {
       for (const p of M.PARTS_OF_SPEECH) {
         const on = selectedPOS.has(p);
         posHost.appendChild(el(".check-row", {
-          onclick: () => { on ? selectedPOS.delete(p) : selectedPOS.add(p); renderPOS(); },
+          onclick: () => { on ? selectedPOS.delete(p) : selectedPOS.add(p); renderPOS(); validate(); },
         }, el("span", {}, M.posLabel(p, preferredLanguage())), el("span.check", {}, on ? icon("check", 18) : null)));
       }
     }
