@@ -310,6 +310,9 @@ private struct NewListSheet: View {
     }
 
     @ToolbarContentBuilder private var formToolbar: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Text("New List".localized(preferredLanguage)).font(.headline)
+        }
         ToolbarItem(placement: .cancellationAction) {
             Button { dismiss() } label: { Image(systemName: "xmark") }
                 .accessibilityLabel(Text("Cancel"))
@@ -369,6 +372,9 @@ private struct NewListSheet: View {
         // the back/confirm controls while the copy runs.
         .interactiveDismissDisabled(isImporting)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("New List".localized(preferredLanguage)).font(.headline)
+            }
             ToolbarItem(placement: .cancellationAction) {
                 Button { pendingImport = nil } label: { Image(systemName: "chevron.left") }
                     .accessibilityLabel(Text("Cancel"))
@@ -539,6 +545,9 @@ struct TrashView: View {
             .navigationTitle("Trash".localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Trash".localized(preferredLanguage)).font(.headline)
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     if !vm.lists.isEmpty {
                         Button(role: .destructive) {

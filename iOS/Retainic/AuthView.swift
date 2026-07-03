@@ -89,6 +89,20 @@ struct AuthView: View {
             }
             .navigationTitle((isRegistering ? "Create Account" : "Welcome Back").localized(preferredLanguage))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Language", selection: $preferredLanguage) {
+                            ForEach(Language.all) { language in
+                                Text(language.autonym).tag(language.code)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .accessibilityLabel(Text("Language"))
+                }
+            }
             .onChange(of: mode) { _, _ in auth.errorMessage = nil }
         }
     }

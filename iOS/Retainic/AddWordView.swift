@@ -174,6 +174,9 @@ struct AddWordView: View {
         .task { recorder.configure(existingAudioPath: existingWord?.audioPath) }
         .onDisappear { recorder.stopPlayback() }
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text((isEditing ? "Edit Word" : "New Word").localized(preferredLanguage)).font(.headline)
+            }
             if !isEditing {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

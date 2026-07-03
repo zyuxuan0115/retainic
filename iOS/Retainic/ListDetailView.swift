@@ -520,6 +520,9 @@ private struct ListSettingsSheet: View {
                 Text("Share it with others so they can create the exact same wordlist.")
             }
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("List Settings".localized(preferredLanguage)).font(.headline)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
                         .accessibilityLabel(Text("Cancel"))
@@ -601,8 +604,12 @@ private struct MoveDestinationSheet: View {
             .navigationTitle("Move %lld Words".localized(preferredLanguage, count))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Move %lld Words".localized(preferredLanguage, count)).font(.headline)
+                }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(Text("Cancel"))
                 }
             }
         }
