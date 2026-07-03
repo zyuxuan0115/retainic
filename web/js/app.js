@@ -453,6 +453,9 @@ function presentNewListSheet(onCreated) {
     );
 
     const actionBtn = el("button.icon-btn", { onclick: submit }, icon("check", 24));
+    const cancelBtn = el("button.icon-btn", {
+      onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+    }, icon("close", 24));
     // Create mode confirms with a checkmark; Import mode advances (→) to the
     // naming step. Keep the button's glyph and label in sync with the mode.
     function updateActionBtn() {
@@ -512,10 +515,14 @@ function presentNewListSheet(onCreated) {
       const id = idInput.value.trim();
       actionBtn.disabled = true;
       actionBtn.classList.add("disabled");
+      cancelBtn.disabled = true;
+      cancelBtn.classList.add("disabled");
       try {
         const shared = await Repo.fetchSharedList(id);
         if (!shared) {
           importFooter.textContent = t("No wordlist found for that ID. Check it and try again.");
+          cancelBtn.disabled = false;
+          cancelBtn.classList.remove("disabled");
           validate();
           return;
         }
@@ -523,6 +530,8 @@ function presentNewListSheet(onCreated) {
         presentImportNameSheet(shared, onCreated);
       } catch (e) {
         importFooter.textContent = Auth.friendlyMessage(e);
+        cancelBtn.disabled = false;
+        cancelBtn.classList.remove("disabled");
         validate();
       }
     }
@@ -530,9 +539,7 @@ function presentNewListSheet(onCreated) {
     setTimeout(validate, 0);
     return el(".sheet-content", {},
       el(".sheet-header", {},
-        el(".sheet-side", {}, el("button.icon-btn", {
-          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
-        }, icon("close", 24))),
+        el(".sheet-side", {}, cancelBtn),
         el(".sheet-title", {}, t("New List")),
         el(".sheet-side.trailing", {}, actionBtn),
       ),
@@ -555,8 +562,9 @@ function presentImportNameSheet(shared, onCreated) {
     const nameInput = el("input.field-input", { type: "text", value: src.name || "" });
     const footer = el(".form-footer-error");
     nameInput.addEventListener("input", validate);
-    const addBtn = el("button.txt-btn.bold", { onclick: finish }, t("Add"));
-    const cancelBtn = textButton(t("Cancel"), () => api.close());
+    const addBtn = el("button.icon-btn", { onclick: finish, title: t("Add"), "aria-label": t("Add") }, icon("check", 24));
+    const cancelBtn = el("button.icon-btn", { onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel") }, icon("close", 24));
+    const setAddIcon = (glyph) => { clear(addBtn); addBtn.appendChild(icon(glyph, 24)); };
 
     function validate() {
       if (importing) return;
@@ -579,7 +587,7 @@ function presentImportNameSheet(shared, onCreated) {
     async function finish() {
       if (addBtn.disabled) return;
       setLocked(true);
-      addBtn.textContent = t("Adding…");
+      setAddIcon("progress_activity"); // shows the copy is in progress
       const finalName = nameInput.value.trim() || src.name || t("Imported list");
       try {
         const newListId = await Repo.createList(
@@ -600,7 +608,7 @@ function presentImportNameSheet(shared, onCreated) {
         toast(tf("Imported “%@” with %lld words.", finalName, shared.words.length));
       } catch (e) {
         footer.textContent = Auth.friendlyMessage(e);
-        addBtn.textContent = t("Add");
+        setAddIcon("check");
         setLocked(false);
         validate();
       }
