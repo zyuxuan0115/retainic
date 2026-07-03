@@ -512,6 +512,7 @@ struct TrashView: View {
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var pendingPurge: VocabularyList?
+    @State private var isPurging = false
 
     var body: some View {
         NavigationStack {
@@ -534,6 +535,7 @@ struct TrashView: View {
                         Image(systemName: "xmark")
                     }
                     .accessibilityLabel(Text("Done"))
+                    .disabled(isPurging)
                 }
             }
             .task(id: auth.uid) {
@@ -566,6 +568,20 @@ struct TrashView: View {
                 Text(vm.errorMessage ?? "")
             }
         }
+        // While purging, hold on a blocking "Deleting…" overlay: taps outside do
+        // nothing and the panel can't be swiped away until the delete finishes.
+        .overlay {
+            if isPurging {
+                ZStack {
+                    Color(.systemBackground).opacity(0.6).ignoresSafeArea()
+                    ProgressView("Deleting…".localized(preferredLanguage))
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .transition(.opacity)
+            }
+        }
+        .interactiveDismissDisabled(isPurging)
     }
 
     private var listContent: some View {
@@ -607,7 +623,14 @@ struct TrashView: View {
     private func purge(_ list: VocabularyList) {
         guard let uid = auth.uid else { return }
         pendingPurge = nil
-        Task { await vm.purge(uid: uid, list: list) }
+        withAnimation { isPurging = true }
+        Task {
+            // Hold on the "Deleting…" overlay for a moment so the deletion is
+            // perceptible, then perform it and only then dismiss the overlay.
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            await vm.purge(uid: uid, list: list)
+            withAnimation { isPurging = false }
+        }
     }
 }
 

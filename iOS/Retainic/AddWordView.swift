@@ -63,7 +63,24 @@ struct AddWordView: View {
         if isLearningChinese && pinyin.trimmingCharacters(in: .whitespaces).isEmpty {
             return false
         }
-        return true
+        // When editing, Save stays disabled until something actually changes.
+        return hasChanges
+    }
+
+    /// Whether the form differs from the word being edited. Always true when
+    /// creating a new word (there's nothing to compare against).
+    private var hasChanges: Bool {
+        guard let w = existingWord else { return true }
+        if term.trimmingCharacters(in: .whitespaces) != w.term { return true }
+        if translation.trimmingCharacters(in: .whitespaces) != w.translation { return true }
+        if notes.trimmingCharacters(in: .whitespaces) != w.notes { return true }
+        if hiragana.trimmingCharacters(in: .whitespaces) != (w.hiragana ?? "") { return true }
+        if pinyin.trimmingCharacters(in: .whitespaces) != (w.pinyin ?? "") { return true }
+        if selectedPOS != Set(w.partOfSpeechValues) { return true }
+        // Audio: a freshly recorded clip, or removal of the existing one.
+        if recorder.recordedURL != nil { return true }
+        if w.audioPath != nil && !recorder.hasAudio { return true }
+        return false
     }
 
     var body: some View {
