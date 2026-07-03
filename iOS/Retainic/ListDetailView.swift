@@ -178,6 +178,7 @@ struct ListDetailView: View {
         }
         .navigationTitle(isSelecting ? selectionTitle : listName)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(isSelecting)
         .environment(\.editMode, $editMode)
         .toolbar { toolbarContent }
         // Hide the app tab bar on this screen so its bottom is free for the
