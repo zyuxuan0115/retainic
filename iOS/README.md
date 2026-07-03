@@ -180,12 +180,15 @@ their own data. To deploy them with the Firebase CLI:
 npm install -g firebase-tools
 firebase login
 
-# from the project root
+# from the firebase/ folder at the repo root
+cd ../firebase
 firebase use --add          # select your Firebase project
 firebase deploy --only firestore:rules,storage
 ```
 
-`firebase.json` already points at `firestore.rules` and `storage.rules`.
+The rules and CLI config now live in the top-level `firebase/` folder (shared
+by the iOS and web apps). `firebase.json` there already points at
+`firestore.rules` and `storage.rules`.
 
 ---
 
@@ -212,10 +215,18 @@ Retainic/
 ├── PartOfSpeech.swift       Parts of speech + localized labels
 ├── Localizable.xcstrings    UI translations (en, es, zh-Hans, ja, ko)
 └── GoogleService-Info.plist Firebase config (replace with your own)
+```
 
-firebase.json                Firebase CLI config
-firestore.rules              Per-user Firestore access rules
-storage.rules                Per-user Storage access rules
+The Firebase CLI config and security rules are shared with the web app and live
+in the top-level `firebase/` folder:
+
+```
+firebase/
+├── .firebaserc                 Firebase project alias
+├── firebase.json               Firebase CLI config
+├── firestore.rules             Per-user Firestore access rules
+├── firestore.indexes.json      Firestore index definitions
+└── storage.rules               Per-user Storage access rules
 ```
 
 ---
