@@ -824,9 +824,17 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, o
       el("option", { value: "remembered", selected: filter === "remembered" }, t("Show remembered only")),
       el("option", { value: "unremembered", selected: filter === "unremembered" }, t("Show unremembered only")),
     );
-    const saveBtn = el("button.txt-btn.bold", { onclick: () => { onRename(nameInput.value); api.close(); } }, t("Save"));
+    const saveBtn = el("button.icon-btn", {
+      onclick: () => { onRename(nameInput.value); api.close(); }, title: t("Save"), "aria-label": t("Save"),
+    }, icon("check", 24));
     return el(".sheet-content", {},
-      sheetHeader(t("List Settings"), api, saveBtn, t("Cancel")),
+      el(".sheet-header", {},
+        el(".sheet-side", {}, el("button.icon-btn", {
+          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+        }, icon("close", 24))),
+        el(".sheet-title", {}, t("List Settings")),
+        el(".sheet-side.trailing", {}, saveBtn),
+      ),
       el(".form", {},
         formSection(t("List name"), el(".form-card", {}, nameInput)),
         formSection(t("Show words"), el(".form-card", {}, pickerRow(t("Show words"), filterSel))),
