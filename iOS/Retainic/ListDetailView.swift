@@ -507,6 +507,7 @@ private struct ListSettingsSheet: View {
                         showingResetConfirm = true
                     } label: {
                         Label("Mark all as not remembered", systemImage: "arrow.counterclockwise")
+                            .foregroundStyle(.red)
                     }
                 } footer: {
                     Text("Every word in this list will show up again in practice for all methods.")
