@@ -990,7 +990,13 @@ function presentWordSheet({ list, word, onSaved }) {
     const origTitle = displayNameIn(original) || t("Translation");
 
     return el(".sheet-content", {},
-      sheetHeader(isEditing ? t("Edit Word") : t("New Word"), api, saveBtn, isEditing ? null : t("Cancel")),
+      el(".sheet-header", {},
+        el(".sheet-side", {}, isEditing ? null : el("button.icon-btn", {
+          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+        }, icon("close", 24))),
+        el(".sheet-title", {}, isEditing ? t("Edit Word") : t("New Word")),
+        el(".sheet-side.trailing", {}, saveBtn),
+      ),
       el(".form", {},
         formSection(learnTitle, el(".form-card", {}, term)),
         isJa ? formSection(t("Hiragana (optional)"), el(".form-card", {}, hiragana)) : null,
