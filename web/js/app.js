@@ -452,7 +452,18 @@ function presentNewListSheet(onCreated) {
         importFooter),
     );
 
-    const actionBtn = el("button.txt-btn.bold", { onclick: submit }, t("Create"));
+    const actionBtn = el("button.icon-btn", { onclick: submit }, icon("check", 24));
+    // Create mode confirms with a checkmark; Import mode advances (→) to the
+    // naming step. Keep the button's glyph and label in sync with the mode.
+    function updateActionBtn() {
+      const creating = mode === "create";
+      clear(actionBtn);
+      actionBtn.appendChild(icon(creating ? "check" : "arrow_forward", 24));
+      const lbl = creating ? t("Create") : t("Import");
+      actionBtn.title = lbl;
+      actionBtn.setAttribute("aria-label", lbl);
+    }
+    updateActionBtn();
 
     const segCreate = el("button.seg.active", { onclick: () => setMode("create") }, t("Create new"));
     const segImport = el("button.seg", { onclick: () => setMode("import") }, t("Import by ID"));
@@ -466,7 +477,7 @@ function presentNewListSheet(onCreated) {
       importForm.style.display = creating ? "none" : "";
       segCreate.classList.toggle("active", creating);
       segImport.classList.toggle("active", !creating);
-      actionBtn.textContent = creating ? t("Create") : t("Import");
+      updateActionBtn();
       validate();
     }
 
@@ -501,12 +512,10 @@ function presentNewListSheet(onCreated) {
       const id = idInput.value.trim();
       actionBtn.disabled = true;
       actionBtn.classList.add("disabled");
-      actionBtn.textContent = t("Loading…");
       try {
         const shared = await Repo.fetchSharedList(id);
         if (!shared) {
           importFooter.textContent = t("No wordlist found for that ID. Check it and try again.");
-          actionBtn.textContent = t("Import");
           validate();
           return;
         }
@@ -514,14 +523,19 @@ function presentNewListSheet(onCreated) {
         presentImportNameSheet(shared, onCreated);
       } catch (e) {
         importFooter.textContent = Auth.friendlyMessage(e);
-        actionBtn.textContent = t("Import");
         validate();
       }
     }
 
     setTimeout(validate, 0);
     return el(".sheet-content", {},
-      sheetHeader(t("New List"), api, actionBtn),
+      el(".sheet-header", {},
+        el(".sheet-side", {}, el("button.icon-btn", {
+          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+        }, icon("close", 24))),
+        el(".sheet-title", {}, t("New List")),
+        el(".sheet-side.trailing", {}, actionBtn),
+      ),
       el(".form", {}, formSection(null, seg)),
       createForm,
       importForm,
