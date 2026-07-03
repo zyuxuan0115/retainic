@@ -804,13 +804,24 @@ function presentMoveSheet(targets, count, onSelect) {
         t("You need another list with the same learning and native language to move these words."));
     } else {
       bodyContent = el(".list", {}, ...targets.map((l) =>
-        el(".row.tappable", { onclick: () => { onSelect(l); api.close(); } },
+        el(".row.tappable", { onclick: () => {
+          confirmDialog({
+            message: tf("Move %lld words to “%@”?", count, l.name), confirmLabel: t("Move"),
+            onConfirm: () => { onSelect(l); api.close(); },
+          });
+        } },
           el(".row-lead", {}, rectStackGlyph()),
           el(".row-main", {}, el(".row-title", {}, l.name), el(".row-sub", {}, tn("%lld words", l.wordCount ?? 0))),
         )));
     }
     return el(".sheet-content", {},
-      sheetHeader(tn("Move %lld Words", count), api, null),
+      el(".sheet-header", {},
+        el(".sheet-side", {}, el("button.icon-btn", {
+          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+        }, icon("close", 24))),
+        el(".sheet-title", {}, tn("Move %lld Words", count)),
+        el(".sheet-side.trailing", {}),
+      ),
       el(".scroll", {}, bodyContent),
     );
   });
@@ -825,8 +836,19 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, o
       el("option", { value: "unremembered", selected: filter === "unremembered" }, t("Show unremembered only")),
     );
     const saveBtn = el("button.icon-btn", {
-      onclick: () => { onRename(nameInput.value); api.close(); }, title: t("Save"), "aria-label": t("Save"),
+      onclick: () => { if (!saveBtn.disabled) { onRename(nameInput.value); api.close(); } },
+      title: t("Save"), "aria-label": t("Save"),
     }, icon("check", 24));
+    // Save is enabled only once the name is non-empty and differs from the
+    // list's current name — nothing to save otherwise.
+    function validateSave() {
+      const trimmed = nameInput.value.trim();
+      const changed = trimmed.length > 0 && trimmed !== name.trim();
+      saveBtn.disabled = !changed;
+      saveBtn.classList.toggle("disabled", !changed);
+    }
+    nameInput.addEventListener("input", validateSave);
+    validateSave();
     return el(".sheet-content", {},
       el(".sheet-header", {},
         el(".sheet-side", {}, el("button.icon-btn", {

@@ -605,6 +605,13 @@ export default {
   "ja": "%lld 単語を移動",
   "ko": "%lld개 단어 이동"
  },
+ "Move %lld words to “%@”?": {
+  "en": "Move %lld words to “%@”?",
+  "es": "¿Mover %lld palabras a “%@”?",
+  "zh": "将 %lld 个单词移动到“%@”？",
+  "ja": "%lld 単語を「%@」に移動しますか？",
+  "ko": "%lld개 단어를 “%@”(으)로 이동할까요?"
+ },
  "My Lists": {
   "en": "My Lists",
   "es": "Mis listas",
