@@ -239,6 +239,12 @@ final class AudioPlaybackStore: NSObject, ObservableObject {
         }
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: Self.bcp47(for: language))
+        // Some synthesized voices run fast for a learner, so ease them off the
+        // default rate; languages not listed stay at default.
+        let slowdown: [String: Float] = ["en": 0.95, "ja": 0.85, "zh": 0.85]
+        if let factor = slowdown[language] {
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * factor
+        }
         synthesizer.delegate = self
         playingPath = key
         synthesizer.speak(utterance)

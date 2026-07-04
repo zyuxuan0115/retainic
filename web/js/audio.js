@@ -69,6 +69,10 @@ class AudioPlaybackStore {
     try {
       const u = new SpeechSynthesisUtterance(text);
       u.lang = ttsBcp47(language);
+      // Some synthesized voices run fast for a learner, so ease them below the
+      // default rate of 1; languages not listed stay at default.
+      const slowdown = { en: 0.95, ja: 0.85, zh: 0.85 };
+      if (slowdown[language]) u.rate = slowdown[language];
       u.onend = () => { if (this.playingPath === key) { this.playingPath = null; this._notify(); } };
       this.utterance = u;
       this.playingPath = key;
