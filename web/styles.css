@@ -304,7 +304,7 @@ textarea.field-input { resize: vertical; }
 .tok-fn { color: var(--tok-fn); }
 .tok-const { color: var(--tok-const); }
 
-.algo-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.algo-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .code-status { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .code-status.ok { color: var(--good); }
 .code-status.err { color: var(--danger); }

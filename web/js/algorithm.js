@@ -86,8 +86,26 @@ export async function compileAlgorithm(code) {
   py.runPython(PREAMBLE);
   py.runPython(code);
   const runner = py.runPython("_run");
-  // Smoke-test so obvious mistakes surface here, not mid-practice.
-  runner(0, 0, 0, true).destroy();
+
+  // Actually run review() across a spread of word states — low and high counts,
+  // with and without audio — so a runtime error (e.g. an index out of range for
+  // a well-practised word) or a bad return value surfaces now, at check-in,
+  // rather than mid-practice. Each result must be four finite numbers.
+  const probes = [];
+  for (const n of [0, 1, 2, 5, 20, 100]) { probes.push([n, n, n, true]); probes.push([n, n, n, false]); }
+  probes.push([3, 7, 2, true], [0, 10, 0, false], [8, 10, 7, true]);
+  for (const [tw, tt, tp, ha] of probes) {
+    let proxy;
+    try {
+      proxy = runner(tw, tt, tp, ha);
+      const arr = proxy.toJs();
+      if (!Array.isArray(arr) || arr.length !== 4 || arr.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+        throw new Error("review() must return Review(word, translation, pronunciation, mastered_total) with numeric values.");
+      }
+    } finally {
+      if (proxy) proxy.destroy();
+    }
+  }
 
   const cache = new Map();
   return (state) => {
