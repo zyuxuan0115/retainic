@@ -1071,28 +1071,31 @@ function presentAlgorithmSheet({ code, onSave }) {
     const editor = ed.textarea;
     const status = el(".form-note.code-status");
 
+    // The top-right check validates the code, then saves and closes — but only
+    // if it compiles. A broken snippet shows the error and keeps the sheet open.
     const saveBtn = el("button.icon-btn", {
-      onclick: () => { onSave(editor.value); api.close(); },
+      onclick: async () => {
+        if (saveBtn.disabled) return;
+        const codeVal = editor.value;
+        // The unchanged default is known-good, so skip the Pyodide round-trip.
+        if (codeVal.trim() !== DEFAULT_ALGORITHM_CODE.trim()) {
+          saveBtn.disabled = true;
+          status.classList.remove("ok", "err");
+          status.textContent = t("Checking your code…");
+          try {
+            await compileAlgorithm(codeVal);
+          } catch (e) {
+            status.textContent = String(e && e.message ? e.message : e);
+            status.classList.add("err");
+            saveBtn.disabled = false;
+            return;
+          }
+        }
+        onSave(codeVal);
+        api.close();
+      },
       title: t("Save"), "aria-label": t("Save"),
     }, icon("check", 24));
-
-    const checkBtn = el("button.btn", {
-      onclick: async () => {
-        checkBtn.disabled = true;
-        status.classList.remove("ok", "err");
-        status.textContent = t("Checking your code…");
-        try {
-          await compileAlgorithm(editor.value);
-          status.textContent = t("Your code looks good.");
-          status.classList.add("ok");
-        } catch (e) {
-          status.textContent = String(e && e.message ? e.message : e);
-          status.classList.add("err");
-        } finally {
-          checkBtn.disabled = false;
-        }
-      },
-    }, t("Check code"));
 
     const resetBtn = el("button.btn", {
       onclick: () => { ed.setValue(DEFAULT_ALGORITHM_CODE); status.textContent = ""; status.classList.remove("ok", "err"); },
@@ -1110,7 +1113,7 @@ function presentAlgorithmSheet({ code, onSave }) {
         el(".form", {},
           el(".form-note", {}, t("Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.")),
           ed.wrap,
-          el(".algo-actions", {}, resetBtn, checkBtn),
+          el(".algo-actions", {}, resetBtn),
           status,
         ),
       ),
