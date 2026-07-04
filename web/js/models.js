@@ -30,11 +30,7 @@ export function posLabel(raw, code = "en") {
   return table[key] || (key.charAt(0).toUpperCase() + key.slice(1));
 }
 
-// MARK: - Spaced-repetition schedules
-
-const TRANSLATION_GAPS = [0, 1, 1, 1, 2, 2, 3, 4, 5, 10];
-const WORD_GAPS = [0, 1, 1, 2, 3, 4, 6, 9];
-const PRONUNCIATION_GAPS = [0, 1, 2, 3, 4, 6, 8];
+// MARK: - Spaced-repetition schedule
 
 function startOfDay(date) {
   const d = new Date(date);
@@ -56,12 +52,53 @@ export function isToday(date) {
   return date ? isSameDay(date, new Date()) : false;
 }
 
-/** Shared due check: due once the schedule's gap of days has passed (or never
- *  remembered), and not yet mastered (remembered as many times as steps). */
-function isDue(count, last, gaps, now) {
-  if (count >= gaps.length) return false;
+// MARK: - Pluggable review algorithm
+//
+// A word's schedule and mastery are computed by a "review" function. Given the
+// word's current state it returns, for each of the three methods, the number of
+// days until that method is due again (-1 = finished), plus `masteredTotal` —
+// the total correct-count at which the word counts as fully memorized. A list
+// can override this with its own Python (compiled via Pyodide in algorithm.js);
+// with no override the built-in `defaultReview` below runs.
+
+/** The state a review function sees for a word. */
+function reviewState(word) {
+  return {
+    times_word: word.timesWordCorrect ?? 0,
+    times_translation: word.timesTranslationCorrect ?? 0,
+    times_pronunciation: word.timesPronounciationCorrect ?? 0,
+    has_audio: word.audioPath != null,
+  };
+}
+
+/** The built-in schedule, matching the app's original gaps and mastery rule:
+ *  8× Word + 10× Translation (+ 7× Audio once the word has a recording). */
+export function defaultReview(s) {
+  const WORD = [0, 1, 1, 2, 3, 4, 6, 9];
+  const TRANSLATION = [0, 1, 1, 1, 2, 2, 3, 4, 5, 10];
+  const PRONUNCIATION = [0, 1, 2, 3, 4, 6, 8];
+  const gap = (table, n) => (n < table.length ? table[n] : -1);
+  return {
+    word: gap(WORD, s.times_word),
+    translation: gap(TRANSLATION, s.times_translation),
+    pronunciation: gap(PRONUNCIATION, s.times_pronunciation),
+    masteredTotal: 18 + (s.has_audio ? 7 : 0),
+  };
+}
+
+let activeReview = defaultReview;
+
+/** Installs a compiled review override, or resets to the default when null. */
+export function setActiveAlgorithm(fn) {
+  activeReview = fn || defaultReview;
+}
+
+/** Whether a method is due: not finished (interval >= 0), and either never
+ *  practised yet or its interval of days has elapsed since it was last correct. */
+function methodDue(interval, last, now) {
+  if (interval == null || interval < 0) return false;
   if (!last) return true;
-  return daysBetween(last, now) >= gaps[count];
+  return daysBetween(last, now) >= interval;
 }
 
 // MARK: - Word helpers (operate on plain word objects)
@@ -102,27 +139,24 @@ export function isRemembered(word) {
 }
 
 export function isTranslationDue(word, now = new Date()) {
-  return isDue(word.timesTranslationCorrect ?? 0, word.lastTranslationRemembered, TRANSLATION_GAPS, now);
+  return methodDue(activeReview(reviewState(word)).translation, word.lastTranslationRemembered, now);
 }
 
 export function isWordDue(word, now = new Date()) {
-  return isDue(word.timesWordCorrect ?? 0, word.lastWordRemembered, WORD_GAPS, now);
+  return methodDue(activeReview(reviewState(word)).word, word.lastWordRemembered, now);
 }
 
 export function isPronunciationDue(word, now = new Date()) {
-  return isDue(word.timesPronounciationCorrect ?? 0, word.lastPronounciationRemembered, PRONUNCIATION_GAPS, now);
+  return methodDue(activeReview(reviewState(word)).pronunciation, word.lastPronounciationRemembered, now);
 }
 
-/** Re-evaluates whether the word is finally remembered from its correct counts.
- *  Authoritative: a word only counts as remembered while every required aspect
- *  still meets its threshold (8× word, 10× translation, and — once the word has
- *  a recording — 7× pronunciation). */
+/** Re-evaluates whether the word is finally remembered. Per the active
+ *  algorithm, a word is fully memorized once the sum of its three correct-counts
+ *  (Word + Translation + Audio) reaches the algorithm's `masteredTotal`. */
 function updateRememberFinal(word) {
-  const w = word.timesWordCorrect ?? 0;
-  const tr = word.timesTranslationCorrect ?? 0;
-  const pr = word.timesPronounciationCorrect ?? 0;
-  const pronunciationOK = word.audioPath == null || pr >= 7;
-  word.remember_final = w >= 8 && tr >= 10 && pronunciationOK;
+  const s = reviewState(word);
+  const total = s.times_word + s.times_translation + s.times_pronunciation;
+  word.remember_final = total >= activeReview(s).masteredTotal;
 }
 
 /** Re-evaluates mastery after a word's recording is added or removed. Adding a

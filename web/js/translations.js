@@ -1,6 +1,69 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
 // (plus web-only strings for the About page, appended below.)
 export default {
+ "Edit review algorithm": {
+  "en": "Edit review algorithm",
+  "es": "Editar algoritmo de repaso",
+  "zh": "编辑复习算法",
+  "ja": "復習アルゴリズムを編集",
+  "ko": "복습 알고리즘 편집"
+ },
+ "Write your own Python to schedule reviews and decide when a word is memorized.": {
+  "en": "Write your own Python to schedule reviews and decide when a word is memorized.",
+  "es": "Escribe tu propio Python para programar los repasos y decidir cuándo se memoriza una palabra.",
+  "zh": "编写你自己的 Python 代码来安排复习并决定单词何时算作已记住。",
+  "ja": "独自の Python を書いて、復習の予定と単語を覚えたと見なす条件を決められます。",
+  "ko": "직접 작성한 Python으로 복습 일정과 단어를 외운 것으로 볼 시점을 정하세요."
+ },
+ "Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.": {
+  "en": "Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.",
+  "es": "Tu función se ejecuta en tu navegador (Python con Pyodide). Solo se usa para programar esta lista; nunca modifica tus palabras.",
+  "zh": "你的函数在浏览器中运行（通过 Pyodide 执行 Python）。它只用于安排此列表的复习，绝不会更改你的单词。",
+  "ja": "関数はブラウザー内（Pyodide による Python）で実行されます。このリストの予定管理にのみ使われ、単語が変更されることはありません。",
+  "ko": "함수는 브라우저에서 실행됩니다(Pyodide로 Python 실행). 이 목록의 일정에만 사용되며 단어를 변경하지 않습니다."
+ },
+ "Check code": {
+  "en": "Check code",
+  "es": "Verificar código",
+  "zh": "检查代码",
+  "ja": "コードを確認",
+  "ko": "코드 확인"
+ },
+ "Checking your code…": {
+  "en": "Checking your code…",
+  "es": "Verificando tu código…",
+  "zh": "正在检查你的代码…",
+  "ja": "コードを確認しています…",
+  "ko": "코드를 확인하는 중…"
+ },
+ "Your code looks good.": {
+  "en": "Your code looks good.",
+  "es": "Tu código se ve bien.",
+  "zh": "你的代码没有问题。",
+  "ja": "コードは問題ありません。",
+  "ko": "코드에 문제가 없습니다."
+ },
+ "Reset to default": {
+  "en": "Reset to default",
+  "es": "Restablecer valores predeterminados",
+  "zh": "恢复默认",
+  "ja": "デフォルトに戻す",
+  "ko": "기본값으로 재설정"
+ },
+ "Couldn't run your algorithm — using the default.": {
+  "en": "Couldn't run your algorithm — using the default.",
+  "es": "No se pudo ejecutar tu algoritmo; se usará el predeterminado.",
+  "zh": "无法运行你的算法，将使用默认算法。",
+  "ja": "アルゴリズムを実行できませんでした。デフォルトを使用します。",
+  "ko": "알고리즘을 실행할 수 없어 기본값을 사용합니다."
+ },
+ "Preparing your algorithm…": {
+  "en": "Preparing your algorithm…",
+  "es": "Preparando tu algoritmo…",
+  "zh": "正在准备你的算法…",
+  "ja": "アルゴリズムを準備しています…",
+  "ko": "알고리즘을 준비하는 중…"
+ },
  "Text-to-speech": {
   "en": "Text-to-speech",
   "es": "Texto a voz",

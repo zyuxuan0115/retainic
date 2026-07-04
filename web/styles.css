@@ -242,6 +242,30 @@ textarea.field-input { resize: vertical; }
 .switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .2s; }
 .switch.on .knob { left: 22px; }
 
+/* Algorithm editor */
+.code-editor {
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+  border: 0.5px solid var(--separator);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--label);
+  padding: 12px 14px;
+  outline: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.algo-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.code-status { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.code-status.ok { color: var(--good); }
+.code-status.err { color: var(--danger); }
+
 /* Sheets */
 .sheet-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.3);

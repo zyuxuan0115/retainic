@@ -16,6 +16,7 @@ import * as M from "./models.js";
 import * as Auth from "./auth.js";
 import { authState } from "./auth.js";
 import { playback, PronunciationRecorder, ttsKey } from "./audio.js";
+import { DEFAULT_ALGORITHM_CODE, useAlgorithm, useDefaultAlgorithm, compileAlgorithm } from "./algorithm.js";
 
 const root = document.getElementById("app");
 
@@ -198,7 +199,7 @@ function renderTab(content) {
   if (state.tab === "lists") {
     if (top.name === "lists") ListsScreen(content);
     else if (top.name === "detail") ListDetailScreen(content, top.list);
-    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage, top.ttsEnabled === true);
+    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage, top.ttsEnabled === true, top.algorithmCode || null);
   } else if (state.tab === "trash") {
     TrashScreen(content);
   } else if (state.tab === "stats") {
@@ -232,7 +233,7 @@ function updatePracticeNav() {
 function startCurrentPractice() {
   if (!currentPractice) return;
   state.tab = "lists";
-  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage, ttsEnabled: currentPractice.ttsEnabled });
+  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage, ttsEnabled: currentPractice.ttsEnabled, algorithmCode: currentPractice.algorithmCode });
 }
 
 // MARK: - Lists screen
@@ -658,12 +659,16 @@ async function ListDetailScreen(content, list) {
   body.appendChild(spinner(t("Loading…")));
   try { words = await Repo.fetchWords(authState.uid, list.id); }
   catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+  // Match the scheduler to this list's algorithm so mastery recomputes (e.g.
+  // when a recording is added/removed) use the right rule. Best-effort: a bad
+  // snippet just leaves the default in place until the user fixes it.
+  useAlgorithm(list.algorithmCode).catch(() => {});
   renderAll();
 
   // Keep the sidebar Practice action in sync with this list's words.
   function syncPractice() {
     setPractice(words.length
-      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "", ttsEnabled: list.ttsEnabled === true }
+      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "", ttsEnabled: list.ttsEnabled === true, algorithmCode: list.algorithmCode || null }
       : null);
   }
 
@@ -831,6 +836,21 @@ async function ListDetailScreen(content, list) {
       },
       onDownload: () => downloadListCSV(list),
       onShare: () => shareListId(list),
+      onEditAlgorithm: () => {
+        presentAlgorithmSheet({
+          code: list.algorithmCode,
+          onSave: async (newCode) => {
+            const trimmed = newCode.trim();
+            // Storing the unchanged default is the same as no override — keep
+            // the field clear so those lists never load Pyodide.
+            const store = (trimmed && trimmed !== DEFAULT_ALGORITHM_CODE.trim()) ? newCode : null;
+            list.algorithmCode = store;
+            try { await Repo.setListAlgorithm(authState.uid, list.id, store); }
+            catch (e) { toast(Auth.friendlyMessage(e)); }
+            syncPractice();
+          },
+        });
+      },
       onTrash: async () => {
         try { await Repo.trashList(authState.uid, list.id); }
         catch (e) { toast(Auth.friendlyMessage(e)); return; }
@@ -873,7 +893,7 @@ function presentMoveSheet(targets, count, onSelect) {
   });
 }
 
-function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS, onRename, onReset, onDownload, onShare, onTrash }) {
+function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS, onEditAlgorithm, onRename, onReset, onDownload, onShare, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -909,6 +929,13 @@ function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS
         formSection(null,
           el(".form-card", {}, ttsToggleRow(ttsEnabled, onSetTTS)),
           el(".form-note", {}, t("Read words aloud with a synthesized voice when they have no recording."))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action", {
+              onclick: () => { api.close(); onEditAlgorithm(); },
+            }, icon("code", 20), t("Edit review algorithm")),
+          ),
+          el(".form-note", {}, t("Write your own Python to schedule reviews and decide when a word is memorized."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action", {
@@ -959,6 +986,64 @@ function ttsToggleRow(initial, onChange) {
     onChange(on);
   });
   return el(".toggle-row", {}, el("span", {}, t("Text-to-speech")), sw);
+}
+
+/** A full editor for a list's custom review algorithm (Python). Lets the user
+ *  paste code, check it compiles (loads Pyodide), reset to the default, and
+ *  save. */
+function presentAlgorithmSheet({ code, onSave }) {
+  presentSheet((api) => {
+    const editor = el("textarea.code-editor", {
+      spellcheck: "false", autocapitalize: "off", autocomplete: "off",
+      value: (code && code.trim()) ? code : DEFAULT_ALGORITHM_CODE,
+    });
+    const status = el(".form-note.code-status");
+
+    const saveBtn = el("button.icon-btn", {
+      onclick: () => { onSave(editor.value); api.close(); },
+      title: t("Save"), "aria-label": t("Save"),
+    }, icon("check", 24));
+
+    const checkBtn = el("button.btn", {
+      onclick: async () => {
+        checkBtn.disabled = true;
+        status.classList.remove("ok", "err");
+        status.textContent = t("Checking your code…");
+        try {
+          await compileAlgorithm(editor.value);
+          status.textContent = t("Your code looks good.");
+          status.classList.add("ok");
+        } catch (e) {
+          status.textContent = String(e && e.message ? e.message : e);
+          status.classList.add("err");
+        } finally {
+          checkBtn.disabled = false;
+        }
+      },
+    }, t("Check code"));
+
+    const resetBtn = el("button.btn", {
+      onclick: () => { editor.value = DEFAULT_ALGORITHM_CODE; status.textContent = ""; status.classList.remove("ok", "err"); },
+    }, t("Reset to default"));
+
+    return el(".sheet-content", {},
+      el(".sheet-header", {},
+        el(".sheet-side", {}, el("button.icon-btn", {
+          onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
+        }, icon("close", 24))),
+        el(".sheet-title", {}, t("Edit review algorithm")),
+        el(".sheet-side.trailing", {}, saveBtn),
+      ),
+      el(".scroll", {},
+        el(".form", {},
+          el(".form-note", {}, t("Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.")),
+          editor,
+          el(".algo-actions", {}, resetBtn, checkBtn),
+          status,
+        ),
+      ),
+    );
+  });
 }
 
 // MARK: - Add / edit word sheet
@@ -1130,7 +1215,7 @@ const FRONT_MODES = [
   { id: "pronunciation", labelKey: "Audio", aspect: "pronunciation" },
 ];
 
-function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false) {
+function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false, algorithmCode = null) {
   const header = el(".navbar-host");
   const body = el(".scroll");
   content.appendChild(header);
@@ -1144,6 +1229,18 @@ function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false) {
   let totalCards = 0;
   let dueOnly = true;
   let finished = false;
+
+  // A custom algorithm must be compiled (loading Pyodide the first time) before
+  // scheduling can run. Lists on the default schedule are ready immediately.
+  const hasCustomAlgorithm = !!(algorithmCode && algorithmCode.trim());
+  let algoReady = !hasCustomAlgorithm;
+  if (hasCustomAlgorithm) {
+    useAlgorithm(algorithmCode)
+      .catch((e) => { toast(t("Couldn't run your algorithm — using the default.")); })
+      .finally(() => { algoReady = true; render(); });
+  } else {
+    useDefaultAlgorithm();
+  }
 
   function includes(card, modeId) {
     // Pronunciation practice needs something to hear: a recording, or a
@@ -1187,7 +1284,9 @@ function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false) {
   function render() {
     renderHeader();
     clear(body);
-    if (cards.length === 0) {
+    if (!algoReady) {
+      body.appendChild(spinner(t("Preparing your algorithm…")));
+    } else if (cards.length === 0) {
       body.appendChild(emptyState(icon("style", 46), t("Nothing to Practice"),
         t("Add some words to a list first, then come back to review them.")));
     } else if (session.length === 0) {

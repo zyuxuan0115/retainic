@@ -172,6 +172,12 @@ export async function setListTTS(uid, listId, enabled) {
   await updateDoc(doc(listsRef(uid), listId), { ttsEnabled: enabled });
 }
 
+/** Stores this list's custom review-algorithm Python, or clears it (back to the
+ *  built-in default) when `code` is null. */
+export async function setListAlgorithm(uid, listId, code) {
+  await updateDoc(doc(listsRef(uid), listId), { algorithmCode: code == null ? deleteField() : code });
+}
+
 /** Finds any user's list by its shared `publicId` and returns its metadata and
  *  words (raw), or null if no list has that ID. Uses a collection-group query,
  *  so it can read another account's list (the security rules allow cross-user
