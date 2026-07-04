@@ -125,6 +125,9 @@ struct ListDetailView: View {
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var listName: String
+    /// Per-list text-to-speech fallback, seeded from the list and kept in sync as
+    /// the user toggles it in List Settings.
+    @State private var ttsEnabled: Bool
     @State private var showingAdd = false
     @State private var searchText = ""
     @State private var editMode: EditMode = .inactive
@@ -139,6 +142,7 @@ struct ListDetailView: View {
     init(list: VocabularyList) {
         self.list = list
         _listName = State(initialValue: list.name)
+        _ttsEnabled = State(initialValue: list.ttsEnabled ?? false)
     }
 
     private var listId: String { list.id ?? "" }
@@ -210,8 +214,10 @@ struct ListDetailView: View {
             ListSettingsSheet(
                 name: listName,
                 filter: $wordFilter,
+                ttsEnabled: $ttsEnabled,
                 publicId: list.publicId,
                 onSave: { renameList(to: $0) },
+                onSetTTS: { setTTS($0) },
                 onResetMemory: { resetMemory() }
             )
             .preferredLocale(preferredLanguage)
@@ -288,7 +294,7 @@ struct ListDetailView: View {
             ToolbarItemGroup(placement: .bottomBar) {
                 if !vm.words.isEmpty {
                     NavigationLink {
-                        FlashcardView(cards: practiceCards, learningLanguage: learningLanguage)
+                        FlashcardView(cards: practiceCards, learningLanguage: learningLanguage, ttsEnabled: ttsEnabled)
                     } label: {
                         Label("Practice", systemImage: "rectangle.on.rectangle.angled")
                     }
@@ -313,7 +319,7 @@ struct ListDetailView: View {
                 NavigationLink {
                     AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, word: word, onDelete: reload)
                 } label: {
-                    WordRow(word: word)
+                    WordRow(word: word, learningLanguage: learningLanguage, ttsEnabled: ttsEnabled)
                 }
             }
             .onDelete(perform: deleteWords)
@@ -369,6 +375,17 @@ struct ListDetailView: View {
         Task { await vm.rename(uid: uid, listId: listId, to: trimmed) }
     }
 
+    /// Persists the text-to-speech toggle. Applied immediately (like the filter),
+    /// so there's nothing to confirm.
+    private func setTTS(_ enabled: Bool) {
+        guard let uid = auth.uid else { return }
+        ttsEnabled = enabled
+        Task {
+            do { try await VocabRepository.setListTTS(uid: uid, listId: listId, enabled: enabled) }
+            catch { vm.errorMessage = error.localizedDescription }
+        }
+    }
+
     private func resetMemory() {
         guard let uid = auth.uid else { return }
         Task { await vm.resetAllMemory(uid: uid, listId: listId) }
@@ -406,6 +423,10 @@ private struct WordRow: View {
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @ObservedObject private var playback = AudioPlaybackStore.shared
     let word: VocabWord
+    let learningLanguage: String
+    /// Whether the list falls back to a synthesized voice for words with no
+    /// recording.
+    let ttsEnabled: Bool
 
     var body: some View {
         HStack {
@@ -431,18 +452,35 @@ private struct WordRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            if let path = word.audioPath {
+            if let key = pronunciationKey {
                 Spacer()
                 Button {
-                    playback.toggle(path: path)
+                    activatePronunciation()
                 } label: {
-                    Image(systemName: playback.playingPath == path ? "stop.circle.fill" : "speaker.wave.2.fill")
+                    Image(systemName: playback.playingPath == key ? "stop.circle.fill" : "speaker.wave.2.fill")
                         .foregroundStyle(.tint)
                 }
                 .buttonStyle(.borderless)
             }
         }
         .padding(.vertical, 2)
+    }
+
+    /// The active-playback key for this word's pronunciation: its recording path,
+    /// or a TTS key when the list falls back to a synthesized voice — nil when the
+    /// word has neither.
+    private var pronunciationKey: String? {
+        if let path = word.audioPath { return path }
+        if ttsEnabled { return AudioPlaybackStore.ttsKey(word.term) }
+        return nil
+    }
+
+    private func activatePronunciation() {
+        if let path = word.audioPath {
+            playback.toggle(path: path)
+        } else if ttsEnabled {
+            playback.toggleSpeak(text: word.term, language: learningLanguage)
+        }
     }
 }
 
@@ -453,19 +491,23 @@ private struct ListSettingsSheet: View {
 
     @State private var name: String
     @Binding private var filter: WordFilter
+    @Binding private var ttsEnabled: Bool
     @State private var showingResetConfirm = false
     @State private var showingShareConfirm = false
     private let originalName: String
     let publicId: String?
     let onSave: (String) -> Void
+    let onSetTTS: (Bool) -> Void
     let onResetMemory: () -> Void
 
-    init(name: String, filter: Binding<WordFilter>, publicId: String?, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
+    init(name: String, filter: Binding<WordFilter>, ttsEnabled: Binding<Bool>, publicId: String?, onSave: @escaping (String) -> Void, onSetTTS: @escaping (Bool) -> Void, onResetMemory: @escaping () -> Void) {
         _name = State(initialValue: name)
         _filter = filter
+        _ttsEnabled = ttsEnabled
         self.originalName = name
         self.publicId = publicId
         self.onSave = onSave
+        self.onSetTTS = onSetTTS
         self.onResetMemory = onResetMemory
     }
 
@@ -490,6 +532,15 @@ private struct ListSettingsSheet: View {
                         }
                     }
                     .labelsHidden()
+                }
+
+                Section {
+                    Toggle("Text-to-speech", isOn: Binding(
+                        get: { ttsEnabled },
+                        set: { onSetTTS($0) }
+                    ))
+                } footer: {
+                    Text("Read words aloud with a synthesized voice when they have no recording.")
                 }
 
                 Section {

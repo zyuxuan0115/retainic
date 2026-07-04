@@ -1,6 +1,20 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
 // (plus web-only strings for the About page, appended below.)
 export default {
+ "Text-to-speech": {
+  "en": "Text-to-speech",
+  "es": "Texto a voz",
+  "zh": "文字转语音",
+  "ja": "テキスト読み上げ",
+  "ko": "텍스트 음성 변환"
+ },
+ "Read words aloud with a synthesized voice when they have no recording.": {
+  "en": "Read words aloud with a synthesized voice when they have no recording.",
+  "es": "Lee las palabras en voz alta con una voz sintetizada cuando no tienen grabación.",
+  "zh": "当单词没有录音时，用合成语音朗读。",
+  "ja": "録音のない単語を合成音声で読み上げます。",
+  "ko": "녹음이 없는 단어를 합성 음성으로 읽어 줍니다."
+ },
  "Invitation code": {
   "en": "Invitation code",
   "es": "Código de invitación",

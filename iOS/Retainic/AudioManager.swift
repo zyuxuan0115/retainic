@@ -195,22 +195,64 @@ extension PronunciationRecorder: AVAudioPlayerDelegate {
 
 // MARK: - Playback-only store (used in lists / flashcards)
 
-/// Shared player for tapping a word's pronunciation outside the editor.
+/// Shared player for tapping a word's pronunciation outside the editor. Plays
+/// either a recorded clip (by its Storage path) or, for words without a
+/// recording in a TTS-enabled list, a synthesized voice.
 @MainActor
 final class AudioPlaybackStore: NSObject, ObservableObject {
     static let shared = AudioPlaybackStore()
 
-    /// Storage path currently playing, for highlighting the active button.
+    /// Storage path (recordings) or `tts:`-prefixed key (synthesized speech)
+    /// currently playing, for highlighting the active button.
     @Published private(set) var playingPath: String?
 
     private var player: AVAudioPlayer?
     private var cache: [String: Data] = [:]
+    private let synthesizer = AVSpeechSynthesizer()
+
+    /// The active-button key for a word spoken via TTS (distinct from a recording
+    /// Storage path so the two never collide).
+    static func ttsKey(_ text: String) -> String { "tts:\(text)" }
 
     func toggle(path: String) {
         if playingPath == path {
             stop()
         } else {
             Task { await play(path: path) }
+        }
+    }
+
+    /// Speaks `text` in `language` (a learning-language code like "zh" or "en"),
+    /// or stops if that same utterance is already playing.
+    func toggleSpeak(text: String, language: String) {
+        let key = Self.ttsKey(text)
+        if playingPath == key {
+            stop()
+            return
+        }
+        stop()
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("⚠️ TTS session error: \(error)")
+        }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: Self.bcp47(for: language))
+        synthesizer.delegate = self
+        playingPath = key
+        synthesizer.speak(utterance)
+    }
+
+    /// Maps a learning-language code to a BCP-47 tag for voice selection.
+    private static func bcp47(for language: String) -> String {
+        switch language {
+        case "en": return "en-US"
+        case "es": return "es-ES"
+        case "zh": return "zh-CN"
+        case "ja": return "ja-JP"
+        case "ko": return "ko-KR"
+        default: return language
         }
     }
 
@@ -246,6 +288,9 @@ final class AudioPlaybackStore: NSObject, ObservableObject {
     func stop() {
         player?.stop()
         player = nil
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
         playingPath = nil
     }
 }
@@ -253,5 +298,15 @@ final class AudioPlaybackStore: NSObject, ObservableObject {
 extension AudioPlaybackStore: AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in self.playingPath = nil }
+    }
+}
+
+extension AudioPlaybackStore: AVSpeechSynthesizerDelegate {
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in
+            // Only clear if a TTS utterance is still the active item (a new
+            // recording may already have taken over).
+            if self.playingPath?.hasPrefix("tts:") == true { self.playingPath = nil }
+        }
     }
 }

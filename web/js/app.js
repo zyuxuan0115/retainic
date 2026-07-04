@@ -15,7 +15,7 @@ import * as Repo from "./repository.js";
 import * as M from "./models.js";
 import * as Auth from "./auth.js";
 import { authState } from "./auth.js";
-import { playback, PronunciationRecorder } from "./audio.js";
+import { playback, PronunciationRecorder, ttsKey } from "./audio.js";
 
 const root = document.getElementById("app");
 
@@ -198,7 +198,7 @@ function renderTab(content) {
   if (state.tab === "lists") {
     if (top.name === "lists") ListsScreen(content);
     else if (top.name === "detail") ListDetailScreen(content, top.list);
-    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage);
+    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage, top.ttsEnabled === true);
   } else if (state.tab === "trash") {
     TrashScreen(content);
   } else if (state.tab === "stats") {
@@ -232,7 +232,7 @@ function updatePracticeNav() {
 function startCurrentPractice() {
   if (!currentPractice) return;
   state.tab = "lists";
-  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage });
+  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage, ttsEnabled: currentPractice.ttsEnabled });
 }
 
 // MARK: - Lists screen
@@ -663,7 +663,7 @@ async function ListDetailScreen(content, list) {
   // Keep the sidebar Practice action in sync with this list's words.
   function syncPractice() {
     setPractice(words.length
-      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "" }
+      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "", ttsEnabled: list.ttsEnabled === true }
       : null);
   }
 
@@ -729,7 +729,7 @@ async function ListDetailScreen(content, list) {
     const checked = selection.has(w.id);
     const posChips = M.partOfSpeechValues(w).map((p) =>
       el(".chip", {}, M.posLabel(p, preferredLanguage())));
-    const audioBtn = w.audioPath ? playbackButton(w.audioPath) : null;
+    const audioBtn = pronunciationButton(w, list);
     const row = el(".row.word-row" + (selecting && checked ? ".selected" : ""), {
       onclick: () => {
         if (selecting) { toggleSelect(w.id); }
@@ -809,7 +809,13 @@ async function ListDetailScreen(content, list) {
     presentListSettingsSheet({
       name: listName,
       filter,
+      ttsEnabled: list.ttsEnabled === true,
       onFilter: (f) => { filter = f; renderAll(); },
+      onSetTTS: async (enabled) => {
+        list.ttsEnabled = enabled;
+        renderAll();
+        try { await Repo.setListTTS(authState.uid, list.id, enabled); } catch (e) { toast(Auth.friendlyMessage(e)); }
+      },
       onRename: async (newName) => {
         const trimmed = newName.trim();
         if (!trimmed) return;
@@ -867,7 +873,7 @@ function presentMoveSheet(targets, count, onSelect) {
   });
 }
 
-function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, onDownload, onShare, onTrash }) {
+function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS, onRename, onReset, onDownload, onShare, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -900,6 +906,9 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, o
       el(".form", {},
         formSection(t("List name"), el(".form-card", {}, nameInput)),
         formSection(t("Show words"), el(".form-card", {}, pickerRow(t("Show words"), filterSel))),
+        formSection(null,
+          el(".form-card", {}, ttsToggleRow(ttsEnabled, onSetTTS)),
+          el(".form-note", {}, t("Read words aloud with a synthesized voice when they have no recording."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action", {
@@ -937,6 +946,19 @@ function presentListSettingsSheet({ name, filter, onFilter, onRename, onReset, o
       ),
     );
   });
+}
+
+/** A labelled on/off switch for the list's text-to-speech setting, mirroring the
+ *  toggle style used in the practice setup. Applies immediately via `onChange`. */
+function ttsToggleRow(initial, onChange) {
+  let on = initial === true;
+  const sw = el(".switch" + (on ? ".on" : ""), {}, el(".knob"));
+  sw.addEventListener("click", () => {
+    on = !on;
+    sw.classList.toggle("on", on);
+    onChange(on);
+  });
+  return el(".toggle-row", {}, el("span", {}, t("Text-to-speech")), sw);
 }
 
 // MARK: - Add / edit word sheet
@@ -1108,7 +1130,7 @@ const FRONT_MODES = [
   { id: "pronunciation", labelKey: "Audio", aspect: "pronunciation" },
 ];
 
-function FlashcardScreen(content, cards, learningLanguage) {
+function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false) {
   const header = el(".navbar-host");
   const body = el(".scroll");
   content.appendChild(header);
@@ -1124,7 +1146,9 @@ function FlashcardScreen(content, cards, learningLanguage) {
   let finished = false;
 
   function includes(card, modeId) {
-    if (modeId === "pronunciation" && card.word.audioPath == null) return false;
+    // Pronunciation practice needs something to hear: a recording, or a
+    // synthesized voice when the list has text-to-speech enabled.
+    if (modeId === "pronunciation" && card.word.audioPath == null && !ttsEnabled) return false;
     if (dueOnly) {
       if (modeId === "translation") return M.isTranslationDue(card.word);
       if (modeId === "term") return M.isWordDue(card.word);
@@ -1196,7 +1220,7 @@ function FlashcardScreen(content, cards, learningLanguage) {
         dailyToggle,
         el(".section-label", {}, t("Show first")),
         modeList,
-        selectedModes.has("pronunciation") ? el(".form-note", {}, t("Audio is only used for words with a recorded pronunciation.")) : null,
+        (selectedModes.has("pronunciation") && !ttsEnabled) ? el(".form-note", {}, t("Audio is only used for words with a recorded pronunciation.")) : null,
       ),
       el("button.btn.primary.large", { disabled: deck().length === 0, onclick: start }, t("Start Session")),
     ));
@@ -1236,13 +1260,14 @@ function FlashcardScreen(content, cards, learningLanguage) {
       card.appendChild(el(".card-prompt", {}, mode === "translation" ? word.translation : word.term));
     }
 
-    const showAudio = (frontIsPron ? !isFlipped : isFlipped) && word.audioPath;
+    const showAudioSide = frontIsPron ? !isFlipped : isFlipped;
+    const pronBtn = showAudioSide ? pronunciationButton(word, { learningLanguage, ttsEnabled }, true) : null;
 
     body.appendChild(el(".practice-view", {},
       el(".progress-track", {}, el(".progress-fill", { style: `width:${(index / session.length) * 100}%` })),
       el("p.caption.center", {}, tf("%lld of %lld", index + 1, session.length)),
       card,
-      showAudio ? playbackButton(word.audioPath, true) : el(".audio-placeholder"),
+      pronBtn || el(".audio-placeholder"),
       isFlipped
         ? el(".answer-actions", {},
             el("button.btn.warn.large", { onclick: () => answer(false) }, icon("replay", 20), t("Practice Again")),
@@ -1484,16 +1509,36 @@ function AboutScreen(content) {
 
 // MARK: - Small shared pieces
 
+/** A word's pronunciation control: its recording if it has one, otherwise a
+ *  synthesized voice when the list has text-to-speech enabled — null for
+ *  neither. */
+function pronunciationButton(word, list, large = false) {
+  if (word.audioPath) return playbackButton(word.audioPath, large);
+  if (list.ttsEnabled === true && word.term) {
+    return audioButton(ttsKey(word.term), large, (e) => {
+      e.stopPropagation();
+      playback.speakToggle(word.term, list.learningLanguage || "");
+    });
+  }
+  return null;
+}
+
 function playbackButton(path, large = false) {
+  return audioButton(path, large, (e) => { e.stopPropagation(); playback.toggle(path); });
+}
+
+/** Shared audio button: shows a speaker/stop glyph tracking `key`'s play state
+ *  and runs `onClick` when tapped. Used for both recordings and TTS. */
+function audioButton(key, large, onClick) {
   const btn = el("button.audio-btn" + (large ? ".large" : ""), {}, speakerGlyph());
   const update = (playingPath) => {
-    const playing = playingPath === path;
+    const playing = playingPath === key;
     clear(btn);
     btn.appendChild(playing ? stopGlyph() : speakerGlyph());
     if (large) btn.appendChild(document.createTextNode(" " + (playing ? t("Stop") : t("Play pronunciation"))));
   };
-  btn.addEventListener("click", (e) => { e.stopPropagation(); playback.toggle(path); });
-  const unsub = playback.subscribe(update);
+  btn.addEventListener("click", onClick);
+  playback.subscribe(update);
   update(playback.playingPath);
   // Clean up subscription when removed (best-effort)
   return btn;

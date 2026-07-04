@@ -22,10 +22,20 @@ function recorderOptions() {
 
 // MARK: - Shared playback store (play a recording by its Storage path)
 
+/** Maps a learning-language code to a BCP-47 tag for TTS voice selection. */
+function ttsBcp47(language) {
+  return { en: "en-US", es: "es-ES", zh: "zh-CN", ja: "ja-JP", ko: "ko-KR" }[language] || language;
+}
+
+/** The active-playback key for a word spoken via TTS, distinct from a recording
+ *  Storage path so the two never collide in the button-highlight check. */
+export function ttsKey(text) { return `tts:${text}`; }
+
 class AudioPlaybackStore {
   constructor() {
     this.playingPath = null;
     this.audio = null;
+    this.utterance = null;
     this.listeners = new Set();
     this.urlCache = new Map();
   }
@@ -49,8 +59,30 @@ class AudioPlaybackStore {
     }
   }
 
+  /** Speaks `text` in `language` (a learning-language code) with the browser's
+   *  speech synthesizer, or stops if that same utterance is already playing. */
+  speakToggle(text, language) {
+    const key = ttsKey(text);
+    if (this.playingPath === key) { this.stop(); return; }
+    this.stop();
+    if (typeof speechSynthesis === "undefined") return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = ttsBcp47(language);
+      u.onend = () => { if (this.playingPath === key) { this.playingPath = null; this._notify(); } };
+      this.utterance = u;
+      this.playingPath = key;
+      this._notify();
+      speechSynthesis.speak(u);
+    } catch (e) {
+      this.playingPath = null;
+      this._notify();
+    }
+  }
+
   stop() {
     if (this.audio) { this.audio.pause(); this.audio = null; }
+    if (this.utterance) { this.utterance = null; if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel(); }
     if (this.playingPath) { this.playingPath = null; this._notify(); }
   }
 }

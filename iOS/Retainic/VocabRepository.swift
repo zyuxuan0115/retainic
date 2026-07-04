@@ -149,6 +149,11 @@ enum VocabRepository {
         try await listsRef(uid).document(listId).updateData(["name": name])
     }
 
+    /// Turns the per-list text-to-speech fallback on or off.
+    static func setListTTS(uid: String, listId: String, enabled: Bool) async throws {
+        try await listsRef(uid).document(listId).updateData(["ttsEnabled": enabled])
+    }
+
     /// Finds any user's list by its shared `publicId` and returns its metadata
     /// and words, or nil if no list has that ID. Uses a collection-group query,
     /// so it can read another account's list (the security rules allow cross-user

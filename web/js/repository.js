@@ -167,6 +167,11 @@ export async function renameList(uid, listId, name) {
   await updateDoc(doc(listsRef(uid), listId), { name });
 }
 
+/** Turns the per-list text-to-speech fallback on or off. */
+export async function setListTTS(uid, listId, enabled) {
+  await updateDoc(doc(listsRef(uid), listId), { ttsEnabled: enabled });
+}
+
 /** Finds any user's list by its shared `publicId` and returns its metadata and
  *  words (raw), or null if no list has that ID. Uses a collection-group query,
  *  so it can read another account's list (the security rules allow cross-user

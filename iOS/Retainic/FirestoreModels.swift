@@ -39,6 +39,10 @@ struct VocabularyList: Codable, Identifiable {
     /// and numbers only), independent of the Firestore document ID. Optional so
     /// older documents still decode; backfilled on fetch.
     var publicId: String?
+    /// When true, words in this list without a recorded pronunciation fall back
+    /// to a synthesized (text-to-speech) voice. Off by default; a per-list
+    /// opt-in. Optional so older documents still decode (treated as `false`).
+    var ttsEnabled: Bool?
 
     init(
         id: String? = nil,
@@ -48,7 +52,8 @@ struct VocabularyList: Codable, Identifiable {
         learningLanguage: String? = nil,
         originalLanguage: String? = nil,
         deletedAt: Date? = nil,
-        publicId: String? = nil
+        publicId: String? = nil,
+        ttsEnabled: Bool? = nil
     ) {
         self.id = id
         self.name = name
@@ -58,6 +63,7 @@ struct VocabularyList: Codable, Identifiable {
         self.originalLanguage = originalLanguage
         self.deletedAt = deletedAt
         self.publicId = publicId
+        self.ttsEnabled = ttsEnabled
     }
 }
 

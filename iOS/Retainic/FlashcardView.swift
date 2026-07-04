@@ -45,6 +45,9 @@ struct FlashcardView: View {
     /// Language of the words being studied (the `term` side), from the list.
     /// Determines whether the reading is pinyin (Chinese) or hiragana (Japanese).
     let learningLanguage: String
+    /// Whether the list falls back to a synthesized voice for words without a
+    /// recording — so pronunciation practice can include them too.
+    let ttsEnabled: Bool
 
     @EnvironmentObject private var auth: AuthService
     @ObservedObject private var playback = AudioPlaybackStore.shared
@@ -108,6 +111,23 @@ struct FlashcardView: View {
         mode == .pronunciation ? !isFlipped : isFlipped
     }
 
+    /// The active-playback key for a word's pronunciation: its recording path, or
+    /// a TTS key when the list falls back to a synthesized voice — nil for
+    /// neither.
+    private func pronunciationKey(for word: VocabWord) -> String? {
+        if let path = word.audioPath { return path }
+        if ttsEnabled { return AudioPlaybackStore.ttsKey(word.term) }
+        return nil
+    }
+
+    private func activatePronunciation(for word: VocabWord) {
+        if let path = word.audioPath {
+            playback.toggle(path: path)
+        } else if ttsEnabled {
+            playback.toggleSpeak(text: word.term, language: learningLanguage)
+        }
+    }
+
     private func toggleMode(_ mode: FrontMode) {
         if selectedModes.contains(mode) {
             selectedModes.remove(mode)
@@ -156,7 +176,7 @@ struct FlashcardView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    if selectedModes.contains(.pronunciation) {
+                    if selectedModes.contains(.pronunciation) && !ttsEnabled {
                         Text("Audio is only used for words with a recorded pronunciation.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -216,13 +236,14 @@ struct FlashcardView: View {
             }
 
             // In pronunciation mode the audio button is the prompt (shown on
-            // the front); otherwise it's part of the revealed answer.
-            if showAudioButton(mode), let path = word.audioPath {
+            // the front); otherwise it's part of the revealed answer. Falls back
+            // to a synthesized voice when the word has no recording.
+            if showAudioButton(mode), let key = pronunciationKey(for: word) {
                 Button {
-                    playback.toggle(path: path)
+                    activatePronunciation(for: word)
                 } label: {
-                    Label(playback.playingPath == path ? "Stop" : "Play pronunciation",
-                          systemImage: playback.playingPath == path ? "stop.fill" : "speaker.wave.2.fill")
+                    Label(playback.playingPath == key ? "Stop" : "Play pronunciation",
+                          systemImage: playback.playingPath == key ? "stop.fill" : "speaker.wave.2.fill")
                 }
                 .buttonStyle(.bordered)
             }
@@ -310,7 +331,9 @@ struct FlashcardView: View {
     /// the word (pronunciation needs a recording), and — when reviewing due cards
     /// only — that aspect must not have been remembered yet today.
     private func includes(_ card: PracticeCard, mode: FrontMode) -> Bool {
-        if mode == .pronunciation && card.word.audioPath == nil { return false }
+        // Pronunciation practice needs something to hear: a recording, or a
+        // synthesized voice when the list has text-to-speech enabled.
+        if mode == .pronunciation && card.word.audioPath == nil && !ttsEnabled { return false }
         if dueOnly {
             // Daily assignment: each mode follows its own spaced-repetition schedule.
             switch mode {
