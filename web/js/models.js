@@ -82,7 +82,7 @@ export function defaultReview(s) {
     word: gap(WORD, s.times_word),
     translation: gap(TRANSLATION, s.times_translation),
     pronunciation: gap(PRONUNCIATION, s.times_pronunciation),
-    masteredTotal: 18 + (s.has_audio ? 7 : 0),
+    masteredTotal: WORD.length + TRANSLATION.length + (s.has_audio ? PRONUNCIATION.length : 0),
   };
 }
 

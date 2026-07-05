@@ -1067,7 +1067,8 @@ function codeEditor(initial) {
  *  save. */
 function presentAlgorithmSheet({ code, onSave }) {
   presentSheet((api) => {
-    const ed = codeEditor((code && code.trim()) ? code : DEFAULT_ALGORITHM_CODE);
+    const initialCode = (code && code.trim()) ? code : DEFAULT_ALGORITHM_CODE;
+    const ed = codeEditor(initialCode);
     const editor = ed.textarea;
     const status = el(".form-note.code-status");
 
@@ -1079,7 +1080,7 @@ function presentAlgorithmSheet({ code, onSave }) {
         const codeVal = editor.value;
         // The unchanged default is known-good, so skip the Pyodide round-trip.
         if (codeVal.trim() !== DEFAULT_ALGORITHM_CODE.trim()) {
-          saveBtn.disabled = true;
+          setSaveEnabled(false);
           status.classList.remove("ok", "err");
           status.textContent = t("Checking your code…");
           try {
@@ -1087,7 +1088,7 @@ function presentAlgorithmSheet({ code, onSave }) {
           } catch (e) {
             status.textContent = String(e && e.message ? e.message : e);
             status.classList.add("err");
-            saveBtn.disabled = false;
+            syncSave();
             return;
           }
         }
@@ -1097,8 +1098,17 @@ function presentAlgorithmSheet({ code, onSave }) {
       title: t("Save"), "aria-label": t("Save"),
     }, icon("check", 24));
 
+    function setSaveEnabled(enabled) {
+      saveBtn.disabled = !enabled;
+      saveBtn.classList.toggle("disabled", !enabled);
+    }
+    // The checkmark is available only once the code differs from what was opened.
+    function syncSave() { setSaveEnabled(editor.value !== initialCode); }
+    editor.addEventListener("input", syncSave);
+    syncSave();
+
     const resetBtn = el("button.btn", {
-      onclick: () => { ed.setValue(DEFAULT_ALGORITHM_CODE); status.textContent = ""; status.classList.remove("ok", "err"); },
+      onclick: () => { ed.setValue(DEFAULT_ALGORITHM_CODE); status.textContent = ""; status.classList.remove("ok", "err"); syncSave(); },
     }, t("Reset to default"));
 
     return el(".sheet-content", {},

@@ -36,8 +36,8 @@ def review(w):
     def gap(table, n):
         return table[n] if n < len(table) else -1
 
-    # 8 Word + 10 Translation (+ 7 Audio when there is a recording).
-    mastered_total = 18 + (7 if w.has_audio else 0)
+    # All Word + Translation steps (+ Audio steps when there is a recording).
+    mastered_total = len(WORD) + len(TRANSLATION) + (len(PRONUNCIATION) if w.has_audio else 0)
 
     return Review(
         word          = gap(WORD,          w.times_word),
