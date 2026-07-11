@@ -381,7 +381,7 @@ struct FlashcardView: View {
         // assignment; otherwise it's free practice that doesn't affect stats.
         if dueOnly {
             if correct {
-                item.card.word.markCorrect(aspect: item.mode.memoryAspect)
+                item.card.word.markCorrect(aspect: item.mode.memoryAspect, ttsEnabled: ttsEnabled)
                 recordDailyStat(aspect: item.mode.memoryAspect)
             } else {
                 item.card.word.markIncorrect(aspect: item.mode.memoryAspect)
@@ -410,7 +410,7 @@ struct FlashcardView: View {
 
     private func persist(_ card: PracticeCard) {
         guard let uid = auth.uid else { return }
-        Task { try? await VocabRepository.updateWord(uid: uid, listId: card.listId, word: card.word) }
+        Task { try? await VocabRepository.updateWord(uid: uid, listId: card.listId, word: card.word, ttsEnabled: ttsEnabled) }
     }
 
     private func recordDailyStat(aspect: String) {

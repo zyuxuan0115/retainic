@@ -1,6 +1,69 @@
 // Auto-extracted from iOS Localizable.xcstrings (en, es, zh, ja, ko)
 // (plus web-only strings for the About page, appended below.)
 export default {
+ "Change Password": {
+  "en": "Change Password",
+  "es": "Cambiar contraseña",
+  "zh": "修改密码",
+  "ja": "パスワードを変更",
+  "ko": "비밀번호 변경"
+ },
+ "Current password": {
+  "en": "Current password",
+  "es": "Contraseña actual",
+  "zh": "当前密码",
+  "ja": "現在のパスワード",
+  "ko": "현재 비밀번호"
+ },
+ "New password": {
+  "en": "New password",
+  "es": "Nueva contraseña",
+  "zh": "新密码",
+  "ja": "新しいパスワード",
+  "ko": "새 비밀번호"
+ },
+ "Confirm new password": {
+  "en": "Confirm new password",
+  "es": "Confirmar nueva contraseña",
+  "zh": "确认新密码",
+  "ja": "新しいパスワードを確認",
+  "ko": "새 비밀번호 확인"
+ },
+ "Password changed.": {
+  "en": "Password changed.",
+  "es": "Contraseña cambiada.",
+  "zh": "密码已修改。",
+  "ja": "パスワードを変更しました。",
+  "ko": "비밀번호가 변경되었습니다."
+ },
+ "The new passwords don't match.": {
+  "en": "The new passwords don't match.",
+  "es": "Las nuevas contraseñas no coinciden.",
+  "zh": "两次输入的新密码不一致。",
+  "ja": "新しいパスワードが一致しません。",
+  "ko": "새 비밀번호가 일치하지 않습니다."
+ },
+ "The current password you entered is incorrect.": {
+  "en": "The current password you entered is incorrect.",
+  "es": "La contraseña actual que ingresaste es incorrecta.",
+  "zh": "你输入的当前密码不正确。",
+  "ja": "入力した現在のパスワードが正しくありません。",
+  "ko": "입력한 현재 비밀번호가 올바르지 않습니다."
+ },
+ "You need to be signed in to change your password.": {
+  "en": "You need to be signed in to change your password.",
+  "es": "Debes haber iniciado sesión para cambiar tu contraseña.",
+  "zh": "你需要登录后才能修改密码。",
+  "ja": "パスワードを変更するにはサインインが必要です。",
+  "ko": "비밀번호를 변경하려면 로그인해야 합니다."
+ },
+ "Please sign in again, then change your password.": {
+  "en": "Please sign in again, then change your password.",
+  "es": "Vuelve a iniciar sesión y luego cambia tu contraseña.",
+  "zh": "请重新登录后再修改密码。",
+  "ja": "もう一度サインインしてから、パスワードを変更してください。",
+  "ko": "다시 로그인한 후 비밀번호를 변경하세요."
+ },
  "Edit review algorithm": {
   "en": "Edit review algorithm",
   "es": "Editar algoritmo de repaso",

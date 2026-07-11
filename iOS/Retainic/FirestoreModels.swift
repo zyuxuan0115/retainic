@@ -265,7 +265,10 @@ extension VocabWord {
         return days >= gaps[count]
     }
 
-    mutating func markCorrect(aspect: String? = nil) {
+    /// Records a correct recall for the given aspect. Pass the list's
+    /// `ttsEnabled` so mastery is re-evaluated against the same pronunciation
+    /// requirement the learner is practising under.
+    mutating func markCorrect(aspect: String? = nil, ttsEnabled: Bool = false) {
         let now = Date()
         timesSeen += 1
         // The aspect names map to the practice modes: spelling = Word mode.
@@ -281,7 +284,7 @@ extension VocabWord {
             lastTranslationRemembered = now
         default: break
         }
-        updateRememberFinal()
+        updateRememberFinal(ttsEnabled: ttsEnabled)
         lastReviewed = now
         record(aspect: aspect, correct: true, now: now)
     }
@@ -309,24 +312,28 @@ extension VocabWord {
     /// Re-evaluates whether the word is finally remembered from its correct
     /// counts. Authoritative: the word counts as remembered only while every
     /// required aspect still meets its threshold (8× word, 10× translation, and
-    /// — once the word has a recording — 7× pronunciation). Called whenever a
-    /// per-mode correct count changes.
-    private mutating func updateRememberFinal() {
+    /// — when the word is spoken — 7× pronunciation). Called whenever a per-mode
+    /// correct count changes. `ttsEnabled` is the list's text-to-speech setting.
+    private mutating func updateRememberFinal(ttsEnabled: Bool = false) {
         let word = timesWordCorrect ?? 0
         let translation = timesTranslationCorrect ?? 0
         let pronunciation = timesPronounciationCorrect ?? 0
-        // Pronunciation only counts toward mastery for words that have a recording.
-        let pronunciationOK = audioPath == nil || pronunciation >= 7
+        // Pronunciation counts toward mastery when the word is spoken: it has a
+        // recording, or the list has text-to-speech on.
+        let pronunciationRequired = audioPath != nil || ttsEnabled
+        let pronunciationOK = !pronunciationRequired || pronunciation >= 7
         remember_final = word >= 8 && translation >= 10 && pronunciationOK
     }
 
-    /// Re-evaluates mastery after the word's recording is added or removed.
-    /// Adding a recording introduces the 7× pronunciation requirement, so a word
-    /// that was mastered without one is demoted until it is recalled 7 more times
-    /// by pronunciation; removing a recording drops that requirement again. Call
-    /// this whenever `audioPath` changes.
-    mutating func refreshMemorizationForAudio() {
-        updateRememberFinal()
+    /// Re-evaluates mastery after the word's pronunciation requirement may have
+    /// changed — a recording was added or removed, or the list's text-to-speech
+    /// setting was toggled. Turning either on introduces the 7× pronunciation
+    /// requirement, so a word mastered without it is demoted until it is recalled
+    /// by pronunciation enough times; turning both off drops the requirement
+    /// again while keeping the pronunciation count. Call whenever `audioPath` or
+    /// the list's `ttsEnabled` changes.
+    mutating func refreshMemorization(ttsEnabled: Bool = false) {
+        updateRememberFinal(ttsEnabled: ttsEnabled)
     }
 
     /// Updates the memory stats for the aspect tested, if provided.

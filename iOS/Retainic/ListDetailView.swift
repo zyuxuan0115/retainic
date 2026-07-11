@@ -87,6 +87,26 @@ final class WordsViewModel: ObservableObject {
         }
     }
 
+    /// Applies the list's text-to-speech setting to every word's mastery.
+    /// Turning it on adds the pronunciation requirement (demoting any word
+    /// mastered without it); turning it off drops the requirement while keeping
+    /// each word's pronunciation count. Recomputes and persists `remember_final`
+    /// so filters and stats reflect the new setting immediately.
+    func applyTTS(uid: String, listId: String, enabled: Bool) async {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            var updated = words
+            for i in updated.indices {
+                updated[i].refreshMemorization(ttsEnabled: enabled)
+                try await VocabRepository.updateWord(uid: uid, listId: listId, word: updated[i], ttsEnabled: enabled)
+            }
+            words = updated
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Resets every word's progress so the whole list counts as not remembered.
     func resetAllMemory(uid: String, listId: String) async {
         isBusy = true
@@ -197,7 +217,7 @@ struct ListDetailView: View {
         }
         .sheet(isPresented: $showingAdd, onDismiss: reload) {
             NavigationStack {
-                AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage)
+                AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, ttsEnabled: ttsEnabled)
             }
             .preferredLocale(preferredLanguage)
         }
@@ -317,7 +337,7 @@ struct ListDetailView: View {
         List(selection: $selection) {
             ForEach(filteredWords, id: \.idValue) { word in
                 NavigationLink {
-                    AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, word: word, onDelete: reload)
+                    AddWordView(listId: listId, learningLanguage: learningLanguage, originalLanguage: originalLanguage, ttsEnabled: ttsEnabled, word: word, onDelete: reload)
                 } label: {
                     WordRow(word: word, learningLanguage: learningLanguage, ttsEnabled: ttsEnabled)
                 }
@@ -383,6 +403,11 @@ struct ListDetailView: View {
         Task {
             do { try await VocabRepository.setListTTS(uid: uid, listId: listId, enabled: enabled) }
             catch { vm.errorMessage = error.localizedDescription }
+            // Re-evaluate every word's mastery under the new setting: enabling
+            // requires pronunciation (so a word already memorized may become
+            // unmemorized until its pronunciation count catches up), disabling
+            // stops counting it while keeping the count.
+            await vm.applyTTS(uid: uid, listId: listId, enabled: enabled)
         }
     }
 

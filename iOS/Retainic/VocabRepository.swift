@@ -222,12 +222,15 @@ enum VocabRepository {
     /// Updates a word. Pass `newAudioFileURL` to (re)upload a recording, or
     /// `removeAudio: true` to delete the existing recording. With neither, the
     /// existing `audioPath` is preserved (used for spaced-repetition updates).
+    /// `ttsEnabled` is the list's text-to-speech setting, so mastery is recomputed
+    /// against the right pronunciation requirement when the recording changes.
     static func updateWord(
         uid: String,
         listId: String,
         word: VocabWord,
         newAudioFileURL: URL? = nil,
-        removeAudio: Bool = false
+        removeAudio: Bool = false,
+        ttsEnabled: Bool = false
     ) async throws {
         guard let id = word.id else { return }
         var word = word
@@ -235,11 +238,11 @@ enum VocabRepository {
         if let newAudioFileURL {
             try await uploadAudio(localURL: newAudioFileURL, to: path)
             word.audioPath = path
-            word.refreshMemorizationForAudio()
+            word.refreshMemorization(ttsEnabled: ttsEnabled)
         } else if removeAudio {
             await deleteAudio(path: path)
             word.audioPath = nil
-            word.refreshMemorizationForAudio()
+            word.refreshMemorization(ttsEnabled: ttsEnabled)
         }
         // Full overwrite (no merge) so a cleared audioPath is actually removed.
         try wordsRef(uid, listId).document(id).setData(from: word)

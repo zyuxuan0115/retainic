@@ -61,13 +61,16 @@ export function isToday(date) {
 // can override this with its own Python (compiled via Pyodide in algorithm.js);
 // with no override the built-in `defaultReview` below runs.
 
-/** The state a review function sees for a word. */
-function reviewState(word) {
+/** The state a review function sees for a word. `ttsEnabled` is the list's
+ *  text-to-speech setting: with it on the word is spoken by a synthesized voice,
+ *  so pronunciation is practised — and therefore required for mastery — even
+ *  without its own recording. */
+function reviewState(word, ttsEnabled = false) {
   return {
     times_word: word.timesWordCorrect ?? 0,
     times_translation: word.timesTranslationCorrect ?? 0,
     times_pronunciation: word.timesPronounciationCorrect ?? 0,
-    has_audio: word.audioPath != null,
+    has_audio: word.audioPath != null || ttsEnabled === true,
   };
 }
 
@@ -138,34 +141,38 @@ export function isRemembered(word) {
   return word.remember_final === true;
 }
 
-export function isTranslationDue(word, now = new Date()) {
-  return methodDue(activeReview(reviewState(word)).translation, word.lastTranslationRemembered, now);
+export function isTranslationDue(word, now = new Date(), ttsEnabled = false) {
+  return methodDue(activeReview(reviewState(word, ttsEnabled)).translation, word.lastTranslationRemembered, now);
 }
 
-export function isWordDue(word, now = new Date()) {
-  return methodDue(activeReview(reviewState(word)).word, word.lastWordRemembered, now);
+export function isWordDue(word, now = new Date(), ttsEnabled = false) {
+  return methodDue(activeReview(reviewState(word, ttsEnabled)).word, word.lastWordRemembered, now);
 }
 
-export function isPronunciationDue(word, now = new Date()) {
-  return methodDue(activeReview(reviewState(word)).pronunciation, word.lastPronounciationRemembered, now);
+export function isPronunciationDue(word, now = new Date(), ttsEnabled = false) {
+  return methodDue(activeReview(reviewState(word, ttsEnabled)).pronunciation, word.lastPronounciationRemembered, now);
 }
 
 /** Re-evaluates whether the word is finally remembered. Per the active
  *  algorithm, a word is fully memorized once the sum of its three correct-counts
- *  (Word + Translation + Audio) reaches the algorithm's `masteredTotal`. */
-function updateRememberFinal(word) {
-  const s = reviewState(word);
+ *  (Word + Translation + Audio) reaches the algorithm's `masteredTotal`.
+ *  Pronunciation counts toward that total when the word has a recording or the
+ *  list has text-to-speech on (see `reviewState`). */
+function updateRememberFinal(word, ttsEnabled = false) {
+  const s = reviewState(word, ttsEnabled);
   const total = s.times_word + s.times_translation + s.times_pronunciation;
   word.remember_final = total >= activeReview(s).masteredTotal;
 }
 
-/** Re-evaluates mastery after a word's recording is added or removed. Adding a
- *  recording introduces the 7× pronunciation requirement, so a word that was
- *  mastered without one is demoted until it is recalled 7 more times by
- *  pronunciation; removing a recording drops that requirement again. Call this
- *  whenever `audioPath` changes. */
-export function refreshMemorizationForAudio(word) {
-  updateRememberFinal(word);
+/** Re-evaluates mastery after the word's pronunciation requirement may have
+ *  changed — a recording was added or removed, or the list's text-to-speech
+ *  setting was toggled. Turning either on introduces the 7× pronunciation
+ *  requirement, so a word mastered without it is demoted until it is recalled by
+ *  pronunciation enough times; turning both off drops the requirement again
+ *  while keeping the pronunciation count. Call whenever `audioPath` or the
+ *  list's `ttsEnabled` changes. */
+export function refreshMemorization(word, ttsEnabled = false) {
+  updateRememberFinal(word, ttsEnabled);
 }
 
 function record(word, aspect, correct, now) {
@@ -181,8 +188,10 @@ function record(word, aspect, correct, now) {
   word.memoryStats = stats;
 }
 
-/** Records a correct recall for the given aspect (mutates the word). */
-export function markCorrect(word, aspect) {
+/** Records a correct recall for the given aspect (mutates the word). Pass the
+ *  list's `ttsEnabled` so mastery is re-evaluated against the same pronunciation
+ *  requirement the learner is practising under. */
+export function markCorrect(word, aspect, ttsEnabled = false) {
   const now = new Date();
   word.timesSeen = (word.timesSeen ?? 0) + 1;
   switch (aspect) {
@@ -199,7 +208,7 @@ export function markCorrect(word, aspect) {
       word.lastTranslationRemembered = now;
       break;
   }
-  updateRememberFinal(word);
+  updateRememberFinal(word, ttsEnabled);
   word.lastReviewed = now;
   record(word, aspect, true, now);
 }

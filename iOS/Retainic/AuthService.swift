@@ -93,6 +93,38 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Changes the signed-in user's password. The user must first prove they know
+    /// their current password: we reauthenticate with it (Firebase requires a
+    /// recent login before a credential change, and this confirms the old
+    /// password is correct) before setting the new one. Returns whether it
+    /// succeeded so the caller can dismiss on success.
+    func changePassword(currentPassword: String, newPassword: String) async -> Bool {
+        errorMessage = nil
+        isWorking = true
+        defer { isWorking = false }
+
+        guard let user = Auth.auth().currentUser, let email = user.email else {
+            errorMessage = String(localized: "You need to be signed in to change your password.")
+            return false
+        }
+
+        do {
+            let credential = EmailAuthProvider.credential(withEmail: email, password: currentPassword)
+            try await user.reauthenticate(with: credential)
+            try await user.updatePassword(to: newPassword)
+            return true
+        } catch {
+            logAuthError("changePassword", error)
+            switch (error as NSError).code {
+            // Wrong/invalid current password: be specific — the email isn't in question.
+            case 17009, 17004: errorMessage = String(localized: "The current password you entered is incorrect.")
+            case 17014: errorMessage = String(localized: "Please sign in again, then change your password.")
+            default: errorMessage = friendlyMessage(error)
+            }
+            return false
+        }
+    }
+
     func loadProfile(uid: String) async {
         do {
             let snapshot = try await VocabRepository.userDoc(uid).getDocument()

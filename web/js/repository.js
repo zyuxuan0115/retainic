@@ -20,7 +20,7 @@ import {
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
-import { refreshMemorizationForAudio } from "./models.js";
+import { refreshMemorization } from "./models.js";
 
 // MARK: - Date / document normalization
 
@@ -236,19 +236,21 @@ export async function addWord(uid, listId, word, audioBlob = null) {
 }
 
 /** Updates a word. Pass `audioBlob` to (re)upload a recording, or
- *  `removeAudio: true` to delete it. With neither, audioPath is preserved. */
-export async function updateWord(uid, listId, word, { audioBlob = null, removeAudio = false } = {}) {
+ *  `removeAudio: true` to delete it. With neither, audioPath is preserved.
+ *  `ttsEnabled` is the list's text-to-speech setting, so mastery is recomputed
+ *  against the right pronunciation requirement when the recording changes. */
+export async function updateWord(uid, listId, word, { audioBlob = null, removeAudio = false, ttsEnabled = false } = {}) {
   if (!word.id) return;
   const w = { ...word };
   const path = audioStoragePath(uid, listId, word.id);
   if (audioBlob) {
     await uploadAudio(audioBlob, path);
     w.audioPath = path;
-    refreshMemorizationForAudio(w);
+    refreshMemorization(w, ttsEnabled);
   } else if (removeAudio) {
     await deleteAudio(path);
     w.audioPath = null;
-    refreshMemorizationForAudio(w);
+    refreshMemorization(w, ttsEnabled);
   }
   await setDoc(doc(wordsRef(uid, listId), word.id), toFirestore(w));
 }

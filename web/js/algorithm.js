@@ -22,7 +22,8 @@ export const DEFAULT_ALGORITHM_CODE = `# Retainic review algorithm.
 #   w.times_word           correct "Word" recalls so far
 #   w.times_translation    correct "Translation" recalls so far
 #   w.times_pronunciation  correct "Audio" recalls so far
-#   w.has_audio            True if the word has a recording
+#   w.has_audio            True if the word is spoken (has a recording, or
+#                          the list has text-to-speech on)
 #
 # Return a Review giving the number of days until each method is due again
 # (-1 means that method is finished). The word is fully memorized once
@@ -36,7 +37,7 @@ def review(w):
     def gap(table, n):
         return table[n] if n < len(table) else -1
 
-    # All Word + Translation steps (+ Audio steps when there is a recording).
+    # All Word + Translation steps (+ Audio steps when the word is spoken).
     mastered_total = len(WORD) + len(TRANSLATION) + (len(PRONUNCIATION) if w.has_audio else 0)
 
     return Review(

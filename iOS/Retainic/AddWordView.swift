@@ -13,6 +13,9 @@ struct AddWordView: View {
     let learningLanguage: String
     /// Language the word is translated into (the `translation`), from the list.
     let originalLanguage: String
+    /// The list's text-to-speech setting, so removing a recording recomputes
+    /// mastery against the right pronunciation requirement.
+    let ttsEnabled: Bool
     /// Existing word when editing; nil when creating.
     private let existingWord: VocabWord?
     /// Called after the word is deleted, so the presenter can refresh its list.
@@ -34,10 +37,11 @@ struct AddWordView: View {
     @State private var showingDeleteConfirm = false
     @StateObject private var recorder = PronunciationRecorder()
 
-    init(listId: String, learningLanguage: String, originalLanguage: String, word: VocabWord? = nil, onDelete: (() -> Void)? = nil) {
+    init(listId: String, learningLanguage: String, originalLanguage: String, ttsEnabled: Bool = false, word: VocabWord? = nil, onDelete: (() -> Void)? = nil) {
         self.listId = listId
         self.learningLanguage = learningLanguage
         self.originalLanguage = originalLanguage
+        self.ttsEnabled = ttsEnabled
         self.existingWord = word
         self.onDelete = onDelete
         _term = State(initialValue: word?.term ?? "")
@@ -276,7 +280,8 @@ struct AddWordView: View {
                     word.pinyin = pinyinValue
                     try await VocabRepository.updateWord(
                         uid: uid, listId: listId, word: word,
-                        newAudioFileURL: newAudioURL, removeAudio: removeAudio
+                        newAudioFileURL: newAudioURL, removeAudio: removeAudio,
+                        ttsEnabled: ttsEnabled
                     )
                 } else {
                     let word = VocabWord(
