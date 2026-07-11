@@ -189,6 +189,11 @@ export async function fetchSharedList(publicId) {
   if (snap.empty) return null;
   const d = snap.docs[0];
   const list = { id: d.id, ...fromFirestore(d.data()) };
+  // Never hand another account's custom review algorithm to this client. It is
+  // executable Python (run via Pyodide, which can reach the page's JavaScript),
+  // so importing and running someone else's would be remote code execution in
+  // the viewer's browser. Only the owner ever keeps/runs their own algorithm.
+  delete list.algorithmCode;
   const wordsSnap = await getDocs(collection(d.ref, "words"));
   const words = wordsSnap.docs.map((w) => ({ id: w.id, ...fromFirestore(w.data()) }));
   return { list, words };

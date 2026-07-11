@@ -71,11 +71,39 @@ def _run(tw, tt, tp, ha):
     return [float(r.word), float(r.translation), float(r.pronunciation), float(r.mastered_total)]
 `;
 
+// Runs once, right after Pyodide loads, before any user code. It severs
+// Pyodide's bridge to the page's JavaScript: the `js` module (window, fetch,
+// document.cookie, IndexedDB — where the Firebase auth token is stored) and the
+// `pyodide` module (whose `run_js` executes arbitrary JavaScript). A review
+// algorithm is meant to be pure arithmetic and needs neither, so a custom
+// snippet can no longer reach Firebase or the network from inside Pyodide.
+//
+// This is defense-in-depth, not the only safeguard: Python introspection makes a
+// single-interpreter sandbox impossible to fully guarantee, so we also never run
+// another user's algorithm (see fetchSharedList) — the code compiled here is
+// always the current user's own, executed in their own session.
+const SANDBOX = `
+def _retainic_lock():
+    import sys
+    # Drop Pyodide's importer for \`import js\` so it can't be re-resolved, then
+    # poison the cached bridge modules so importing them raises ImportError.
+    sys.meta_path = [f for f in sys.meta_path if type(f).__name__ != "JsFinder"]
+    for name in list(sys.modules):
+        if name.split(".")[0] in ("js", "pyodide"):
+            sys.modules[name] = None
+_retainic_lock()
+del _retainic_lock
+`;
+
 let pyodidePromise = null;
 
-/** Loads Pyodide once (idempotent). */
+/** Loads Pyodide once (idempotent), then locks it down before any user code. */
 function pyodide() {
-  if (!pyodidePromise) pyodidePromise = import(PYODIDE_URL).then((m) => m.loadPyodide());
+  if (!pyodidePromise) {
+    pyodidePromise = import(PYODIDE_URL)
+      .then((m) => m.loadPyodide())
+      .then((py) => { py.runPython(SANDBOX); return py; });
+  }
   return pyodidePromise;
 }
 
@@ -83,6 +111,14 @@ function pyodide() {
  *    state -> { word, translation, pronunciation, masteredTotal }
  *  Rejects if the code can't be loaded or doesn't define a usable `review`. */
 export async function compileAlgorithm(code) {
+  // First-layer guard with a clear message: a review algorithm is pure
+  // arithmetic, so reject any attempt to reach the JavaScript bridge or dynamic
+  // imports up front. The runtime lockdown in `pyodide()` is the actual
+  // enforcement (this denylist alone could be evaded), but this turns the common
+  // case into a friendly error instead of a raw Python ImportError.
+  if (/\b(?:import\s+js\b|from\s+js\b|pyodide|run_js|__import__|importlib|eval\s*\(|exec\s*\()/.test(code)) {
+    throw new Error("For security, review algorithms may only use plain Python arithmetic — no 'js'/'pyodide' access, imports, or eval/exec.");
+  }
   const py = await pyodide();
   py.runPython(PREAMBLE);
   py.runPython(code);
