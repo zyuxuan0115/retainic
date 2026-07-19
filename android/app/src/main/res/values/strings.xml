@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Retainic</string>
+
+    <!-- Common -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="done">Done</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="add">Add</string>
+    <string name="create">Create</string>
+    <string name="loading">Loading…</string>
+    <string name="something_wrong">Something went wrong</string>
+
+    <!-- Auth -->
+    <string name="log_in">Log In</string>
+    <string name="register">Register</string>
+    <string name="welcome_back">Welcome Back</string>
+    <string name="create_account">Create Account</string>
+    <string name="sign_in_subtitle">Sign in to access your vocabulary lists.</string>
+    <string name="username">Username</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="invitation_code">Invitation code</string>
+    <string name="password_min">Password must be at least 6 characters.</string>
+    <string name="language">Language</string>
+    <string name="invitation_invalid">That invitation code isn\'t valid.</string>
+    <string name="email_already_registered">That email is already registered. Try logging in.</string>
+    <string name="enter_valid_email">Please enter a valid email address.</string>
+    <string name="incorrect_email_password">Incorrect email or password.</string>
+    <string name="network_error">Network error. Check your connection and try again.</string>
+
+    <!-- Tabs -->
+    <string name="my_lists">My Lists</string>
+    <string name="statistics">Statistics</string>
+    <string name="settings">Settings</string>
+    <string name="about">About</string>
+
+    <!-- Lists -->
+    <string name="trash">Trash</string>
+    <string name="new_list">New List</string>
+    <string name="no_lists_yet">No Lists Yet</string>
+    <string name="create_first_list">Create your first vocabulary list to start adding words.</string>
+    <string name="create_a_list">Create a List</string>
+    <string name="move_to_trash">Move to Trash</string>
+    <string name="list_will_move_trash">“%1$s” will be moved to the Trash.</string>
+    <string name="selected_lists_move_trash">The selected lists will be moved to the Trash.</string>
+    <string name="n_words">%1$d words</string>
+
+    <!-- New list / import -->
+    <string name="create_new">Create new</string>
+    <string name="import_by_id">Import by ID</string>
+    <string name="list_name">List name</string>
+    <string name="eg_kitchen">e.g. Kitchen vocabulary</string>
+    <string name="im_learning">I\'m learning</string>
+    <string name="translated_into">Translated into</string>
+    <string name="languages">Languages</string>
+    <string name="select_ellipsis">Select…</string>
+    <string name="two_languages_different">The two languages must be different.</string>
+    <string name="unique_id">Unique ID</string>
+    <string name="paste_unique_id">Paste the unique ID</string>
+    <string name="import_id_footer">Enter the unique ID someone shared with you to add a copy of their wordlist.</string>
+    <string name="no_wordlist_found">No wordlist found for that ID. Check it and try again.</string>
+    <string name="import_successful">Import successful</string>
+    <string name="found_wordlist_n">Found a wordlist with %1$d words. Name your copy below.</string>
+    <string name="import_action">Import</string>
+
+    <!-- Trash -->
+    <string name="empty_trash">Empty Trash</string>
+    <string name="trash_is_empty">Trash is Empty</string>
+    <string name="trash_empty_desc">Deleted lists are kept here until you restore or permanently delete them.</string>
+    <string name="empty_trash_confirm">Permanently delete all lists in the Trash? This can\'t be undone.</string>
+    <string name="restore">Restore</string>
+    <string name="delete_forever">Delete Forever</string>
+    <string name="delete_forever_msg">“%1$s” will be permanently deleted. This can\'t be undone.</string>
+    <string name="deleting">Deleting…</string>
+
+    <!-- List detail -->
+    <string name="select">Select</string>
+    <string name="select_words">Select Words</string>
+    <string name="n_selected">%1$d Selected</string>
+    <string name="move">Move</string>
+    <string name="practice">Practice</string>
+    <string name="add_word">Add Word</string>
+    <string name="no_words_yet">No Words Yet</string>
+    <string name="add_words_to_list">Add the words you\'re learning to “%1$s”.</string>
+    <string name="add_first_word">Add Your First Word</string>
+    <string name="search_words">Search words</string>
+    <string name="delete_this_word">Delete this word?</string>
+    <string name="delete_n_words">Delete %1$d words?</string>
+    <string name="list_settings">List Settings</string>
+    <string name="show_words">Show words</string>
+    <string name="show_all">Show all</string>
+    <string name="show_remembered_only">Show remembered only</string>
+    <string name="show_unremembered_only">Show unremembered only</string>
+    <string name="text_to_speech">Text-to-speech</string>
+    <string name="tts_footer">Read words aloud with a synthesized voice when they have no recording.</string>
+    <string name="share_list">Share List</string>
+    <string name="share_list_footer">Copies this list\'s unique ID so others can recreate it.</string>
+    <string name="unique_id_copied">Unique ID copied</string>
+    <string name="unique_id_copied_msg">Share it with others so they can create the exact same wordlist.</string>
+    <string name="mark_all_not_remembered">Mark all as not remembered</string>
+    <string name="mark_all_not_remembered_footer">Every word in this list will show up again in practice for all methods.</string>
+    <string name="mark_all_not_remembered_title">Mark all words as not remembered?</string>
+    <string name="mark_all_not_remembered_action">Mark All as Not Remembered</string>
+    <string name="no_compatible_lists">No Compatible Lists</string>
+    <string name="no_compatible_lists_desc">You need another list with the same learning and native language to move these words.</string>
+    <string name="move_n_words">Move %1$d Words</string>
+
+    <!-- Add / edit word -->
+    <string name="word">Word</string>
+    <string name="word_youre_learning">Word you\'re learning</string>
+    <string name="hiragana_optional">Hiragana (optional)</string>
+    <string name="hiragana_hint">ひらがな reading</string>
+    <string name="pinyin_required">Pinyin (required)</string>
+    <string name="pinyin_hint">pīnyīn reading</string>
+    <string name="pinyin_required_footer">Pinyin is required for Chinese words.</string>
+    <string name="translation">Translation</string>
+    <string name="part_of_speech">Part of speech</string>
+    <string name="select_all_apply">Select all that apply.</string>
+    <string name="pronunciation_optional">Pronunciation (optional)</string>
+    <string name="record">Record</string>
+    <string name="re_record">Re-record</string>
+    <string name="stop_recording">Stop Recording</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="delete_recording">Delete Recording</string>
+    <string name="mic_access_off">Microphone access is off. Enable it in system settings to record.</string>
+    <string name="no_audio_captured">No audio was captured. Check that a microphone is available and try recording again.</string>
+    <string name="notes_optional">Notes (optional)</string>
+    <string name="notes_hint">Example sentence or memory hint</string>
+    <string name="delete_word">Delete Word</string>
+    <string name="delete_word_msg">This word will be permanently deleted.</string>
+    <string name="edit_word">Edit Word</string>
+    <string name="new_word">New Word</string>
+
+    <!-- Flashcards -->
+    <string name="nothing_to_practice">Nothing to Practice</string>
+    <string name="nothing_to_practice_desc">Add some words to a list first, then come back to review them.</string>
+    <string name="ready_to_practice">Ready to practice?</string>
+    <string name="n_cards_due">%1$d cards due for review.</string>
+    <string name="finished_daily">You finished your daily assignment.</string>
+    <string name="daily_assignment">Daily assignment</string>
+    <string name="show_first">Show first</string>
+    <string name="audio">Audio</string>
+    <string name="audio_only_recorded">Audio is only used for words with a recorded pronunciation.</string>
+    <string name="start_session">Start Session</string>
+    <string name="n_of_m">%1$d of %2$d</string>
+    <string name="listen_and_recall">Listen and recall</string>
+    <string name="tap_to_flip">Tap to flip</string>
+    <string name="answer">Answer</string>
+    <string name="tap_reveal">Tap the card to reveal the answer</string>
+    <string name="play_pronunciation">Play pronunciation</string>
+    <string name="practice_again">Practice Again</string>
+    <string name="got_it">Got It</string>
+    <string name="session_complete">Session Complete!</string>
+    <string name="got_n_of_m_right">You got %1$d of %2$d right.</string>
+    <string name="end">End</string>
+
+    <!-- Stats -->
+    <string name="no_stats_yet">No Stats Yet</string>
+    <string name="no_stats_desc">Add words and practice them. Once you\'ve memorized some, your progress shows up here.</string>
+    <string name="words_memorized">words memorized</string>
+    <string name="out_of_n_total">out of %1$d total</string>
+    <string name="remembered_today">Remembered today</string>
+    <string name="this_week">This week</string>
+    <string name="average_pace">Average pace</string>
+    <string name="per_day">Per day</string>
+    <string name="per_week">Per week</string>
+    <string name="per_month">Per month</string>
+    <string name="based_on_days">Based on %1$d days of learning since %2$s.</string>
+    <string name="pronunciation">Pronunciation</string>
+
+    <!-- Settings -->
+    <string name="account">Account</string>
+    <string name="preferred_language">Preferred language</string>
+    <string name="change_password">Change Password</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="sign_out_confirm">Sign out of Retainic?</string>
+    <string name="current_password">Current password</string>
+    <string name="new_password">New password</string>
+    <string name="confirm_new_password">Confirm new password</string>
+    <string name="new_passwords_dont_match">The new passwords don\'t match.</string>
+    <string name="current_password_incorrect">The current password you entered is incorrect.</string>
+    <string name="need_signed_in_change_pw">You need to be signed in to change your password.</string>
+    <string name="sign_in_again_change_pw">Please sign in again, then change your password.</string>
+
+    <!-- About -->
+    <string name="app_tagline">Vocabulary learning with spaced-repetition flashcards.</string>
+    <string name="version_label">Version %1$s</string>
+    <string name="about_section">About</string>
+    <string name="about_body">Retainic lets you build vocabulary lists, add words with translations, readings, parts of speech and recorded pronunciation, then practice them with per-aspect spaced repetition. This Android app shares the same account and data as the Retainic iOS and web apps.</string>
+    <string name="source_code">Source code</string>
+    <string name="copyright" translatable="false">© 2026 Retainic</string>
+</resources>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "497362298362",
+    "project_id": "retainic-85b91",
+    "storage_bucket": "retainic-85b91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497362298362:android:0000000000000000ca3043",
+        "android_client_info": {
+          "package_name": "com.retainic.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvct2kc9VnDDfMNTouFz2KxNhfJx0aGsw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
