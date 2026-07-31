@@ -209,6 +209,7 @@ enum VocabRepository {
     static func addWord(uid: String, listId: String, word: VocabWord, audioFileURL: URL? = nil) async throws {
         let ref = wordsRef(uid, listId).document()
         var word = word
+        word.normalizeTranslationsForWrite()
         if let audioFileURL {
             let path = audioStoragePath(uid: uid, listId: listId, wordId: ref.documentID)
             try await uploadAudio(localURL: audioFileURL, to: path)
@@ -234,6 +235,7 @@ enum VocabRepository {
     ) async throws {
         guard let id = word.id else { return }
         var word = word
+        word.normalizeTranslationsForWrite()
         let path = audioStoragePath(uid: uid, listId: listId, wordId: id)
         if let newAudioFileURL {
             try await uploadAudio(localURL: newAudioFileURL, to: path)

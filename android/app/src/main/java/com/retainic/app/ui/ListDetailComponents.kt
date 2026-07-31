@@ -89,7 +89,7 @@ internal fun WordRow(
                     PosChip(pos.label(preferred))
                 }
             }
-            Text(word.translation, style = MaterialTheme.typography.bodyMedium,
+            Text(word.translationValues.joinToString(" • "), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (pronunciationKey != null && !selecting) {

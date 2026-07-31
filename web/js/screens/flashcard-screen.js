@@ -10,6 +10,7 @@ import * as M from "../models.js";
 import { authState } from "../auth.js";
 import { playback } from "../audio.js";
 import { useAlgorithm, useDefaultAlgorithm } from "../algorithm.js";
+import { reviewWeight, weightedOrder } from "../review-order.js";
 import { navBar, iconButton, spinner, emptyState, pronunciationButton, icon } from "../ui.js";
 
 const FRONT_MODES = [
@@ -17,6 +18,8 @@ const FRONT_MODES = [
   { id: "translation", labelKey: "Translation", aspect: "translation" },
   { id: "pronunciation", labelKey: "Audio", aspect: "pronunciation" },
 ];
+
+const aspectForMode = (modeId) => FRONT_MODES.find((mode) => mode.id === modeId)?.aspect || null;
 
 export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false, algorithmCode = null, onBack) {
   const header = el(".navbar-host");
@@ -59,11 +62,18 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
   function deck() {
     if (selectedModes.size === 0) return [];
     const items = [];
-    for (const mode of selectedModes)
-      for (const card of cards) if (includes(card, mode)) items.push({ card, mode });
-    // shuffle
-    for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
-    return items;
+    for (const mode of selectedModes) {
+      for (const card of cards) {
+        if (!includes(card, mode)) continue;
+        const facts = M.factValues(card.word);
+        const promptIndex = mode === "pronunciation" ? null
+          : mode === "term" ? 0
+          : facts.length ? Math.floor(Math.random() * facts.length) : 0;
+        items.push({ card, mode, promptIndex });
+      }
+    }
+    return weightedOrder(items, (item) =>
+      reviewWeight(item.card.word, aspectForMode(item.mode)));
   }
   function dueCount() {
     let sum = 0;
@@ -140,6 +150,10 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
     const word = item.card.word;
     const mode = item.mode;
     const frontIsPron = mode === "pronunciation";
+    const presentation = M.recallPresentation(word, item.promptIndex);
+    const prompt = presentation.prompt;
+    const termIsAnswer = presentation.answerTerm != null;
+    const answerFacts = presentation.answerFacts;
     const termReading = M.readingFor(word, learningLanguage);
     const posLabels = M.partOfSpeechValues(word).map((p) => M.posLabel(p, preferredLanguage()));
 
@@ -148,18 +162,23 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
     });
     card.appendChild(el(".card-corner", {}, isFlipped ? t("Answer") : t("Tap to flip")));
     if (isFlipped) {
-      card.appendChild(el(".card-answer", {},
-        el(".answer-term", {}, word.term),
-        termReading ? el(".answer-reading", {}, termReading) : null,
-        posLabels.length ? el(".chip-row", {}, ...posLabels.map((p) => el(".chip", {}, p))) : null,
-        el("hr"),
-        el(".answer-translation", {}, word.translation),
-        word.notes ? el(".answer-notes", {}, word.notes) : null,
-      ));
+      const answer = el(".card-answer");
+      if (termIsAnswer) {
+        answer.appendChild(el(".answer-term", {}, word.term));
+        if (termReading) answer.appendChild(el(".answer-reading", {}, termReading));
+        if (posLabels.length) answer.appendChild(el(".chip-row", {}, ...posLabels.map((p) => el(".chip", {}, p))));
+      }
+      if (termIsAnswer && answerFacts.length) answer.appendChild(el("hr"));
+      if (answerFacts.length) {
+        answer.appendChild(el(".answer-facts", {},
+          ...answerFacts.map((fact) => el(".answer-translation", {}, fact))));
+      }
+      if (word.notes) answer.appendChild(el(".answer-notes", {}, word.notes));
+      card.appendChild(answer);
     } else if (frontIsPron) {
       card.appendChild(el(".card-front-pron", {}, el(".big-icon", {}, icon("volume_up", 52)), el("p.muted", {}, t("Listen and recall"))));
     } else {
-      card.appendChild(el(".card-prompt", {}, mode === "translation" ? word.translation : word.term));
+      card.appendChild(el(".card-prompt", {}, prompt));
     }
 
     const showAudioSide = frontIsPron ? !isFlipped : isFlipped;
@@ -181,11 +200,12 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
 
   function answer(correct) {
     const item = session[index];
+    const aspect = aspectForMode(item.mode);
     if (dueOnly) {
-      if (correct) { M.markCorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation", ttsEnabled);
-        Repo.recordRemembered(authState.uid, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation").catch(() => {});
+      if (correct) { M.markCorrect(item.card.word, aspect, ttsEnabled);
+        Repo.recordRemembered(authState.uid, aspect).catch(() => {});
       } else {
-        M.markIncorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation");
+        M.markIncorrect(item.card.word, aspect);
       }
       // keep copies in sync
       for (const s of session) if (s.card.word.id === item.card.word.id) s.card.word = item.card.word;

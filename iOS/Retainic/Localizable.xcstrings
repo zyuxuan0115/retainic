@@ -3916,34 +3916,6 @@
         }
       }
     },
-    "The two languages must be different.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los dos idiomas deben ser diferentes."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "2つの言語は異なる必要があります。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "두 언어는 서로 달라야 합니다."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "两种语言必须不同。"
-          }
-        }
-      }
-    },
     "This week": {
       "localizations": {
         "es": {

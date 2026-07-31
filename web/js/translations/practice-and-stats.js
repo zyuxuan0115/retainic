@@ -237,13 +237,6 @@ export default {
     "ja": "タップして裏返す",
     "ko": "탭하여 뒤집기",
   },
-  "The two languages must be different.": {
-    "en": "The two languages must be different.",
-    "es": "Los dos idiomas deben ser diferentes.",
-    "zh": "两种语言必须不同。",
-    "ja": "2つの言語は異なる必要があります。",
-    "ko": "두 언어는 서로 달라야 합니다.",
-  },
   "This week": {
     "en": "This week",
     "es": "Esta semana",

@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
@@ -80,7 +81,11 @@ fun AddWordScreen(
     val isLearningChinese = learning == "zh"
 
     var term by remember { mutableStateOf(existing?.term ?: "") }
-    var translation by remember { mutableStateOf(existing?.translation ?: "") }
+    val translations = remember {
+        mutableStateListOf<String>().apply {
+            addAll(existing?.translationValues.orEmpty().ifEmpty { listOf("") })
+        }
+    }
     var notes by remember { mutableStateOf(existing?.notes ?: "") }
     val selectedPOS = remember { mutableStateListOf<PartOfSpeech>().apply { existing?.partOfSpeechValues?.let { addAll(it) } } }
     var hiragana by remember { mutableStateOf(existing?.hiragana ?: "") }
@@ -109,10 +114,11 @@ fun AddWordScreen(
         }
     }
 
+    val factValues = translations.map { it.trim() }.filter { it.isNotEmpty() }
     val hasChanges = run {
         if (existing == null) true
         else term.trim() != existing.term ||
-            translation.trim() != existing.translation ||
+            factValues != existing.translationValues ||
             notes.trim() != existing.notes ||
             hiragana.trim() != (existing.hiragana ?: "") ||
             pinyin.trim() != (existing.pinyin ?: "") ||
@@ -120,7 +126,7 @@ fun AddWordScreen(
             recorder.hasNewRecording ||
             (existing.audioPath != null && !recorder.hasAudio)
     }
-    val canSave = term.trim().isNotEmpty() && translation.trim().isNotEmpty() && !isSaving &&
+    val canSave = term.trim().isNotEmpty() && factValues.isNotEmpty() && !isSaving &&
         (!isLearningChinese || pinyin.trim().isNotEmpty()) && hasChanges
 
     fun save() {
@@ -128,6 +134,8 @@ fun AddWordScreen(
         val newAudio = recorder.recordedFile
         val removeAudio = isEditing && existing?.audioPath != null && !recorder.hasAudio
         val posList = PartOfSpeech.selectable.filter { selectedPOS.contains(it) }
+        val facts = factValues
+        val legacyTranslation = facts.firstOrNull() ?: return
         isSaving = true
         error = null
         scope.launch {
@@ -135,7 +143,8 @@ fun AddWordScreen(
                 if (existing != null) {
                     val w = existing.copy(
                         term = term.trim(),
-                        translation = translation.trim(),
+                        translation = legacyTranslation,
+                        translations = facts,
                         notes = notes.trim(),
                         partsOfSpeech = posList.map { it.raw },
                         partOfSpeech = null,
@@ -147,7 +156,8 @@ fun AddWordScreen(
                 } else {
                     val w = VocabWord(
                         term = term.trim(),
-                        translation = translation.trim(),
+                        translation = legacyTranslation,
+                        translations = facts,
                         notes = notes.trim(),
                         partsOfSpeech = posList.map { it.raw },
                         hiragana = hiragana.trim().ifEmpty { null },
@@ -206,8 +216,28 @@ fun AddWordScreen(
             }
 
             SectionLabel(Language.named(original)?.displayName(preferred) ?: stringResource(R.string.translation))
-            OutlinedTextField(translation, { translation = it }, label = { Text(stringResource(R.string.translation)) },
-                singleLine = true, modifier = Modifier.fillMaxWidth())
+            translations.forEachIndexed { index, fact ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        fact,
+                        { translations[index] = it },
+                        label = { Text(stringResource(R.string.translation)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (translations.size > 1) {
+                        IconButton(onClick = { translations.removeAt(index) }) {
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete),
+                                tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+            TextButton(onClick = { translations.add("") }) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add))
+            }
 
             SectionLabel(stringResource(R.string.part_of_speech))
             PartOfSpeech.selectable.forEach { pos ->

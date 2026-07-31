@@ -52,6 +52,12 @@ export function isToday(date) {
   return date ? isSameDay(date, new Date()) : false;
 }
 
+/** A list draft is valid once it has a name and both language selections.
+ *  The languages intentionally may be identical (for fact-only lists). */
+export function isListDraftValid(name, learningLanguage, originalLanguage) {
+  return String(name || "").trim().length > 0 && !!learningLanguage && !!originalLanguage;
+}
+
 // MARK: - Pluggable review algorithm
 //
 // A word's schedule and mastery are computed by a "review" function. Given the
@@ -118,6 +124,38 @@ export function partOfSpeechValues(word) {
     if (single !== "unspecified") return [single];
   }
   return [];
+}
+
+/** Related facts, reading the plural array and falling back to the legacy
+ *  required scalar. Empty values are ignored while preserving author order. */
+export function translationValues(word) {
+  const values = Array.isArray(word?.translations)
+    ? word.translations.map((value) => String(value ?? "").trim()).filter(Boolean)
+    : [];
+  if (values.length) return values;
+  const legacy = String(word?.translation ?? "").trim();
+  return legacy ? [legacy] : [];
+}
+
+/** Every text fact available to prompt, with the studied term first. */
+export function factValues(word) {
+  const term = String(word?.term ?? "").trim();
+  return [...(term ? [term] : []), ...translationValues(word)];
+}
+
+/** Text shown for prompt-one/recall-all practice. Index 0 is the term and later
+ *  indexes are related facts; null represents a non-text (audio) prompt. */
+export function recallPresentation(word, promptIndex) {
+  const facts = factValues(word);
+  const safeIndex = Number.isInteger(promptIndex) ? promptIndex : null;
+  const selectedIndex = safeIndex != null && safeIndex >= 0 && safeIndex < facts.length
+    ? safeIndex
+    : null;
+  return {
+    prompt: selectedIndex == null ? String(word?.term ?? "") : facts[selectedIndex],
+    answerTerm: selectedIndex === 0 ? null : String(word?.term ?? ""),
+    answerFacts: translationValues(word).filter((_, index) => selectedIndex == null || index + 1 !== selectedIndex),
+  };
 }
 
 /** Phonetic reading to display (hiragana for Japanese, pinyin for Chinese). */
@@ -233,10 +271,14 @@ export function resetMemory(word) {
 }
 
 /** A fresh word document with the same defaults the iOS initializer uses. */
-export function newWord({ term, translation, notes = "", partsOfSpeech = [], hiragana = null, pinyin = null }) {
+export function newWord({ term, translation = "", translations = null, notes = "", partsOfSpeech = [], hiragana = null, pinyin = null }) {
+  const facts = translationValues({ translation, translations });
   return {
     term,
-    translation,
+    // Keep both shapes forever: older typed clients require the scalar, while
+    // updated clients prefer the complete plural array.
+    translation: facts[0] || "",
+    translations: facts,
     notes,
     partsOfSpeech,
     partOfSpeech: null,

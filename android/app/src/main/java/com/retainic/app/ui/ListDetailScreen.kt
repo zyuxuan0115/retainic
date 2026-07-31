@@ -109,7 +109,7 @@ fun ListDetailScreen(
             WordFilter.UNREMEMBERED -> !w.isRemembered
         }) && (searchText.isEmpty() ||
             w.term.contains(searchText, ignoreCase = true) ||
-            w.translation.contains(searchText, ignoreCase = true))
+            w.translationValues.any { it.contains(searchText, ignoreCase = true) })
     }
 
     fun endSelection() { selecting = false; selection.clear() }

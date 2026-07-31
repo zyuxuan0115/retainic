@@ -51,7 +51,8 @@ export async function ListDetailScreen(content, list, { onBack, onPracticeChange
     if (filter === "remembered") r = r.filter(M.isRemembered);
     else if (filter === "unremembered") r = r.filter((w) => !M.isRemembered(w));
     const q = searchText.trim().toLowerCase();
-    if (q) r = r.filter((w) => w.term.toLowerCase().includes(q) || w.translation.toLowerCase().includes(q));
+    if (q) r = r.filter((w) => w.term.toLowerCase().includes(q) ||
+      M.translationValues(w).some((fact) => fact.toLowerCase().includes(q)));
     return r;
   }
 
@@ -122,7 +123,7 @@ export async function ListDetailScreen(content, list, { onBack, onPracticeChange
           M.reading(w) ? el("span.word-reading", {}, M.reading(w)) : null,
           ...posChips,
         ),
-        el(".row-sub", {}, w.translation),
+        el(".row-sub", {}, M.translationValues(w).join(" • ")),
       ),
       audioBtn,
       !selecting ? el(".row-chevron", {}, icon("chevron_right", 22)) : null,

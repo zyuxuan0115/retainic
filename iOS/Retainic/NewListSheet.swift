@@ -39,7 +39,6 @@ struct NewListSheet: View {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
         && !learningLanguage.isEmpty
         && !originalLanguage.isEmpty
-        && learningLanguage != originalLanguage
     }
 
     var body: some View {
@@ -95,11 +94,6 @@ struct NewListSheet: View {
             }
         } header: {
             Text("Languages")
-        } footer: {
-            if learningLanguage != "" && learningLanguage == originalLanguage {
-                Text("The two languages must be different.")
-                    .foregroundStyle(.red)
-            }
         }
     }
 
@@ -242,7 +236,8 @@ struct NewListSheet: View {
                 for source in shared.words {
                     let word = VocabWord(
                         term: source.term,
-                        translation: source.translation,
+                        translation: source.translationValues.first ?? "",
+                        translations: source.translationValues,
                         notes: source.notes,
                         partsOfSpeech: source.partOfSpeechValues,
                         hiragana: source.hiragana,

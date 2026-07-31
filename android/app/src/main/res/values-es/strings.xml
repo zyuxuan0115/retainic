@@ -50,7 +50,6 @@
     <string name="translated_into">Traducido a</string>
     <string name="languages">Idiomas</string>
     <string name="select_ellipsis">Seleccionar…</string>
-    <string name="two_languages_different">Los dos idiomas deben ser diferentes.</string>
     <string name="unique_id">ID único</string>
     <string name="paste_unique_id">Pega el ID único</string>
     <string name="import_id_footer">Introduce el ID único que alguien compartió contigo para añadir una copia de su lista de palabras.</string>

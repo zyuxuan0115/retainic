@@ -54,7 +54,7 @@ struct ListDetailView: View {
         if !searchText.isEmpty {
             result = result.filter {
                 $0.term.localizedCaseInsensitiveContains(searchText) ||
-                $0.translation.localizedCaseInsensitiveContains(searchText)
+                $0.translationValues.contains { $0.localizedCaseInsensitiveContains(searchText) }
             }
         }
         return result
