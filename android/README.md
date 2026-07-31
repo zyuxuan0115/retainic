@@ -87,8 +87,10 @@ app/src/main/java/com/retainic/app/
 ├── i18n/
 │   ├── Language.kt           Supported languages + display names
 │   └── Prefs.kt              Preferred-language storage + locale wrapping
-└── ui/                       Compose screens (auth, lists, detail, add-word,
-                              flashcards, stats, settings, about) + navigation
+└── ui/                       Compose screens and navigation
+    ├── ListDetailScreen.kt       Word-list state and interaction coordinator
+    ├── ListDetailComponents.kt   Word row, settings, and bulk-move dialogs
+    └── Components.kt             Shared empty, loading, error, and POS controls
 app/src/main/res/values*/strings.xml   UI translations (en, es, zh, ja, ko)
 ```
 

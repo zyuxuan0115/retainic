@@ -134,14 +134,7 @@ struct StatsView: View {
             .refreshable {
                 if let uid = auth.uid { await vm.load(uid: uid) }
             }
-            .alert("Something went wrong".localized(preferredLanguage), isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { if !$0 { vm.errorMessage = nil } }
-            )) {
-                Button("OK".localized(preferredLanguage), role: .cancel) { vm.errorMessage = nil }
-            } message: {
-                Text(vm.errorMessage ?? "")
-            }
+            .repositoryErrorAlert($vm.errorMessage, language: preferredLanguage)
         }
     }
 

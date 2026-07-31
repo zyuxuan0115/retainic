@@ -1,22 +1,28 @@
 package com.retainic.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.retainic.app.R
 
 /** Centered empty-state placeholder, mirroring iOS ContentUnavailableView. */
 @Composable
@@ -55,5 +61,31 @@ fun LoadingView(label: String) {
             CircularProgressIndicator()
             Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/** Compact part-of-speech badge shared by list rows and flashcards. */
+@Composable
+fun PosChip(label: String) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(50))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** Shared error alert used across repository-backed screens. */
+@Composable
+fun ErrorDialog(message: String?, onDismiss: () -> Unit) {
+    if (message != null) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(R.string.something_wrong)) },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
+        )
     }
 }

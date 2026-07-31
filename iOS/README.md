@@ -201,8 +201,14 @@ Retainic/
 ├── AuthService.swift        Firebase Auth + user profile
 ├── AuthView.swift           Register / login UI
 ├── MainTabView.swift        Tab bar: My Lists · Statistics · Settings
-├── VocabListsView.swift     List of decks + create-list flow
-├── ListDetailView.swift     Words in a list; add/edit/delete, bulk move, practice entry
+├── VocabListsView.swift     List overview and navigation
+├── ListsViewModel.swift     Repository state for active lists
+├── NewListSheet.swift       Create-list and shared-list import flow
+├── TrashView.swift          Restore and permanent-delete flows
+├── ListDetailView.swift     Word-list screen and interaction coordinator
+├── WordsViewModel.swift     Repository state and filtering for a list's words
+├── ListDetailComponents.swift  Word rows, settings, and bulk-move sheets
+├── RepositoryErrorAlert.swift  Shared repository-error presentation
 ├── AddWordView.swift        Create/edit a word
 ├── FlashcardView.swift      Spaced-repetition practice session (daily / free, multi-mode)
 ├── StatsView.swift          Statistics dashboard (Swift Charts)

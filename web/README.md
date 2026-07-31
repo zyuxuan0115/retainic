@@ -70,14 +70,22 @@ console and paste its `appId` for a dedicated web client.
 web/
 ├── index.html              Entry point
 ├── styles.css              iOS-flavored styling (light/dark)
+├── package.json            Dependency-free Node test command
+├── tests/                  Translation and module-size regression checks
 └── js/
-    ├── app.js              All screens + navigation (ports the SwiftUI views)
+    ├── app.js              App boot, tab shell, and navigation coordinator
+    ├── ui.js               Shared DOM controls, feedback, audio, and icons
+    ├── screens/            Feature-focused screen and sheet modules
     ├── firebase.js         Firebase Web SDK init (shared project config)
     ├── auth.js             Email/password auth + profile (AuthService.swift)
     ├── repository.js       Firestore/Storage CRUD (VocabRepository.swift)
     ├── models.js           Word model + spaced-repetition logic (FirestoreModels.swift)
     ├── audio.js            Recording + playback (AudioManager.swift)
     ├── i18n.js             Language list + string lookup (Language/AppLanguage.swift)
-    ├── translations.js     UI strings, auto-extracted from Localizable.xcstrings
+    ├── translations.js     Locale-dictionary index
+    ├── translations/       Feature-oriented chunks of the generated UI strings
     └── dom.js              Tiny DOM/sheet helpers
 ```
+
+Run the dependency-free regression suite with `npm test`; it checks translation
+parity and enforces the repository's 600-line source-module ceiling.

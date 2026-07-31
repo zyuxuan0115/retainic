@@ -214,19 +214,6 @@ fun ListRow(list: VocabularyList, modifier: Modifier = Modifier) {
     }
 }
 
-/** Shared error alert used across the Lists-tab screens. */
-@Composable
-fun ErrorDialog(message: String?, onDismiss: () -> Unit) {
-    if (message != null) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.something_wrong)) },
-            text = { Text(message) },
-            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
-        )
-    }
-}
-
 // MARK: - New list / import dialog
 
 @OptIn(ExperimentalMaterial3Api::class)
