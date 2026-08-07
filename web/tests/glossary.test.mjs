@@ -69,3 +69,64 @@ test("isAspectDue routes to the method the practice screen asks for", () => {
   assert.equal(G.isAspectDue(entry, "definition"), true);
   assert.deepEqual(G.ASPECTS.map((a) => a.id), ["term", "definition"]);
 });
+
+test("each definition is scheduled on its own", () => {
+  const entry = G.newEntry({ term: "bank", definitions: ["a financial institution", "the side of a river"] });
+  assert.deepEqual(G.definitionTexts(entry), ["a financial institution", "the side of a river"]);
+  // Every definition is a card of its own, so both start out due.
+  assert.deepEqual(G.dueDefinitionIndexes(entry), [0, 1]);
+
+  G.markCorrect(entry, "definition", 1);
+  assert.equal(entry.definitions[1].timesCorrect, 1);
+  assert.equal(entry.definitions[0].timesCorrect, 0);
+  assert.deepEqual(G.dueDefinitionIndexes(entry), [0]);
+  // The entry as a whole still has something due today.
+  assert.equal(G.isDefinitionDue(entry), true);
+  assert.equal(G.isDefinitionDue(entry, new Date(), 1), false);
+});
+
+test("mastery waits for every definition", () => {
+  const entry = G.newEntry({ term: "bank", definitions: ["a financial institution", "the side of a river"] });
+  for (let i = 0; i < 8; i++) G.markCorrect(entry, "term");
+  for (let i = 0; i < 10; i++) G.markCorrect(entry, "definition", 0);
+  // One definition is finished; the other has never been recalled.
+  assert.equal(G.isRemembered(entry), false);
+  assert.deepEqual(G.dueDefinitionIndexes(entry), [1]);
+  for (let i = 0; i < 10; i++) G.markCorrect(entry, "definition", 1);
+  assert.equal(G.isRemembered(entry), true);
+  assert.deepEqual(G.dueDefinitionIndexes(entry), []);
+});
+
+test("an entry stored with a single definition reads as a list of one", () => {
+  // Documents written before a term could mean several things.
+  const legacy = {
+    term: "estoppel",
+    definition: "a bar to asserting a claim",
+    timesDefinitionCorrect: 3,
+    lastDefinitionRemembered: daysAgo(30),
+  };
+  assert.deepEqual(G.definitionTexts(legacy), ["a bar to asserting a claim"]);
+  assert.equal(G.isDefinitionDue(legacy), true);
+
+  // Practising it migrates the entry, keeping the progress it already had.
+  G.markCorrect(legacy, "definition", 0);
+  assert.equal(legacy.definitions.length, 1);
+  assert.equal(legacy.definitions[0].timesCorrect, 4);
+  assert.equal(legacy.timesDefinitionCorrect, 4);
+});
+
+test("editing definitions keeps the progress at each position", () => {
+  const entry = G.newEntry({ term: "bank", definitions: ["a financial institution", "the side of a river"] });
+  G.markCorrect(entry, "definition", 0);
+  G.setDefinitions(entry, ["a place that keeps money", "the side of a river", "a row of switches"]);
+  assert.equal(entry.definitions[0].timesCorrect, 1);
+  assert.equal(entry.definitions[2].timesCorrect, 0);
+  // The fields older clients read follow the list: the joined text, the
+  // weakest definition's count, and the most recent recall.
+  assert.equal(entry.definition, "a place that keeps money; the side of a river; a row of switches");
+  assert.equal(entry.timesDefinitionCorrect, 0);
+
+  G.resetMemory(entry);
+  assert.deepEqual(entry.definitions.map((d) => d.timesCorrect), [0, 0, 0]);
+  assert.deepEqual(G.definitionTexts(entry).length, 3);
+});

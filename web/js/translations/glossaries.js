@@ -106,6 +106,27 @@ export default {
     "ja": "定義",
     "ko": "정의",
   },
+  "Definitions": {
+    "en": "Definitions",
+    "es": "Definiciones",
+    "zh": "释义",
+    "ja": "定義",
+    "ko": "정의",
+  },
+  "Add definition": {
+    "en": "Add definition",
+    "es": "Añadir definición",
+    "zh": "添加释义",
+    "ja": "定義を追加",
+    "ko": "정의 추가",
+  },
+  "Remove definition": {
+    "en": "Remove definition",
+    "es": "Quitar definición",
+    "zh": "删除释义",
+    "ja": "定義を削除",
+    "ko": "정의 삭제",
+  },
   "What it means": {
     "en": "What it means",
     "es": "Qué significa",

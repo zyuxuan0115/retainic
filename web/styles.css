@@ -236,6 +236,10 @@ textarea.field-input { resize: vertical; }
 .form-card > input, .form-card > textarea { width: 100%; border: none; background: transparent; color: var(--label); padding: 12px 14px; outline: none; border-bottom: 0.5px solid var(--separator); }
 .form-card > *:last-child { border-bottom: none; }
 .form-note { font-size: 13px; color: var(--secondary-label); padding: 0 4px; }
+/* One editable definition, with the button that removes it. */
+.definition-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; border-bottom: 0.5px solid var(--separator); }
+.definition-row:last-child { border-bottom: none; }
+.definition-row > textarea { flex: 1; min-width: 0; border: none; background: transparent; color: var(--label); padding: 12px 14px; outline: none; resize: vertical; }
 .form-footer-error, .danger-text { color: var(--danger); font-size: 13px; padding: 0 4px; }
 .form-action { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: transparent; color: var(--tint); padding: 12px 14px; font-size: 16px; border-bottom: 0.5px solid var(--separator); }
 .form-action.danger { color: var(--danger); }
@@ -379,6 +383,8 @@ textarea.field-input { resize: vertical; }
 .answer-reading { color: var(--secondary-label); font-size: 18px; }
 .card-answer hr { width: 60%; border: none; border-top: 0.5px solid var(--separator); margin: 6px 0; }
 .answer-translation { font-size: 18px; }
+/* A term that means several things reveals them as a numbered list. */
+.answer-definitions { font-size: 18px; margin: 0; padding-left: 24px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
 .answer-notes { color: var(--secondary-label); font-size: 14px; }
 .answer-actions { display: flex; gap: 14px; width: 100%; max-width: 480px; }
 .answer-actions .btn { flex: 1; }

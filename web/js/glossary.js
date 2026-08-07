@@ -3,11 +3,16 @@
 //  Retainic Web
 //
 //  The glossary model: a single-language reference deck whose entries are a
-//  term and its definition. Glossaries are independent of vocabulary lists —
+//  term and its definitions. Glossaries are independent of vocabulary lists —
 //  separate documents, separate screens — but they practise on the same
 //  spaced-repetition engine (models.js), with two methods instead of three:
 //  recalling the term and recalling the definition. There is no audio and no
 //  translation language, so the pronunciation method never applies.
+//
+//  A term can mean several things, so an entry carries a list of definitions,
+//  each with its own review schedule: shown a definition, you recall the term,
+//  and every definition is a card of its own. The other direction — shown the
+//  term, recall what it means — stays one card that reveals them all.
 //
 //    users/{uid}/glossaries/{glossaryId}                  -> glossary
 //    users/{uid}/glossaries/{glossaryId}/entries/{entryId} -> entry
@@ -23,14 +28,69 @@ export const ASPECTS = [
   { id: "definition", labelKey: "Definition", dailyAspect: "translation" },
 ];
 
+/** A definition with no review progress yet. */
+export function newDefinition(text) {
+  return { text, timesCorrect: 0, lastRemembered: null };
+}
+
+/** The entry's definitions, each with its own schedule. Entries written before
+ *  a term could mean several things stored one `definition` string, which reads
+ *  as a single definition carrying the entry's definition counters. */
+export function definitions(entry) {
+  const stored = Array.isArray(entry.definitions) ? entry.definitions : [];
+  if (stored.length) {
+    return stored.map((d) => (typeof d === "string" ? newDefinition(d) : {
+      text: d?.text ?? "",
+      timesCorrect: d?.timesCorrect ?? 0,
+      lastRemembered: d?.lastRemembered ?? null,
+    }));
+  }
+  if (entry.definition) {
+    return [{
+      text: entry.definition,
+      timesCorrect: entry.timesDefinitionCorrect ?? 0,
+      lastRemembered: entry.lastDefinitionRemembered ?? null,
+    }];
+  }
+  return [];
+}
+
+/** Just the text of each definition, for display and search. */
+export function definitionTexts(entry) {
+  return definitions(entry).map((d) => d.text);
+}
+
+/** The definitions as one line, for list rows and the legacy single field. */
+export function joinedDefinitions(entry) {
+  return definitionTexts(entry).join("; ");
+}
+
+/** Mirrors the definition list onto the fields that predate it: the joined
+ *  text, the lowest per-definition count (what mastery waits on), and the most
+ *  recent recall (what Statistics counts). Clients still reading a single
+ *  definition — older installs, the stats screen — stay coherent. */
+function syncLegacyFields(entry) {
+  const defs = definitions(entry);
+  entry.definition = defs.map((d) => d.text).join("; ");
+  entry.timesDefinitionCorrect = defs.length ? Math.min(...defs.map((d) => d.timesCorrect)) : 0;
+  const dates = defs.map((d) => d.lastRemembered).filter(Boolean).map((d) => +d);
+  entry.lastDefinitionRemembered = dates.length ? new Date(Math.max(...dates)) : null;
+}
+
 /** The state the review algorithm sees for an entry. The algorithm is written
  *  against words, so the term maps onto its "word" method and the definition
  *  onto its "translation" one; with no audio, `masteredTotal` comes back
- *  without the pronunciation requirement. */
-function entryState(entry) {
+ *  without the pronunciation requirement. `definitionIndex` picks which
+ *  definition's schedule to ask about; without one the entry is judged by its
+ *  least-practised definition, so mastery waits for all of them. */
+function entryState(entry, definitionIndex = null) {
+  const counts = definitions(entry).map((d) => d.timesCorrect);
+  let timesDefinition;
+  if (definitionIndex != null) timesDefinition = counts[definitionIndex] ?? 0;
+  else timesDefinition = counts.length ? Math.min(...counts) : 0;
   return {
     times_word: entry.timesTermCorrect ?? 0,
-    times_translation: entry.timesDefinitionCorrect ?? 0,
+    times_translation: timesDefinition,
     times_pronunciation: 0,
     has_audio: false,
   };
@@ -40,21 +100,31 @@ export function isTermDue(entry, now = new Date()) {
   return methodDue(reviewSchedule(entryState(entry)).word, entry.lastTermRemembered, now);
 }
 
-export function isDefinitionDue(entry, now = new Date()) {
-  return methodDue(reviewSchedule(entryState(entry)).translation, entry.lastDefinitionRemembered, now);
+/** Whether a definition is due. With no `definitionIndex`, whether any is. */
+export function isDefinitionDue(entry, now = new Date(), definitionIndex = null) {
+  const defs = definitions(entry);
+  const due = (i) => methodDue(reviewSchedule(entryState(entry, i)).translation, defs[i].lastRemembered, now);
+  if (definitionIndex != null) return defs[definitionIndex] ? due(definitionIndex) : false;
+  return defs.some((_, i) => due(i));
+}
+
+/** The indexes of the definitions due for review right now. */
+export function dueDefinitionIndexes(entry, now = new Date()) {
+  return definitions(entry).map((_, i) => i).filter((i) => isDefinitionDue(entry, now, i));
 }
 
 /** Whether the given aspect is due for review. */
-export function isAspectDue(entry, aspect, now = new Date()) {
-  return aspect === "term" ? isTermDue(entry, now) : isDefinitionDue(entry, now);
+export function isAspectDue(entry, aspect, now = new Date(), definitionIndex = null) {
+  return aspect === "term" ? isTermDue(entry, now) : isDefinitionDue(entry, now, definitionIndex);
 }
 
 export function isRemembered(entry) {
   return entry.remember_final === true;
 }
 
-/** An entry is memorized once its two correct-counts together reach the
- *  algorithm's mastery total. */
+/** An entry is memorized once its term count and its weakest definition's
+ *  count together reach the algorithm's mastery total — so a term with five
+ *  meanings isn't done until all five are. */
 function updateRememberFinal(entry) {
   const s = entryState(entry);
   entry.remember_final = s.times_word + s.times_translation >= reviewSchedule(s).masteredTotal;
@@ -73,16 +143,23 @@ function record(entry, aspect, correct, now) {
 }
 
 /** Records a correct recall of `aspect` ("term" | "definition"), mutating the
- *  entry the way `markCorrect` does for words. */
-export function markCorrect(entry, aspect) {
+ *  entry the way `markCorrect` does for words. A definition recall advances
+ *  only the definition that was practised. */
+export function markCorrect(entry, aspect, definitionIndex = 0) {
   const now = new Date();
   entry.timesSeen = (entry.timesSeen ?? 0) + 1;
   if (aspect === "term") {
     entry.timesTermCorrect = (entry.timesTermCorrect ?? 0) + 1;
     entry.lastTermRemembered = now;
   } else {
-    entry.timesDefinitionCorrect = (entry.timesDefinitionCorrect ?? 0) + 1;
-    entry.lastDefinitionRemembered = now;
+    const defs = definitions(entry);
+    const definition = defs[definitionIndex];
+    if (definition) {
+      definition.timesCorrect += 1;
+      definition.lastRemembered = now;
+    }
+    entry.definitions = defs;
+    syncLegacyFields(entry);
   }
   updateRememberFinal(entry);
   entry.lastReviewed = now;
@@ -96,6 +173,22 @@ export function markIncorrect(entry, aspect) {
   record(entry, aspect, false, now);
 }
 
+/** Replaces the entry's definitions with `texts`, keeping the review progress
+ *  at each position: editing the wording of a definition leaves its schedule
+ *  alone, a new one starts unlearned, and a removed one takes its progress
+ *  with it. */
+export function setDefinitions(entry, texts) {
+  const previous = definitions(entry);
+  entry.definitions = texts.map((text, i) => ({
+    text,
+    timesCorrect: previous[i]?.timesCorrect ?? 0,
+    lastRemembered: previous[i]?.lastRemembered ?? null,
+  }));
+  syncLegacyFields(entry);
+  updateRememberFinal(entry);
+  return entry;
+}
+
 /** Resets all review progress so the entry counts as never remembered. */
 export function resetMemory(entry) {
   entry.lastReviewed = null;
@@ -104,15 +197,18 @@ export function resetMemory(entry) {
   entry.timesSeen = 0;
   entry.timesTermCorrect = 0;
   entry.timesDefinitionCorrect = 0;
+  entry.definitions = definitionTexts(entry).map(newDefinition);
   entry.memoryStats = null;
   entry.remember_final = false;
 }
 
-/** A fresh entry document, shaped for Firestore. */
-export function newEntry({ term, definition, notes = "" }) {
-  return {
+/** A fresh entry document, shaped for Firestore. Takes a list of definitions,
+ *  or a single one for callers that only ever have the one. */
+export function newEntry({ term, definitions: texts, definition = "", notes = "" }) {
+  const entry = {
     term,
-    definition,
+    definitions: [],
+    definition: "",
     notes,
     createdAt: new Date(),
     lastReviewed: null,
@@ -124,4 +220,8 @@ export function newEntry({ term, definition, notes = "" }) {
     memoryStats: null,
     remember_final: false,
   };
+  const list = (texts ?? [definition]).map((text) => String(text).trim()).filter(Boolean);
+  entry.definitions = list.map(newDefinition);
+  syncLegacyFields(entry);
+  return entry;
 }

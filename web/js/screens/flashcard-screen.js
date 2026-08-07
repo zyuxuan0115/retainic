@@ -33,6 +33,17 @@ const GLOSSARY_MODES = [
 function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = null }) {
   const tts = ttsEnabled === true;
   const list = { learningLanguage, ttsEnabled: tts };
+  /** Whether a word belongs in the deck for a method: in the daily assignment
+   *  that method must be due; in free practice every unmemorized word counts. */
+  function includes(card, modeId, dueOnly) {
+    // Pronunciation practice needs something to hear: a recording, or a
+    // synthesized voice when the list has text-to-speech enabled.
+    if (modeId === "pronunciation" && card.word.audioPath == null && !tts) return false;
+    if (!dueOnly) return card.word.remember_final !== true;
+    if (modeId === "translation") return M.isTranslationDue(card.word, new Date(), tts);
+    if (modeId === "term") return M.isWordDue(card.word, new Date(), tts);
+    return M.isPronunciationDue(card.word, new Date(), tts);
+  }
   return {
     modes: WORD_MODES,
     emptyDescription: t("Add some words to a list first, then come back to review them."),
@@ -44,23 +55,18 @@ function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = n
       return useAlgorithm(algorithmCode)
         .catch(() => { toast(t("Couldn't run your algorithm — using the default.")); });
     },
-    includes(card, modeId, dueOnly) {
-      // Pronunciation practice needs something to hear: a recording, or a
-      // synthesized voice when the list has text-to-speech enabled.
-      if (modeId === "pronunciation" && card.word.audioPath == null && !tts) return false;
-      if (!dueOnly) return card.word.remember_final !== true;
-      if (modeId === "translation") return M.isTranslationDue(card.word, new Date(), tts);
-      if (modeId === "term") return M.isWordDue(card.word, new Date(), tts);
-      return M.isPronunciationDue(card.word, new Date(), tts);
+    // A word is one card per method, so the deck holds it or it doesn't.
+    parts(card, modeId, dueOnly) {
+      return includes(card, modeId, dueOnly) ? [{}] : [];
     },
-    front(card, modeId) {
+    front({ card, mode }) {
       const word = card.word;
-      if (modeId === "pronunciation") {
+      if (mode.id === "pronunciation") {
         return el(".card-front-pron", {}, el(".big-icon", {}, icon("volume_up", 52)), el("p.muted", {}, t("Listen and recall")));
       }
-      return el(".card-prompt", {}, modeId === "translation" ? word.translation : word.term);
+      return el(".card-prompt", {}, mode.id === "translation" ? word.translation : word.term);
     },
-    back(card) {
+    back({ card }) {
       const word = card.word;
       const termReading = M.readingFor(word, learningLanguage);
       const posLabels = M.partOfSpeechValues(word).map((p) => M.posLabel(p, preferredLanguage()));
@@ -81,7 +87,7 @@ function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = n
     audioControl(card) {
       return pronunciationButton(card.word, list, true);
     },
-    grade(card, mode, correct) {
+    grade({ card, mode }, correct) {
       if (correct) M.markCorrect(card.word, mode.aspect, tts);
       else M.markIncorrect(card.word, mode.aspect);
       if (correct) Repo.recordRemembered(authState.uid, mode.aspect).catch(() => {});
@@ -92,33 +98,49 @@ function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = n
   };
 }
 
-/** Adapter for a glossary's entries: term and definition, no audio, always the
- *  built-in schedule. */
+/** Adapter for a glossary's entries: term and definitions, no audio, always the
+ *  built-in schedule. A term that means several things is one card per meaning
+ *  when the definition is shown first — each definition has its own schedule —
+ *  and a single card the other way round, revealing them all. */
 function glossaryDeck() {
   return {
     modes: GLOSSARY_MODES,
     emptyDescription: t("Add some terms to a glossary first, then come back to review them."),
     prepare() { useDefaultAlgorithm(); return null; },
-    includes(card, modeId, dueOnly) {
-      if (!dueOnly) return card.entry.remember_final !== true;
-      return G.isAspectDue(card.entry, modeId);
-    },
-    front(card, modeId) {
-      return el(".card-prompt", {}, modeId === "definition" ? card.entry.definition : card.entry.term);
-    },
-    back(card) {
+    parts(card, modeId, dueOnly) {
       const entry = card.entry;
+      if (modeId === "term") {
+        if (dueOnly) return G.isTermDue(entry) ? [{}] : [];
+        return entry.remember_final !== true ? [{}] : [];
+      }
+      const indexes = dueOnly
+        ? G.dueDefinitionIndexes(entry)
+        : (entry.remember_final !== true ? G.definitionTexts(entry).map((_, i) => i) : []);
+      return indexes.map((definitionIndex) => ({ definitionIndex }));
+    },
+    front({ card, mode, definitionIndex }) {
+      const entry = card.entry;
+      if (mode.id !== "definition") return el(".card-prompt", {}, entry.term);
+      return el(".card-prompt", {}, G.definitionTexts(entry)[definitionIndex] ?? "");
+    },
+    back({ card }) {
+      const entry = card.entry;
+      const texts = G.definitionTexts(entry);
       return el(".card-answer", {},
         el(".answer-term", {}, entry.term),
         el("hr"),
-        el(".answer-translation", {}, entry.definition),
+        // Whichever definition was the prompt, the answer side shows the term
+        // with everything it can mean.
+        texts.length > 1
+          ? el("ol.answer-definitions", {}, ...texts.map((text) => el("li", {}, text)))
+          : el(".answer-translation", {}, texts[0] ?? ""),
         entry.notes ? el(".answer-notes", {}, entry.notes) : null,
       );
     },
     audioSide() { return false; },
     audioControl() { return null; },
-    grade(card, mode, correct) {
-      if (correct) G.markCorrect(card.entry, mode.aspect);
+    grade({ card, mode, definitionIndex }, correct) {
+      if (correct) G.markCorrect(card.entry, mode.aspect, definitionIndex ?? 0);
       else G.markIncorrect(card.entry, mode.aspect);
       if (correct) Repo.recordRemembered(authState.uid, mode.dailyAspect).catch(() => {});
       Repo.updateEntry(authState.uid, card.glossaryId, card.entry).catch(() => {});
@@ -143,7 +165,7 @@ export function FlashcardScreen(content, ctx, onBack) {
   content.appendChild(header);
   content.appendChild(body);
 
-  let session = [];   // [{ card, mode }]
+  let session = [];   // [{ card, mode, ...deck extras }]
   let index = 0;
   let isFlipped = false;
   let selectedModes = new Set(["term"]);
@@ -158,14 +180,20 @@ export function FlashcardScreen(content, ctx, onBack) {
 
   const modeById = (id) => deck.modes.find((m) => m.id === id);
 
+  /** The session items one method contributes. A card is usually one item, but
+   *  a deck can split it into several — a glossary term with five definitions
+   *  is five definition-first cards. */
   function items(modeId) {
-    return cards.filter((card) => deck.includes(card, modeId, dueOnly));
+    const mode = modeById(modeId);
+    const out = [];
+    for (const card of cards)
+      for (const part of deck.parts(card, modeId, dueOnly)) out.push({ card, mode, ...part });
+    return out;
   }
   function buildSession() {
     if (selectedModes.size === 0) return [];
     const out = [];
-    for (const modeId of selectedModes)
-      for (const card of items(modeId)) out.push({ card, mode: modeById(modeId) });
+    for (const modeId of selectedModes) out.push(...items(modeId));
     // shuffle
     for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
     return out;
@@ -245,7 +273,7 @@ export function FlashcardScreen(content, ctx, onBack) {
       onclick: () => { isFlipped = !isFlipped; render(); },
     });
     card.appendChild(el(".card-corner", {}, isFlipped ? t("Answer") : t("Tap to flip")));
-    card.appendChild(isFlipped ? deck.back(item.card) : deck.front(item.card, item.mode.id));
+    card.appendChild(isFlipped ? deck.back(item) : deck.front(item));
 
     const audioBtn = deck.audioSide(item.mode.id, isFlipped) ? deck.audioControl(item.card) : null;
 
@@ -267,7 +295,7 @@ export function FlashcardScreen(content, ctx, onBack) {
     const item = session[index];
     // Only the daily assignment counts: free practice never changes a schedule.
     if (dueOnly) {
-      deck.grade(item.card, item.mode, correct);
+      deck.grade(item, correct);
       // keep copies in sync
       for (const s of session) if (deck.sameCard(s.card, item.card)) deck.syncCard(s.card, item.card);
     }

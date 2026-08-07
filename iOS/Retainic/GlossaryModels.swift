@@ -3,11 +3,16 @@
 //  Retainic
 //
 //  A glossary is a single-language reference deck: each entry is a term and its
-//  definition. Glossaries are independent of vocabulary lists — their own
+//  definitions. Glossaries are independent of vocabulary lists — their own
 //  documents, screens and practice — but they run on the same spaced-repetition
 //  schedule (see ReviewSchedule), with two methods instead of three: recalling
 //  the term and recalling the definition. There is no audio and no translation
 //  language, so the pronunciation method never applies.
+//
+//  A term can mean several things, so an entry carries a list of definitions,
+//  each with its own schedule: shown a definition, you recall the term, and
+//  every definition is a card of its own. The other direction — shown the term,
+//  recall what it means — stays one card that reveals them all.
 //
 //  Layout:
 //    users/{uid}/glossaries/{glossaryId}                    -> Glossary

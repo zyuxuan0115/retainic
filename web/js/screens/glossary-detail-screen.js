@@ -43,7 +43,10 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
     if (filter === "remembered") r = r.filter(G.isRemembered);
     else if (filter === "unremembered") r = r.filter((e) => !G.isRemembered(e));
     const q = searchText.trim().toLowerCase();
-    if (q) r = r.filter((e) => e.term.toLowerCase().includes(q) || e.definition.toLowerCase().includes(q));
+    if (q) {
+      r = r.filter((e) => e.term.toLowerCase().includes(q)
+        || G.definitionTexts(e).some((d) => d.toLowerCase().includes(q)));
+    }
     return r;
   }
 
@@ -106,7 +109,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
       selecting ? el(".select-dot" + (checked ? ".on" : ""), {}, checked ? icon("check", 16) : null) : null,
       el(".row-main", {},
         el(".word-top", {}, el("span.word-term", {}, entry.term)),
-        el(".row-sub", {}, entry.definition),
+        el(".row-sub", {}, G.joinedDefinitions(entry)),
       ),
       !selecting ? el(".row-chevron", {}, icon("chevron_right", 22)) : null,
     );
