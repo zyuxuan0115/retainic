@@ -16,6 +16,11 @@ SDK loaded from a CDN. No build step.
   Preferred language**; it defaults to the browser language.
 - **Vocabulary lists** — create decks with a learning + original language; rename,
   delete, filter (all / remembered / unremembered).
+- **Create from a CSV** *(web only)* — **New List ▸ Import CSV** seeds a new list
+  from a file. Columns are `word, translation, notes, part of speech, hiragana,
+  pinyin`; a header row is optional and, when present, columns are matched by
+  name — so a CSV exported from the app (localized headers, single *Reading*
+  column) imports straight back. Rows with no word are skipped.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list
@@ -80,6 +85,7 @@ web/
     ├── auth.js             Email/password auth + profile (AuthService.swift)
     ├── repository.js       Firestore/Storage CRUD (VocabRepository.swift)
     ├── models.js           Word model + spaced-repetition logic (FirestoreModels.swift)
+    ├── csv.js              CSV escaping/parsing shared by the list export and import
     ├── audio.js            Recording + playback (AudioManager.swift)
     ├── i18n.js             Language list + string lookup (Language/AppLanguage.swift)
     ├── translations.js     Locale-dictionary index

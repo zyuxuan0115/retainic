@@ -30,6 +30,21 @@ export function posLabel(raw, code = "en") {
   return table[key] || (key.charAt(0).toUpperCase() + key.slice(1));
 }
 
+/** The inverse of posLabel(): the part-of-speech key a label names, in any
+ *  supported language, or null when it names none. Used to read parts of speech
+ *  back out of an imported CSV. */
+export function posKey(label) {
+  const value = String(label).trim().toLowerCase();
+  if (!value) return null;
+  if (PARTS_OF_SPEECH.includes(value)) return value;
+  for (const table of Object.values(POS_LABELS)) {
+    for (const [key, localized] of Object.entries(table)) {
+      if (localized.toLowerCase() === value) return key;
+    }
+  }
+  return null;
+}
+
 // MARK: - Spaced-repetition schedule
 
 function startOfDay(date) {

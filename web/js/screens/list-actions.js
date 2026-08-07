@@ -5,17 +5,11 @@
 
 import { el, toast } from "../dom.js";
 import { t, preferredLanguage } from "../i18n.js";
+import { csvEscape } from "../csv.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
 import * as Auth from "../auth.js";
 import { authState } from "../auth.js";
-
-/** Escapes one CSV field per RFC 4180: wrap in quotes when it contains a comma,
- *  quote, or newline, doubling any interior quotes. */
-export function csvEscape(value) {
-  const s = value == null ? "" : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
 
 /** Fetches a list's words and downloads them as a UTF-8 .csv file. Columns:
  *  Word, Reading, Translation, Part of speech, Notes. */

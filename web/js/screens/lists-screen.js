@@ -5,6 +5,7 @@
 
 import { el, clear, presentSheet, toast } from "../dom.js";
 import { t, tn, tf, LANGUAGES, displayNameIn, preferredLanguage } from "../i18n.js";
+import { wordsFromCsv } from "../csv.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
 import * as Auth from "../auth.js";
@@ -117,13 +118,15 @@ export async function TrashScreen(content) {
 
 function presentNewListSheet(onCreated) {
   presentSheet((api) => {
-    let mode = "create"; // or "import"
+    let mode = "create"; // or "csv" or "import"
 
-    // --- Create form ---
+    // --- Create form (also the name/languages step of a CSV import) ---
     let learning = "";
     let original = preferredLanguage();
     const name = el("input.field-input", { type: "text", placeholder: t("e.g. Kitchen vocabulary") });
-    const learnSel = languageSelect(learning, t("Select…"), (v) => { learning = v; validate(); });
+    // Re-read the file on a language change: it decides whether an exported
+    // "Reading" column is a pinyin or a hiragana reading.
+    const learnSel = languageSelect(learning, t("Select…"), (v) => { learning = v; refreshCsv(); validate(); });
     const origSel = languageSelect(original, t("Select…"), (v) => { original = v; validate(); });
     const footer = el(".form-footer-error");
     name.addEventListener("input", validate);
@@ -135,6 +138,54 @@ function presentNewListSheet(onCreated) {
           pickerRow(t("Translated into"), origSel),
         ), footer),
     );
+
+    // --- CSV form (shown under the create form in "csv" mode) ---
+    let csvText = null;
+    let csvFileName = "";
+    let csvWords = [];
+    const csvStatus = el(".form-note");
+    const csvFooter = el(".form-footer-error");
+    const fileInput = el("input", {
+      type: "file", accept: ".csv,text/csv", style: "display:none", onchange: readChosenFile,
+    });
+    const csvForm = el(".form", { style: "display:none" },
+      formSection(t("Words file"),
+        el(".form-card", {},
+          el("button.form-action", { onclick: () => fileInput.click() },
+            icon("upload_file", 22), el("span", {}, t("Choose file…"))),
+        ),
+        el(".form-note", {}, t("Columns, in order: word, translation, notes, part of speech, hiragana, pinyin. A header row is optional, and files exported from Retainic work as-is.")),
+        csvStatus, csvFooter),
+      fileInput);
+
+    async function readChosenFile() {
+      const file = fileInput.files && fileInput.files[0];
+      // Clear the input so re-picking the same file after an error still fires.
+      fileInput.value = "";
+      if (!file) return;
+      csvText = null;
+      csvFileName = file.name;
+      try { csvText = await file.text(); }
+      catch { csvWords = []; csvStatus.textContent = ""; csvFooter.textContent = t("Couldn't read that file."); validate(); return; }
+      refreshCsv();
+      validate();
+    }
+
+    /** Re-parses the chosen file and reports what it found. */
+    function refreshCsv() {
+      csvStatus.textContent = "";
+      csvFooter.textContent = "";
+      csvWords = [];
+      if (csvText == null) return;
+      const { words, skipped } = wordsFromCsv(csvText, learning);
+      csvWords = words;
+      if (!words.length) {
+        csvFooter.textContent = t("No words found in that file. Check it and try again.");
+        return;
+      }
+      csvStatus.textContent = tf("Found %lld words in “%@”.", words.length, csvFileName)
+        + (skipped ? " " + tn("Skipped %lld rows with no word.", skipped) : "");
+    }
 
     // --- Import form ---
     const idInput = el("input.field-input", { type: "text", placeholder: t("Paste the unique ID"), autocapitalize: "off", spellcheck: false });
@@ -151,10 +202,10 @@ function presentNewListSheet(onCreated) {
     const cancelBtn = el("button.icon-btn", {
       onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
     }, icon("close", 24));
-    // Create mode confirms with a checkmark; Import mode advances (→) to the
-    // naming step. Keep the button's glyph and label in sync with the mode.
+    // The create and CSV modes confirm with a checkmark; Import by ID advances
+    // (→) to the naming step. Keep the button's glyph and label in sync.
     function updateActionBtn() {
-      const creating = mode === "create";
+      const creating = mode !== "import";
       clear(actionBtn);
       actionBtn.appendChild(icon(creating ? "check" : "arrow_forward", 24));
       const lbl = creating ? t("Create") : t("Import");
@@ -164,37 +215,53 @@ function presentNewListSheet(onCreated) {
     updateActionBtn();
 
     const segCreate = el("button.seg.active", { onclick: () => setMode("create") }, t("Create new"));
+    const segCsv = el("button.seg", { onclick: () => setMode("csv") }, t("Import CSV"));
     const segImport = el("button.seg", { onclick: () => setMode("import") }, t("Import by ID"));
-    const seg = el(".segmented", {}, segCreate, segImport);
+    const seg = el(".segmented", {}, segCreate, segCsv, segImport);
+    const segments = [[segCreate, "create"], [segCsv, "csv"], [segImport, "import"]];
 
     function setMode(m) {
       if (mode === m) return;
       mode = m;
-      const creating = m === "create";
-      createForm.style.display = creating ? "" : "none";
-      importForm.style.display = creating ? "none" : "";
-      segCreate.classList.toggle("active", creating);
-      segImport.classList.toggle("active", !creating);
+      // A CSV import creates a list, so it needs the name and languages too:
+      // the create form stays visible with the file picker beneath it.
+      createForm.style.display = m === "import" ? "none" : "";
+      csvForm.style.display = m === "csv" ? "" : "none";
+      importForm.style.display = m === "import" ? "" : "none";
+      for (const [btn, key] of segments) btn.classList.toggle("active", m === key);
       updateActionBtn();
       validate();
     }
 
+    /** Whether the shared name/languages fields are filled in, showing the
+     *  same-language error underneath when they aren't. */
+    function validateCreateFields() {
+      const same = learning !== "" && learning === original;
+      footer.textContent = same ? t("The two languages must be different.") : "";
+      return Boolean(name.value.trim() && learning && original && !same);
+    }
+
     function validate() {
       let ok;
-      if (mode === "create") {
-        const same = learning !== "" && learning === original;
-        footer.textContent = same ? t("The two languages must be different.") : "";
-        ok = name.value.trim() && learning && original && !same;
-      } else {
-        ok = idInput.value.trim().length > 0;
-      }
+      if (mode === "import") ok = idInput.value.trim().length > 0;
+      else ok = validateCreateFields() && (mode === "create" || csvWords.length > 0);
       actionBtn.disabled = !ok;
       actionBtn.classList.toggle("disabled", !ok);
+    }
+
+    /** Locks the whole panel while a non-interruptible write runs. */
+    function setBusy(busy) {
+      api.setDismissible(!busy);
+      for (const btn of [actionBtn, cancelBtn]) {
+        btn.disabled = busy;
+        btn.classList.toggle("disabled", busy);
+      }
     }
 
     async function submit() {
       if (actionBtn.disabled) return;
       if (mode === "create") await doCreate();
+      else if (mode === "csv") await doCreateFromCsv();
       else await doLookup();
     }
 
@@ -206,18 +273,36 @@ function presentNewListSheet(onCreated) {
       } catch (e) { toast(Auth.friendlyMessage(e)); }
     }
 
+    /** Creates the list, then writes the words parsed from the chosen file.
+     *  Like the by-ID import, the panel locks until every word is stored. */
+    async function doCreateFromCsv() {
+      const finalName = name.value.trim();
+      const words = csvWords;
+      setBusy(true);
+      clear(actionBtn);
+      actionBtn.appendChild(icon("progress_activity", 24)); // shows the copy is in progress
+      try {
+        const listId = await Repo.createList(authState.uid, finalName, learning, original);
+        for (const w of words) await Repo.addWord(authState.uid, listId, w);
+        api.close();
+        onCreated();
+        toast(tf("Imported “%@” with %lld words.", finalName, words.length));
+      } catch (e) {
+        csvFooter.textContent = Auth.friendlyMessage(e);
+        setBusy(false);
+        updateActionBtn();
+        validate();
+      }
+    }
+
     async function doLookup() {
       const id = idInput.value.trim();
-      actionBtn.disabled = true;
-      actionBtn.classList.add("disabled");
-      cancelBtn.disabled = true;
-      cancelBtn.classList.add("disabled");
+      setBusy(true);
       try {
         const shared = await Repo.fetchSharedList(id);
         if (!shared) {
           importFooter.textContent = t("No wordlist found for that ID. Check it and try again.");
-          cancelBtn.disabled = false;
-          cancelBtn.classList.remove("disabled");
+          setBusy(false);
           validate();
           return;
         }
@@ -225,8 +310,7 @@ function presentNewListSheet(onCreated) {
         presentImportNameSheet(shared, onCreated);
       } catch (e) {
         importFooter.textContent = Auth.friendlyMessage(e);
-        cancelBtn.disabled = false;
-        cancelBtn.classList.remove("disabled");
+        setBusy(false);
         validate();
       }
     }
@@ -240,6 +324,7 @@ function presentNewListSheet(onCreated) {
       ),
       el(".form", {}, formSection(null, seg)),
       createForm,
+      csvForm,
       importForm,
     );
   });
