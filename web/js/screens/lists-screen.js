@@ -184,7 +184,7 @@ function presentNewListSheet(onCreated) {
         return;
       }
       csvStatus.textContent = tf("Found %lld words in “%@”.", words.length, csvFileName)
-        + (skipped ? " " + tn("Skipped %lld rows with no word.", skipped) : "");
+        + (skipped ? " " + tn("Skipped %lld rows that don't match the format.", skipped) : "");
     }
 
     // --- Import form ---

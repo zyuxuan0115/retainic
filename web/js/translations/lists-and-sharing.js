@@ -282,12 +282,12 @@ export default {
     "ja": "%lld 件の単語が見つかりました（%@）。",
     "ko": "%lld개의 단어를 찾았습니다 (%@).",
   },
-  "Skipped %lld rows with no word.": {
-    "en": "Skipped %lld rows with no word.",
-    "es": "Se omitieron %lld filas sin palabra.",
-    "zh": "已跳过 %lld 行（没有单词）。",
-    "ja": "単語のない %lld 行をスキップしました。",
-    "ko": "단어가 없는 %lld개 행을 건너뛰었습니다.",
+  "Skipped %lld rows that don't match the format.": {
+    "en": "Skipped %lld rows that don't match the format.",
+    "es": "Se omitieron %lld filas que no siguen el formato.",
+    "zh": "已跳过 %lld 行（格式不符）。",
+    "ja": "形式に合わない %lld 行をスキップしました。",
+    "ko": "형식에 맞지 않는 %lld개 행을 건너뛰었습니다.",
   },
   "No words found in that file. Check it and try again.": {
     "en": "No words found in that file. Check it and try again.",

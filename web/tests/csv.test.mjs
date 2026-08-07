@@ -68,6 +68,36 @@ test("a file exported by the app imports back, readings included", () => {
   assert.equal(zh.words[0].hiragana, null);
 });
 
+test("parts of speech are read in any supported language", () => {
+  const rows = "gato,cat,,Sustantivo\n猫,cat,,名词;动词\n고양이,cat,,명사\n犬,dog,,noun\n";
+  const { words, skipped } = wordsFromCsv(rows);
+  assert.equal(skipped, 0);
+  assert.deepEqual(words.map((w) => w.partsOfSpeech), [
+    ["noun"], ["noun", "verb"], ["noun"], ["noun"],
+  ]);
+});
+
+test("rows that don't match the format are skipped, not half-imported", () => {
+  // "pet" names no part of speech in any language, so that row is dropped.
+  const { words, skipped } = wordsFromCsv("猫,cat,,pet\n犬,dog,,noun\n");
+  assert.equal(skipped, 1);
+  assert.deepEqual(words.map((w) => w.term), ["犬"]);
+
+  // One bad label among good ones still invalidates the row.
+  assert.equal(wordsFromCsv("猫,cat,,noun;pet\n").skipped, 1);
+
+  // An empty part-of-speech cell is fine — it just means none were given.
+  const none = wordsFromCsv("猫,cat,a pet,,,mao\n");
+  assert.equal(none.skipped, 0);
+  assert.deepEqual(none.words[0].partsOfSpeech, []);
+
+  // Data past the last column the file names has nowhere to go.
+  assert.equal(wordsFromCsv("猫,cat,a pet,noun,,mao,extra\n").skipped, 1);
+  assert.equal(wordsFromCsv("word,translation\n猫,cat,a pet\n").skipped, 1);
+  // Trailing empty fields are not "extra" data.
+  assert.equal(wordsFromCsv("猫,cat,a pet,noun,,mao,\n").skipped, 0);
+});
+
 test("a data row is never mistaken for a header", () => {
   // "cat" names no column, so row one stays a word.
   const { words } = wordsFromCsv("word,cat\n猫,cat\n");

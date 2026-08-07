@@ -108,12 +108,16 @@ function headerFields(row) {
 }
 
 /** Parts of speech from one cell: labels in any supported language (or their
- *  canonical keys) separated by semicolons, slashes, or pipes. */
+ *  canonical keys) separated by semicolons, slashes, or pipes — so "名詞" and
+ *  "Sustantivo" read the same as "noun". Null when a piece names no part of
+ *  speech at all, which marks the whole row as malformed. */
 function partsOfSpeechFrom(raw) {
   const parts = [];
   for (const piece of String(raw).split(/[;/|]/)) {
+    if (!piece.trim()) continue;
     const key = posKey(piece);
-    if (key && !parts.includes(key)) parts.push(key);
+    if (!key) return null;
+    if (!parts.includes(key)) parts.push(key);
   }
   return parts;
 }
@@ -125,7 +129,12 @@ function partsOfSpeechFrom(raw) {
  *  header row, in which case they're matched by name. That also covers the
  *  files this app exports, whose headers are localized and whose single
  *  "Reading" column is read as pinyin or hiragana according to
- *  `learningLanguage`. Rows with no term are skipped and counted. */
+ *  `learningLanguage`.
+ *
+ *  A row that doesn't fit that shape is skipped rather than half-imported, and
+ *  the skipped rows are counted: rows with no term, rows whose part-of-speech
+ *  cell holds something that isn't a part of speech in any supported language,
+ *  and rows with data in a column the file doesn't name. */
 export function wordsFromCsv(text, learningLanguage = "") {
   const rows = parseCsv(text).filter((row) => row.some((field) => field.trim() !== ""));
   if (!rows.length) return { words: [], skipped: 0 };
@@ -142,12 +151,17 @@ export function wordsFromCsv(text, learningLanguage = "") {
     };
     const term = cell("term");
     if (!term) { skipped++; continue; }
+    // Content past the last known column (or under a blank header) means the
+    // row has more fields than the format defines — don't guess at it.
+    if (row.some((value, i) => !fields[i] && value.trim() !== "")) { skipped++; continue; }
+    const partsOfSpeech = partsOfSpeechFrom(cell("partsOfSpeech"));
+    if (!partsOfSpeech) { skipped++; continue; }
     const reading = cell("reading");
     words.push(newWord({
       term,
       translation: cell("translation"),
       notes: cell("notes"),
-      partsOfSpeech: partsOfSpeechFrom(cell("partsOfSpeech")),
+      partsOfSpeech,
       hiragana: cell("hiragana") || (learningLanguage === "ja" ? reading : "") || null,
       pinyin: cell("pinyin") || (learningLanguage === "zh" ? reading : "") || null,
     }));

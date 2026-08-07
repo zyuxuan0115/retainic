@@ -20,7 +20,10 @@ SDK loaded from a CDN. No build step.
   from a file. Columns are `word, translation, notes, part of speech, hiragana,
   pinyin`; a header row is optional and, when present, columns are matched by
   name — so a CSV exported from the app (localized headers, single *Reading*
-  column) imports straight back. Rows with no word are skipped.
+  column) imports straight back. Parts of speech are recognized in any of the
+  interface languages (`Noun`, `Sustantivo`, `名词`, `名詞`, `명사`). Rows that
+  don't match the format are skipped and counted: no word, a part of speech
+  that isn't one, or data in a column the file doesn't name.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list
