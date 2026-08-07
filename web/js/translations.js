@@ -4,12 +4,14 @@
 
 import accountAndAlgorithm from "./translations/account-and-algorithm.js";
 import listsAndSharing from "./translations/lists-and-sharing.js";
+import glossaries from "./translations/glossaries.js";
 import wordEditing from "./translations/word-editing.js";
 import practiceAndStats from "./translations/practice-and-stats.js";
 
 export default {
   ...accountAndAlgorithm,
   ...listsAndSharing,
+  ...glossaries,
   ...wordEditing,
   ...practiceAndStats,
 };

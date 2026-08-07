@@ -122,6 +122,9 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 
 /* Lists / rows */
 .list { background: var(--bg-elevated); margin: 16px; border-radius: var(--radius); overflow: hidden; }
+/* Heading above a group of rows (the Trash lists its lists and glossaries
+   separately); aligns with the .list card below it and hugs it. */
+.list-section-title { margin: 20px 20px -6px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--separator); }
 .row:last-child { border-bottom: none; }
 .row.tappable { cursor: pointer; }

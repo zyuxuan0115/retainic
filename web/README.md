@@ -24,6 +24,12 @@ SDK loaded from a CDN. No build step.
   interface languages (`Noun`, `Sustantivo`, `名词`, `名詞`, `명사`). Rows that
   don't match the format are skipped and counted: no word, a part of speech
   that isn't one, or data in a column the file doesn't name.
+- **Glossaries** — a separate **My Glossaries** dashboard for single-language
+  reference decks: each entry is a term and its definition (plus optional
+  notes), with no translation language, readings or recordings. Glossaries are
+  independent of vocabulary lists — their own documents, screens and practice —
+  but they share the Trash and the spaced-repetition schedule, practising two
+  methods (*Term* and *Definition*) instead of three.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list
@@ -34,7 +40,7 @@ SDK loaded from a CDN. No build step.
 - **Per-aspect spaced repetition** — spelling, translation and pronunciation are
   scheduled independently; the schedules and mastery thresholds match the iOS
   app exactly (see `js/models.js`).
-- **Statistics** — words memorized, *Remembered today* bar chart, *This week*
+- **Statistics** — words and glossary terms memorized, *Remembered today* bar chart, *This week*
   trend lines, and average pace per day / week / month (SVG charts, no library).
 
 ## Running it
@@ -88,6 +94,7 @@ web/
     ├── auth.js             Email/password auth + profile (AuthService.swift)
     ├── repository.js       Firestore/Storage CRUD (VocabRepository.swift)
     ├── models.js           Word model + spaced-repetition logic (FirestoreModels.swift)
+    ├── glossary.js         Glossary entry model on the same review schedule
     ├── csv.js              CSV escaping/parsing shared by the list export and import
     ├── audio.js            Recording + playback (AudioManager.swift)
     ├── i18n.js             Language list + string lookup (Language/AppLanguage.swift)

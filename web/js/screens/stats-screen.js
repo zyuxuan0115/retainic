@@ -8,6 +8,7 @@ import * as i18n from "../i18n.js";
 import { t, tf } from "../i18n.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
+import * as G from "../glossary.js";
 import { authState } from "../auth.js";
 import { navBar, spinner, emptyState, errorState, icon } from "../ui.js";
 
@@ -18,25 +19,31 @@ export async function StatsScreen(content) {
   body.appendChild(spinner(t("Loading…")));
 
   let words = [];
+  let entries = [];
   let dailyStats = [];
   try {
     const lists = await Repo.fetchLists(authState.uid);
     for (const l of lists) words = words.concat(await Repo.fetchWords(authState.uid, l.id));
+    // Glossary practice writes the same daily tallies as list practice, so the
+    // totals and today's counts have to include glossary terms as well.
+    const glossaries = await Repo.fetchGlossaries(authState.uid);
+    for (const g of glossaries) entries = entries.concat(await Repo.fetchEntries(authState.uid, g.id));
     dailyStats = await Repo.fetchDailyStats(authState.uid, 7).catch(() => []);
   } catch (e) { clear(body); body.appendChild(errorState(e)); return; }
 
   clear(body);
-  if (words.length === 0) {
+  if (words.length + entries.length === 0) {
     body.appendChild(emptyState(icon("bar_chart", 46), t("No Stats Yet"),
       t("Add words and practice them. Once you've memorized some, your progress shows up here.")));
     return;
   }
 
   // Aggregate stats (LearningStats). A word counts as memorized only once it is
-  // fully remembered: 8× word, 10× translation, 7× pronunciation (remember_final).
-  const totalWords = words.length;
-  const totalMemorized = words.filter(M.isRemembered).length;
-  const dates = words.map((w) => w.createdAt).filter(Boolean);
+  // fully remembered: 8× word, 10× translation, 7× pronunciation (remember_final);
+  // a glossary term once its 8× term and 10× definition recalls are done.
+  const totalWords = words.length + entries.length;
+  const totalMemorized = words.filter(M.isRemembered).length + entries.filter(G.isRemembered).length;
+  const dates = [...words, ...entries].map((w) => w.createdAt).filter(Boolean);
   const start = dates.length ? new Date(Math.min(...dates.map((d) => +d))) : null;
   let activeDays = 1;
   if (start) {
@@ -48,12 +55,18 @@ export async function StatsScreen(content) {
   const perWeek = perDay * 7;
   const perMonth = perDay * (365.25 / 12);
 
-  // Today remembered (derived from words)
+  // Today remembered (derived from words and glossary terms). A term's two
+  // methods line up with a word's first two: recalling the term itself, and
+  // recalling what it means.
   const today = { word: 0, translation: 0, pronunciation: 0 };
   for (const w of words) {
     if (M.isToday(w.lastWordRemembered)) today.word += 1;
     if (M.isToday(w.lastTranslationRemembered)) today.translation += 1;
     if (M.isToday(w.lastPronounciationRemembered)) today.pronunciation += 1;
+  }
+  for (const e of entries) {
+    if (M.isToday(e.lastTermRemembered)) today.word += 1;
+    if (M.isToday(e.lastDefinitionRemembered)) today.translation += 1;
   }
 
   const aspectKeys = ["word", "translation", "pronunciation"];
@@ -65,7 +78,7 @@ export async function StatsScreen(content) {
     el(".stat-total", {},
       el(".big-icon", {}, icon("psychology", 44)),
       el(".stat-number", {}, `${totalMemorized}`),
-      el(".stat-caption", {}, t("words memorized")),
+      el(".stat-caption", {}, t("words and terms memorized")),
       el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
     ),
     el(".stat-block", {},

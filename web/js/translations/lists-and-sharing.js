@@ -450,12 +450,12 @@ export default {
     "ja": "ゴミ箱を空にする",
     "ko": "휴지통 비우기",
   },
-  "Permanently delete all lists in the Trash?": {
-    "en": "Permanently delete all lists in the Trash?",
-    "es": "¿Eliminar definitivamente todas las listas de la papelera?",
-    "zh": "永久删除回收站中的所有列表？",
-    "ja": "ゴミ箱内のすべてのリストを完全に削除しますか？",
-    "ko": "휴지통의 모든 목록을 영구적으로 삭제할까요?",
+  "Permanently delete everything in the Trash?": {
+    "en": "Permanently delete everything in the Trash?",
+    "es": "¿Eliminar definitivamente todo lo que hay en la papelera?",
+    "zh": "永久删除回收站中的所有内容？",
+    "ja": "ゴミ箱内のすべてを完全に削除しますか？",
+    "ko": "휴지통의 모든 항목을 영구적으로 삭제할까요?",
   },
   "Trash is Empty": {
     "en": "Trash is Empty",
@@ -464,12 +464,12 @@ export default {
     "ja": "ゴミ箱は空です",
     "ko": "휴지통이 비어 있습니다",
   },
-  "Deleted lists are kept here until you restore or permanently delete them.": {
-    "en": "Deleted lists are kept here until you restore or permanently delete them.",
-    "es": "Las listas eliminadas se guardan aquí hasta que las restaures o las elimines definitivamente.",
-    "zh": "删除的列表会保留在这里，直到你恢复或永久删除它们。",
-    "ja": "削除したリストは、復元または完全に削除するまでここに保管されます。",
-    "ko": "삭제된 목록은 복원하거나 영구적으로 삭제할 때까지 여기에 보관됩니다.",
+  "Deleted lists and glossaries are kept here until you restore or permanently delete them.": {
+    "en": "Deleted lists and glossaries are kept here until you restore or permanently delete them.",
+    "es": "Las listas y los glosarios eliminados se guardan aquí hasta que los restaures o los elimines definitivamente.",
+    "zh": "删除的词表和术语表会保留在这里，直到你恢复或永久删除它们。",
+    "ja": "削除したリストと用語集は、復元または完全に削除するまでここに保管されます。",
+    "ko": "삭제된 목록과 용어집은 복원하거나 영구적으로 삭제할 때까지 여기에 보관됩니다.",
   },
   "This can't be undone.": {
     "en": "This can't be undone.",

@@ -113,10 +113,17 @@ export function setActiveAlgorithm(fn) {
 
 /** Whether a method is due: not finished (interval >= 0), and either never
  *  practised yet or its interval of days has elapsed since it was last correct. */
-function methodDue(interval, last, now) {
+export function methodDue(interval, last, now) {
   if (interval == null || interval < 0) return false;
   if (!last) return true;
   return daysBetween(last, now) >= interval;
+}
+
+/** The active algorithm's schedule for a raw review state. Words go through
+ *  `reviewState` below; glossary entries build their own state in glossary.js,
+ *  so both kinds of practice run on the same (possibly overridden) schedule. */
+export function reviewSchedule(state) {
+  return activeReview(state);
 }
 
 // MARK: - Word helpers (operate on plain word objects)

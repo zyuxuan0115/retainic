@@ -330,12 +330,12 @@ export default {
   "pīnyīn reading": {
     "en": "pīnyīn reading",
   },
-  "words memorized": {
-    "en": "words memorized",
-    "es": "palabras memorizadas",
-    "zh": "已记住的单词",
-    "ja": "覚えた単語",
-    "ko": "외운 단어",
+  "words and terms memorized": {
+    "en": "words and terms memorized",
+    "es": "palabras y términos memorizados",
+    "zh": "已记住的单词和术语",
+    "ja": "覚えた単語・用語",
+    "ko": "외운 단어와 용어",
   },
   "ひらがな reading": {
     "en": "ひらがな reading",

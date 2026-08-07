@@ -2,23 +2,142 @@
 //  Flashcard setup, practice session, and result summary.
 //  Retainic Web
 //
+//  One session engine drives two kinds of deck — a vocabulary list's words and
+//  a glossary's terms. Everything specific to a kind (which methods can be
+//  practised, what each card side shows, how a grade is recorded) lives in the
+//  deck adapter built by `deckFor`; the rest of the screen is shared.
+//
 
 import { el, clear, toast } from "../dom.js";
 import { t, tn, tf, preferredLanguage } from "../i18n.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
+import * as G from "../glossary.js";
 import { authState } from "../auth.js";
 import { playback } from "../audio.js";
 import { useAlgorithm, useDefaultAlgorithm } from "../algorithm.js";
 import { navBar, iconButton, spinner, emptyState, pronunciationButton, icon } from "../ui.js";
 
-const FRONT_MODES = [
+const WORD_MODES = [
   { id: "term", labelKey: "Word", aspect: "spelling" },
   { id: "translation", labelKey: "Translation", aspect: "translation" },
   { id: "pronunciation", labelKey: "Audio", aspect: "pronunciation" },
 ];
 
-export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = false, algorithmCode = null, onBack) {
+const GLOSSARY_MODES = [
+  { id: "term", labelKey: "Term", aspect: "term", dailyAspect: "spelling" },
+  { id: "definition", labelKey: "Definition", aspect: "definition", dailyAspect: "translation" },
+];
+
+/** Adapter for a vocabulary list's words. */
+function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = null }) {
+  const tts = ttsEnabled === true;
+  const list = { learningLanguage, ttsEnabled: tts };
+  return {
+    modes: WORD_MODES,
+    emptyDescription: t("Add some words to a list first, then come back to review them."),
+    // A custom algorithm must be compiled (loading Pyodide the first time)
+    // before scheduling can run. Lists on the default schedule are ready
+    // immediately, as are glossaries — they always use the built-in schedule.
+    prepare() {
+      if (!(algorithmCode && algorithmCode.trim())) { useDefaultAlgorithm(); return null; }
+      return useAlgorithm(algorithmCode)
+        .catch(() => { toast(t("Couldn't run your algorithm — using the default.")); });
+    },
+    includes(card, modeId, dueOnly) {
+      // Pronunciation practice needs something to hear: a recording, or a
+      // synthesized voice when the list has text-to-speech enabled.
+      if (modeId === "pronunciation" && card.word.audioPath == null && !tts) return false;
+      if (!dueOnly) return card.word.remember_final !== true;
+      if (modeId === "translation") return M.isTranslationDue(card.word, new Date(), tts);
+      if (modeId === "term") return M.isWordDue(card.word, new Date(), tts);
+      return M.isPronunciationDue(card.word, new Date(), tts);
+    },
+    front(card, modeId) {
+      const word = card.word;
+      if (modeId === "pronunciation") {
+        return el(".card-front-pron", {}, el(".big-icon", {}, icon("volume_up", 52)), el("p.muted", {}, t("Listen and recall")));
+      }
+      return el(".card-prompt", {}, modeId === "translation" ? word.translation : word.term);
+    },
+    back(card) {
+      const word = card.word;
+      const termReading = M.readingFor(word, learningLanguage);
+      const posLabels = M.partOfSpeechValues(word).map((p) => M.posLabel(p, preferredLanguage()));
+      return el(".card-answer", {},
+        el(".answer-term", {}, word.term),
+        termReading ? el(".answer-reading", {}, termReading) : null,
+        posLabels.length ? el(".chip-row", {}, ...posLabels.map((p) => el(".chip", {}, p))) : null,
+        el("hr"),
+        el(".answer-translation", {}, word.translation),
+        word.notes ? el(".answer-notes", {}, word.notes) : null,
+      );
+    },
+    // The audio control belongs with the side that isn't the prompt: on the
+    // back of a normal card, on the front when listening is the prompt.
+    audioSide(modeId, isFlipped) {
+      return modeId === "pronunciation" ? !isFlipped : isFlipped;
+    },
+    audioControl(card) {
+      return pronunciationButton(card.word, list, true);
+    },
+    grade(card, mode, correct) {
+      if (correct) M.markCorrect(card.word, mode.aspect, tts);
+      else M.markIncorrect(card.word, mode.aspect);
+      if (correct) Repo.recordRemembered(authState.uid, mode.aspect).catch(() => {});
+      Repo.updateWord(authState.uid, card.listId, card.word, { ttsEnabled: tts }).catch(() => {});
+    },
+    sameCard(a, b) { return a.word.id === b.word.id; },
+    syncCard(target, source) { target.word = source.word; },
+  };
+}
+
+/** Adapter for a glossary's entries: term and definition, no audio, always the
+ *  built-in schedule. */
+function glossaryDeck() {
+  return {
+    modes: GLOSSARY_MODES,
+    emptyDescription: t("Add some terms to a glossary first, then come back to review them."),
+    prepare() { useDefaultAlgorithm(); return null; },
+    includes(card, modeId, dueOnly) {
+      if (!dueOnly) return card.entry.remember_final !== true;
+      return G.isAspectDue(card.entry, modeId);
+    },
+    front(card, modeId) {
+      return el(".card-prompt", {}, modeId === "definition" ? card.entry.definition : card.entry.term);
+    },
+    back(card) {
+      const entry = card.entry;
+      return el(".card-answer", {},
+        el(".answer-term", {}, entry.term),
+        el("hr"),
+        el(".answer-translation", {}, entry.definition),
+        entry.notes ? el(".answer-notes", {}, entry.notes) : null,
+      );
+    },
+    audioSide() { return false; },
+    audioControl() { return null; },
+    grade(card, mode, correct) {
+      if (correct) G.markCorrect(card.entry, mode.aspect);
+      else G.markIncorrect(card.entry, mode.aspect);
+      if (correct) Repo.recordRemembered(authState.uid, mode.dailyAspect).catch(() => {});
+      Repo.updateEntry(authState.uid, card.glossaryId, card.entry).catch(() => {});
+    },
+    sameCard(a, b) { return a.entry.id === b.entry.id; },
+    syncCard(target, source) { target.entry = source.entry; },
+  };
+}
+
+function deckFor(ctx) {
+  return ctx.kind === "glossary" ? glossaryDeck(ctx) : wordDeck(ctx);
+}
+
+/** `ctx` is the practice context a detail screen handed to the shell:
+ *  `{ cards, kind }` plus whatever that kind needs (a list passes its
+ *  learning language, text-to-speech setting, and custom algorithm). */
+export function FlashcardScreen(content, ctx, onBack) {
+  const deck = deckFor(ctx);
+  const cards = ctx.cards || [];
   const header = el(".navbar-host");
   const body = el(".scroll");
   content.appendChild(header);
@@ -33,41 +152,27 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
   let dueOnly = true;
   let finished = false;
 
-  // A custom algorithm must be compiled (loading Pyodide the first time) before
-  // scheduling can run. Lists on the default schedule are ready immediately.
-  const hasCustomAlgorithm = !!(algorithmCode && algorithmCode.trim());
-  let algoReady = !hasCustomAlgorithm;
-  if (hasCustomAlgorithm) {
-    useAlgorithm(algorithmCode)
-      .catch((e) => { toast(t("Couldn't run your algorithm — using the default.")); })
-      .finally(() => { algoReady = true; render(); });
-  } else {
-    useDefaultAlgorithm();
-  }
+  const preparing = deck.prepare();
+  let algoReady = !preparing;
+  if (preparing) preparing.finally(() => { algoReady = true; render(); });
 
-  function includes(card, modeId) {
-    // Pronunciation practice needs something to hear: a recording, or a
-    // synthesized voice when the list has text-to-speech enabled.
-    if (modeId === "pronunciation" && card.word.audioPath == null && !ttsEnabled) return false;
-    if (dueOnly) {
-      if (modeId === "translation") return M.isTranslationDue(card.word, new Date(), ttsEnabled);
-      if (modeId === "term") return M.isWordDue(card.word, new Date(), ttsEnabled);
-      return M.isPronunciationDue(card.word, new Date(), ttsEnabled);
-    }
-    return card.word.remember_final !== true;
+  const modeById = (id) => deck.modes.find((m) => m.id === id);
+
+  function items(modeId) {
+    return cards.filter((card) => deck.includes(card, modeId, dueOnly));
   }
-  function deck() {
+  function buildSession() {
     if (selectedModes.size === 0) return [];
-    const items = [];
-    for (const mode of selectedModes)
-      for (const card of cards) if (includes(card, mode)) items.push({ card, mode });
+    const out = [];
+    for (const modeId of selectedModes)
+      for (const card of items(modeId)) out.push({ card, mode: modeById(modeId) });
     // shuffle
-    for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
-    return items;
+    for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+    return out;
   }
   function dueCount() {
     let sum = 0;
-    for (const mode of selectedModes) sum += cards.filter((c) => includes(c, mode)).length;
+    for (const modeId of selectedModes) sum += items(modeId).length;
     return sum;
   }
 
@@ -77,7 +182,7 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
       leading: iconButton(icon("arrow_back", 22), () => {
         playback.stop();
         // Mid-session, the back button ends the session and shows the summary
-        // (results) instead of dropping straight back to the word list.
+        // (results) instead of dropping straight back to the entry list.
         if (session.length && !finished) { finished = true; render(); }
         else { onBack(); }
       }, { label: "Back" }),
@@ -90,8 +195,7 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
     if (!algoReady) {
       body.appendChild(spinner(t("Preparing your algorithm…")));
     } else if (cards.length === 0) {
-      body.appendChild(emptyState(icon("style", 46), t("Nothing to Practice"),
-        t("Add some words to a list first, then come back to review them.")));
+      body.appendChild(emptyState(icon("style", 46), t("Nothing to Practice"), deck.emptyDescription));
     } else if (session.length === 0) {
       renderSetup();
     } else if (finished) {
@@ -104,7 +208,7 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
   function renderSetup() {
     const due = dueCount();
     const modeList = el(".check-card");
-    for (const mode of FRONT_MODES) {
+    for (const mode of deck.modes) {
       const on = selectedModes.has(mode.id);
       modeList.appendChild(el(".check-row", {
         onclick: () => { on ? selectedModes.delete(mode.id) : selectedModes.add(mode.id); render(); },
@@ -122,14 +226,14 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
         dailyToggle,
         el(".section-label", {}, t("Show first")),
         modeList,
-        (selectedModes.has("pronunciation") && !ttsEnabled) ? el(".form-note", {}, t("Audio is only used for words with a recorded pronunciation.")) : null,
+        (selectedModes.has("pronunciation") && ctx.ttsEnabled !== true) ? el(".form-note", {}, t("Audio is only used for words with a recorded pronunciation.")) : null,
       ),
-      el("button.btn.primary.large", { disabled: deck().length === 0, onclick: start }, t("Start Session")),
+      el("button.btn.primary.large", { disabled: buildSession().length === 0, onclick: start }, t("Start Session")),
     ));
   }
 
   function start() {
-    const d = deck();
+    const d = buildSession();
     if (d.length === 0) return;
     session = d; totalCards = d.length; index = 0; correctCount = 0; isFlipped = false; finished = false;
     render();
@@ -137,39 +241,19 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
 
   function renderPractice() {
     const item = session[index];
-    const word = item.card.word;
-    const mode = item.mode;
-    const frontIsPron = mode === "pronunciation";
-    const termReading = M.readingFor(word, learningLanguage);
-    const posLabels = M.partOfSpeechValues(word).map((p) => M.posLabel(p, preferredLanguage()));
-
     const card = el(".flashcard" + (isFlipped ? ".flipped" : ""), {
       onclick: () => { isFlipped = !isFlipped; render(); },
     });
     card.appendChild(el(".card-corner", {}, isFlipped ? t("Answer") : t("Tap to flip")));
-    if (isFlipped) {
-      card.appendChild(el(".card-answer", {},
-        el(".answer-term", {}, word.term),
-        termReading ? el(".answer-reading", {}, termReading) : null,
-        posLabels.length ? el(".chip-row", {}, ...posLabels.map((p) => el(".chip", {}, p))) : null,
-        el("hr"),
-        el(".answer-translation", {}, word.translation),
-        word.notes ? el(".answer-notes", {}, word.notes) : null,
-      ));
-    } else if (frontIsPron) {
-      card.appendChild(el(".card-front-pron", {}, el(".big-icon", {}, icon("volume_up", 52)), el("p.muted", {}, t("Listen and recall"))));
-    } else {
-      card.appendChild(el(".card-prompt", {}, mode === "translation" ? word.translation : word.term));
-    }
+    card.appendChild(isFlipped ? deck.back(item.card) : deck.front(item.card, item.mode.id));
 
-    const showAudioSide = frontIsPron ? !isFlipped : isFlipped;
-    const pronBtn = showAudioSide ? pronunciationButton(word, { learningLanguage, ttsEnabled }, true) : null;
+    const audioBtn = deck.audioSide(item.mode.id, isFlipped) ? deck.audioControl(item.card) : null;
 
     body.appendChild(el(".practice-view", {},
       el(".progress-track", {}, el(".progress-fill", { style: `width:${(index / session.length) * 100}%` })),
       el("p.caption.center", {}, tf("%lld of %lld", index + 1, session.length)),
       card,
-      pronBtn || el(".audio-placeholder"),
+      audioBtn || el(".audio-placeholder"),
       isFlipped
         ? el(".answer-actions", {},
             el("button.btn.warn.large", { onclick: () => answer(false) }, icon("replay", 20), t("Practice Again")),
@@ -181,15 +265,11 @@ export function FlashcardScreen(content, cards, learningLanguage, ttsEnabled = f
 
   function answer(correct) {
     const item = session[index];
+    // Only the daily assignment counts: free practice never changes a schedule.
     if (dueOnly) {
-      if (correct) { M.markCorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation", ttsEnabled);
-        Repo.recordRemembered(authState.uid, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation").catch(() => {});
-      } else {
-        M.markIncorrect(item.card.word, item.mode === "term" ? "spelling" : item.mode === "translation" ? "translation" : "pronunciation");
-      }
+      deck.grade(item.card, item.mode, correct);
       // keep copies in sync
-      for (const s of session) if (s.card.word.id === item.card.word.id) s.card.word = item.card.word;
-      Repo.updateWord(authState.uid, item.card.listId, item.card.word, { ttsEnabled }).catch(() => {});
+      for (const s of session) if (deck.sameCard(s.card, item.card)) deck.syncCard(s.card, item.card);
     }
     if (correct) correctCount += 1;
     else session.push(item);

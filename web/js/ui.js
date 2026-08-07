@@ -4,7 +4,7 @@
 //
 
 import { el, clear, presentSheet, toast } from "./dom.js";
-import { t } from "./i18n.js";
+import { t, LANGUAGES, displayNameIn } from "./i18n.js";
 import * as Auth from "./auth.js";
 import { playback, ttsKey } from "./audio.js";
 
@@ -75,6 +75,14 @@ export function labeledRow(label, value) {
 }
 export function pickerRow(label, select) {
   return el(".picker-row", {}, el("span", {}, label), select);
+}
+/** A language dropdown listing every supported language, with `placeholder` as
+ *  the empty choice. Used by the new-list and new-glossary sheets. */
+export function languageSelect(value, placeholder, onChange) {
+  return el("select.picker", { onchange: (e) => onChange(e.target.value) },
+    el("option", { value: "" }, placeholder),
+    ...LANGUAGES.map((l) => el("option", { value: l.code, selected: l.code === value }, displayNameIn(l.code))),
+  );
 }
 export function formSection(title, ...cards) {
   return el(".form-section", {}, title ? el(".section-title", {}, title) : null, ...cards.filter(Boolean));

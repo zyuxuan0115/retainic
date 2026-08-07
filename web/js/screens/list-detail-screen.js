@@ -42,7 +42,7 @@ export async function ListDetailScreen(content, list, { onBack, onPracticeChange
   // Keep the sidebar Practice action in sync with this list's words.
   function syncPractice() {
     onPracticeChange(words.length
-      ? { cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "", ttsEnabled: list.ttsEnabled === true, algorithmCode: list.algorithmCode || null }
+      ? { kind: "list", cards: words.map((w) => ({ word: w, listId: list.id })), learningLanguage: list.learningLanguage || "", ttsEnabled: list.ttsEnabled === true, algorithmCode: list.algorithmCode || null }
       : null);
   }
 

@@ -8,8 +8,11 @@ import { t, preferredLanguage } from "./i18n.js";
 import * as Auth from "./auth.js";
 import { authState } from "./auth.js";
 import { AuthScreen } from "./screens/auth-screen.js";
-import { ListsScreen, TrashScreen } from "./screens/lists-screen.js";
+import { ListsScreen } from "./screens/lists-screen.js";
 import { ListDetailScreen } from "./screens/list-detail-screen.js";
+import { GlossariesScreen, glossaryGlyph } from "./screens/glossaries-screen.js";
+import { GlossaryDetailScreen } from "./screens/glossary-detail-screen.js";
+import { TrashScreen } from "./screens/trash-screen.js";
 import { FlashcardScreen } from "./screens/flashcard-screen.js";
 import { StatsScreen } from "./screens/stats-screen.js";
 import { SettingsScreen } from "./screens/settings-screen.js";
@@ -18,11 +21,17 @@ import { icon, bookIcon, listsGlyph, chartGlyph, gearGlyph } from "./ui.js";
 
 const root = document.getElementById("app");
 
-// Navigation state for the My Lists tab.
+// Navigation state. The My Lists and My Glossaries tabs each own a navigation
+// stack; the other tabs are single screens.
 const state = {
   tab: "lists",
-  stack: [{ name: "lists" }],
+  stacks: {
+    lists: [{ name: "lists" }],
+    glossaries: [{ name: "glossaries" }],
+  },
 };
+
+const isStackTab = (tab) => tab in state.stacks;
 
 Auth.onAuthChange(() => renderApp());
 window.addEventListener("languagechange-app", () => renderApp());
@@ -40,6 +49,7 @@ function Shell() {
     el(".tabbar", {},
       el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
       tabItem("lists", listsGlyph(), t("My Lists")),
+      tabItem("glossaries", glossaryGlyph(), t("My Glossaries")),
       practiceItem(),
       tabItem("trash", icon("delete", 24), t("Trash")),
       tabItem("stats", chartGlyph(), t("Statistics")),
@@ -53,7 +63,11 @@ function Shell() {
   function tabItem(tab, icon, label) {
     return el(".tab" + (state.tab === tab ? ".active" : ""), {
       title: label,
-      onclick: () => { state.tab = tab; if (tab === "lists" && state.stack.length === 0) state.stack = [{ name: "lists" }]; renderApp(); },
+      onclick: () => {
+        state.tab = tab;
+        if (isStackTab(tab) && state.stacks[tab].length === 0) state.stacks[tab] = [{ name: tab }];
+        renderApp();
+      },
     }, el(".tab-icon", {}, icon), el(".tab-label", {}, label));
   }
 
@@ -68,14 +82,19 @@ function Shell() {
 
 function renderTab(content) {
   clear(content);
-  const top = state.tab === "lists" ? state.stack[state.stack.length - 1] : null;
-  // Practice is only available while browsing a list's words; the detail screen
-  // re-enables it once its words load.
+  const stack = isStackTab(state.tab) ? state.stacks[state.tab] : null;
+  const top = stack ? stack[stack.length - 1] : null;
+  // Practice is only available while browsing a list's or glossary's contents;
+  // the detail screens re-enable it once their rows load.
   if (!(top && top.name === "detail")) setPractice(null);
-  if (state.tab === "lists") {
+  if (top && top.name === "practice") {
+    FlashcardScreen(content, top.ctx, navPop);
+  } else if (state.tab === "lists") {
     if (top.name === "lists") ListsScreen(content, (list) => navPush({ name: "detail", list }));
-    else if (top.name === "detail") ListDetailScreen(content, top.list, { onBack: navPop, onPracticeChange: setPractice });
-    else if (top.name === "practice") FlashcardScreen(content, top.cards, top.learningLanguage, top.ttsEnabled === true, top.algorithmCode || null, navPop);
+    else ListDetailScreen(content, top.list, { onBack: navPop, onPracticeChange: setPractice });
+  } else if (state.tab === "glossaries") {
+    if (top.name === "glossaries") GlossariesScreen(content, (glossary) => navPush({ name: "detail", glossary }));
+    else GlossaryDetailScreen(content, top.glossary, { onBack: navPop, onPracticeChange: setPractice });
   } else if (state.tab === "trash") {
     TrashScreen(content);
   } else if (state.tab === "stats") {
@@ -87,12 +106,13 @@ function renderTab(content) {
   }
 }
 
-function navPush(screen) { state.stack.push(screen); renderApp(); }
-function navPop() { state.stack.pop(); renderApp(); }
+function navPush(screen) { state.stacks[state.tab].push(screen); renderApp(); }
+function navPop() { state.stacks[state.tab].pop(); renderApp(); }
 
-// The sidebar "Practice" action is only usable while browsing a list's words.
-// `currentPractice` holds that list's cards (or null); `practiceNavEl` is the
-// sidebar button, toggled enabled/disabled to match.
+// The sidebar "Practice" action is only usable while browsing a list's words or
+// a glossary's terms. `currentPractice` holds that deck's practice context (or
+// null); `practiceNavEl` is the sidebar button, toggled enabled/disabled to
+// match.
 let currentPractice = null;
 let practiceNavEl = null;
 
@@ -108,6 +128,8 @@ function updatePracticeNav() {
 }
 function startCurrentPractice() {
   if (!currentPractice) return;
-  state.tab = "lists";
-  navPush({ name: "practice", cards: currentPractice.cards, learningLanguage: currentPractice.learningLanguage, ttsEnabled: currentPractice.ttsEnabled, algorithmCode: currentPractice.algorithmCode });
+  // Practice belongs to the tab whose deck is open, so it stacks on top of that
+  // tab's detail screen and Back returns there.
+  state.tab = currentPractice.kind === "glossary" ? "glossaries" : "lists";
+  navPush({ name: "practice", ctx: currentPractice });
 }

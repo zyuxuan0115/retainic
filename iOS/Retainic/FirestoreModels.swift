@@ -186,6 +186,20 @@ struct VocabWord: Codable, Identifiable {
     }
 }
 
+/// The spaced-repetition rule shared by words and glossary entries.
+enum ReviewSchedule {
+    /// Whether a method is due: due once the required gap of days has passed
+    /// since it was last remembered (or immediately if never remembered), and
+    /// not yet mastered (remembered as many times as the schedule has steps).
+    static func isDue(count: Int, last: Date?, gaps: [Int], now: Date) -> Bool {
+        guard count < gaps.count else { return false }
+        guard let last else { return true }
+        let cal = Calendar.current
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: last), to: cal.startOfDay(for: now)).day ?? 0
+        return days >= gaps[count]
+    }
+}
+
 // MARK: - Leitner spaced-repetition helpers
 
 extension VocabWord {
@@ -254,15 +268,8 @@ extension VocabWord {
                    gaps: Self.pronunciationReviewGaps, now: now)
     }
 
-    /// Shared spaced-repetition due check: due once the required gap of days has
-    /// passed since the last remember (or immediately if never remembered), and
-    /// not yet mastered (remembered as many times as the schedule has steps).
     private static func isDue(count: Int, last: Date?, gaps: [Int], now: Date) -> Bool {
-        guard count < gaps.count else { return false }
-        guard let last else { return true }
-        let cal = Calendar.current
-        let days = cal.dateComponents([.day], from: cal.startOfDay(for: last), to: cal.startOfDay(for: now)).day ?? 0
-        return days >= gaps[count]
+        ReviewSchedule.isDue(count: count, last: last, gaps: gaps, now: now)
     }
 
     /// Records a correct recall for the given aspect. Pass the list's

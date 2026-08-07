@@ -9,6 +9,8 @@
 //    users/{uid}                                 -> profile
 //    users/{uid}/lists/{listId}                  -> list
 //    users/{uid}/lists/{listId}/words/{wordId}   -> word
+//    users/{uid}/glossaries/{glossaryId}                   -> glossary
+//    users/{uid}/glossaries/{glossaryId}/entries/{entryId} -> glossary entry
 //    users/{uid}/dailyStats/{yyyy-MM-dd}         -> daily tally
 //
 
@@ -40,7 +42,8 @@ function fromFirestore(value) {
 
 /** Strip the local-only `id` field, the retired `box` field, and any
  *  `undefined`s before writing. Dropping `box` here means it's removed from a
- *  word document the next time that word is saved. */
+ *  word document the next time that word is saved. Glossary entries, which
+ *  never had a `box`, go through the same cleanup. */
 function toFirestore(word) {
   const out = {};
   for (const [k, v] of Object.entries(word)) {
@@ -56,6 +59,8 @@ const userDoc = (uid) => doc(db, "users", uid);
 const listsRef = (uid) => collection(db, "users", uid, "lists");
 const wordsRef = (uid, listId) => collection(db, "users", uid, "lists", listId, "words");
 const dailyStatsRef = (uid) => collection(db, "users", uid, "dailyStats");
+const glossariesRef = (uid) => collection(db, "users", uid, "glossaries");
+const entriesRef = (uid, glossaryId) => collection(db, "users", uid, "glossaries", glossaryId, "entries");
 
 // MARK: - Daily stats
 
@@ -278,6 +283,78 @@ export async function moveWord(uid, fromListId, toListId, word) {
   }
   await addWord(uid, toListId, newWord, blob);
   await deleteWord(uid, fromListId, word.id);
+}
+
+// MARK: - Glossaries
+//
+// Glossaries live in their own collection and share nothing with lists: a
+// glossary has one language, and its entries are a term and a definition. Like
+// lists, deleting one is a soft delete (`deletedAt`) so it can be restored from
+// the Trash.
+
+/** Active (non-trashed) glossaries, newest first. */
+export async function fetchGlossaries(uid) {
+  const snap = await getDocs(query(glossariesRef(uid), orderBy("createdAt", "desc")));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
+    .filter((glossary) => !glossary.deletedAt);
+}
+
+/** Glossaries currently in the trash, most recently deleted first. */
+export async function fetchTrashedGlossaries(uid) {
+  const snap = await getDocs(glossariesRef(uid));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
+    .filter((glossary) => glossary.deletedAt)
+    .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1));
+}
+
+export async function createGlossary(uid, name, language) {
+  const glossary = { name, language, createdAt: new Date(), entryCount: 0 };
+  const ref = await addDoc(glossariesRef(uid), glossary);
+  return ref.id;
+}
+
+export async function renameGlossary(uid, glossaryId, name) {
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { name });
+}
+
+export async function trashGlossary(uid, glossaryId) {
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { deletedAt: new Date() });
+}
+
+export async function restoreGlossary(uid, glossaryId) {
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { deletedAt: deleteField() });
+}
+
+/** Permanently delete a glossary and its entries. */
+export async function purgeGlossary(uid, glossaryId) {
+  const entries = await getDocs(entriesRef(uid, glossaryId));
+  for (const d of entries.docs) await deleteDoc(d.ref);
+  await deleteDoc(doc(glossariesRef(uid), glossaryId));
+}
+
+// MARK: - Glossary entries
+
+export async function fetchEntries(uid, glossaryId) {
+  const snap = await getDocs(query(entriesRef(uid, glossaryId), orderBy("createdAt", "desc")));
+  return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
+}
+
+export async function addEntry(uid, glossaryId, entry) {
+  const ref = await addDoc(entriesRef(uid, glossaryId), toFirestore(entry));
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { entryCount: increment(1) });
+  return ref.id;
+}
+
+export async function updateEntry(uid, glossaryId, entry) {
+  if (!entry.id) return;
+  await setDoc(doc(entriesRef(uid, glossaryId), entry.id), toFirestore(entry));
+}
+
+export async function deleteEntry(uid, glossaryId, entryId) {
+  await deleteDoc(doc(entriesRef(uid, glossaryId), entryId));
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { entryCount: increment(-1) });
 }
 
 // MARK: - Pronunciation audio (Firebase Storage)
