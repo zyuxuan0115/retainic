@@ -50,6 +50,7 @@
     <string name="translated_into">번역 언어</string>
     <string name="languages">언어</string>
     <string name="select_ellipsis">선택…</string>
+    <string name="two_languages_different">두 언어는 서로 달라야 합니다.</string>
     <string name="unique_id">고유 ID</string>
     <string name="paste_unique_id">고유 ID 붙여넣기</string>
     <string name="import_id_footer">누군가 공유한 고유 ID를 입력하면 해당 단어 목록의 사본을 추가합니다.</string>

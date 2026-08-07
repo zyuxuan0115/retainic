@@ -37,7 +37,7 @@ struct WordRow: View {
                             .background(Color.accentColor.opacity(0.12), in: Capsule())
                     }
                 }
-                Text(word.translationValues.joined(separator: " • "))
+                Text(word.translation)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

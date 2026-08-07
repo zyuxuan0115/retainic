@@ -182,8 +182,9 @@ function presentNewListSheet(onCreated) {
     function validate() {
       let ok;
       if (mode === "create") {
-        footer.textContent = "";
-        ok = M.isListDraftValid(name.value, learning, original);
+        const same = learning !== "" && learning === original;
+        footer.textContent = same ? t("The two languages must be different.") : "";
+        ok = name.value.trim() && learning && original && !same;
       } else {
         ok = idInput.value.trim().length > 0;
       }
@@ -289,7 +290,7 @@ function presentImportNameSheet(shared, onCreated) {
         for (const sw of shared.words) {
           const w = M.newWord({
             term: sw.term || "",
-            translations: M.translationValues(sw),
+            translation: sw.translation || "",
             notes: sw.notes || "",
             partsOfSpeech: M.partOfSpeechValues(sw),
             hiragana: sw.hiragana || null,

@@ -20,7 +20,7 @@ import {
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
-import { refreshMemorization, translationValues } from "./models.js";
+import { refreshMemorization } from "./models.js";
 
 // MARK: - Date / document normalization
 
@@ -46,11 +46,6 @@ function toFirestore(word) {
   for (const [k, v] of Object.entries(word)) {
     if (k === "id" || k === "box" || v === undefined) continue;
     out[k] = v;
-  }
-  const facts = translationValues(word);
-  if (facts.length) {
-    out.translation = facts[0];
-    out.translations = facts;
   }
   return out;
 }

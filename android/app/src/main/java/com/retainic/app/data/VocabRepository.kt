@@ -187,7 +187,6 @@ object VocabRepository {
     suspend fun addWord(uid: String, listId: String, word: VocabWord, audioFile: File? = null) {
         val ref = wordsRef(uid, listId).document()
         val toSave = word.copy(id = null)
-        toSave.normalizeTranslationsForWrite()
         if (audioFile != null) {
             val path = audioStoragePath(uid, listId, ref.id)
             uploadAudio(audioFile, path)
@@ -211,7 +210,6 @@ object VocabRepository {
         ttsEnabled: Boolean = false,
     ) {
         val id = word.id ?: return
-        word.normalizeTranslationsForWrite()
         val path = audioStoragePath(uid, listId, id)
         if (newAudioFile != null) {
             uploadAudio(newAudioFile, path)

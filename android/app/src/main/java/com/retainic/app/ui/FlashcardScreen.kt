@@ -3,8 +3,6 @@ package com.retainic.app.ui
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -70,7 +68,7 @@ private enum class FrontMode(val labelRes: Int, val memoryAspect: String) {
     PRONUNCIATION(R.string.audio, "pronunciation"),
 }
 
-private data class SessionItem(val card: PracticeCard, val mode: FrontMode, val promptIndex: Int?)
+private data class SessionItem(val card: PracticeCard, val mode: FrontMode)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,16 +109,9 @@ fun FlashcardScreen(
         if (selectedModes.isEmpty()) return emptyList()
         val items = mutableListOf<SessionItem>()
         for (mode in selectedModes) {
-            for (card in cards) if (includes(card, mode)) {
-                val promptIndex = when (mode) {
-                    FrontMode.TERM -> 0
-                    FrontMode.TRANSLATION -> card.word.factValues.indices.randomOrNull() ?: 0
-                    FrontMode.PRONUNCIATION -> null
-                }
-                items.add(SessionItem(card, mode, promptIndex))
-            }
+            for (card in cards) if (includes(card, mode)) items.add(SessionItem(card, mode))
         }
-        return weightedReviewOrder(items) { it.card.word.reviewWeight(it.mode.memoryAspect) }
+        return items.shuffled()
     }
 
     val dueCount = selectedModes.sumOf { mode -> cards.count { includes(it, mode) } }
@@ -289,12 +280,6 @@ private fun PracticeView(
 ) {
     val word = item.card.word
     val mode = item.mode
-    val facts = word.factValues
-    val prompt = item.promptIndex?.let { facts.getOrNull(it) } ?: word.term
-    val answerTerm = if (mode == FrontMode.PRONUNCIATION || item.promptIndex != 0) word.term else null
-    val answerFacts = word.translationValues.filterIndexed { factIndex, _ ->
-        mode == FrontMode.PRONUNCIATION || factIndex + 1 != item.promptIndex
-    }
     val reading = readingFor(word, learning)
     val posLabels = word.partOfSpeechValues.map { it.label(preferred) }
     val pronunciationKey = word.audioPath ?: if (ttsEnabled) AudioPlaybackStore.ttsKey(word.term) else null
@@ -315,12 +300,12 @@ private fun PracticeView(
         Spacer(Modifier.weight(1f))
 
         FlipCard(
-            prompt = prompt,
+            prompt = if (mode == FrontMode.TRANSLATION) word.translation else word.term,
             frontIsPronunciation = mode == FrontMode.PRONUNCIATION,
-            answerTerm = answerTerm,
+            term = word.term,
             reading = reading,
             posLabels = posLabels,
-            answerFacts = answerFacts,
+            translation = word.translation,
             notes = word.notes,
             isFlipped = isFlipped,
             onClick = onFlip,
@@ -370,10 +355,10 @@ private fun PracticeView(
 private fun FlipCard(
     prompt: String,
     frontIsPronunciation: Boolean,
-    answerTerm: String?,
+    term: String,
     reading: String?,
     posLabels: List<String>,
-    answerFacts: List<String>,
+    translation: String,
     notes: String,
     isFlipped: Boolean,
     onClick: () -> Unit,
@@ -397,28 +382,20 @@ private fun FlipCard(
         )
         if (isFlipped) {
             Column(
-                Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (answerTerm != null) {
-                    Text(answerTerm, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                    reading?.takeIf { it.isNotEmpty() }?.let {
-                        Text(it, style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    if (posLabels.isNotEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            posLabels.forEach { PosChip(it) }
-                        }
+                Text(term, fontSize = 28.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                reading?.takeIf { it.isNotEmpty() }?.let {
+                    Text(it, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (posLabels.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        posLabels.forEach { PosChip(it) }
                     }
                 }
-                if (answerTerm != null && answerFacts.isNotEmpty()) {
-                    HorizontalDivider(Modifier.padding(horizontal = 32.dp))
-                }
-                answerFacts.forEach { fact ->
-                    Text(fact, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-                }
+                HorizontalDivider(Modifier.padding(horizontal = 32.dp))
+                Text(translation, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
                 if (notes.isNotEmpty()) {
                     Text(notes, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)

@@ -50,6 +50,7 @@
     <string name="translated_into">翻訳先</string>
     <string name="languages">言語</string>
     <string name="select_ellipsis">選択…</string>
+    <string name="two_languages_different">2つの言語は異なる必要があります。</string>
     <string name="unique_id">一意のID</string>
     <string name="paste_unique_id">一意のIDを貼り付け</string>
     <string name="import_id_footer">共有された一意のIDを入力すると、その単語リストのコピーを追加できます。</string>

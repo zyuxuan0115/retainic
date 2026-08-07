@@ -38,8 +38,6 @@ enum FrontMode: String, CaseIterable, Identifiable {
 private struct SessionItem {
     var card: PracticeCard
     let mode: FrontMode
-    /// Index into `word.factValues`; nil for the non-text pronunciation prompt.
-    let promptIndex: Int?
 }
 
 struct FlashcardView: View {
@@ -207,13 +205,9 @@ struct FlashcardView: View {
     private var practiceView: some View {
         let mode = session[index].mode
         let word = session[index].card.word
-        let facts = word.factValues
-        let promptIndex = session[index].promptIndex
-        let prompt = promptIndex.flatMap { facts.indices.contains($0) ? facts[$0] : nil } ?? word.term
-        let answerTerm = mode == .pronunciation || promptIndex != 0 ? word.term : nil
-        let answerFacts = word.translationValues.enumerated().compactMap { factIndex, fact in
-            mode == .pronunciation || factIndex + 1 != promptIndex ? fact : nil
-        }
+        // The front is a bare prompt (term or translation, per the card's mode);
+        // the answer side always reveals the full entry: the word being learned,
+        // its reading, parts of speech, the meaning, and the pronunciation button.
         let termReading = reading(for: word)
         let posLabels = word.partOfSpeechValues.map { $0.label(for: preferredLanguage) }
         return VStack(spacing: 24) {
@@ -225,13 +219,13 @@ struct FlashcardView: View {
 
             Spacer()
 
-            FlashcardCardView(
-                prompt: prompt,
+            CardView(
+                prompt: mode == .translation ? word.translation : word.term,
                 frontIsPronunciation: mode == .pronunciation,
-                answerTerm: answerTerm,
+                term: word.term,
                 termReading: termReading,
                 partsOfSpeech: posLabels,
-                answerFacts: answerFacts,
+                translation: word.translation,
                 notes: word.notes,
                 isFlipped: isFlipped
             )
@@ -363,18 +357,11 @@ struct FlashcardView: View {
         var items: [SessionItem] = []
         for mode in selectedModes {
             for card in cards where includes(card, mode: mode) {
-                let promptIndex: Int?
-                switch mode {
-                case .term: promptIndex = 0
-                case .translation: promptIndex = card.word.factValues.indices.randomElement() ?? 0
-                case .pronunciation: promptIndex = nil
-                }
-                items.append(SessionItem(card: card, mode: mode, promptIndex: promptIndex))
+                items.append(SessionItem(card: card, mode: mode))
             }
         }
-        return weightedReviewOrder(items) { item in
-            item.card.word.reviewWeight(for: item.mode.memoryAspect)
-        }
+        // Random order.
+        return items.shuffled()
     }
 
     private func startSession() {
@@ -450,5 +437,105 @@ struct FlashcardView: View {
         correctCount = 0
         isFlipped = false
         isFinished = false
+    }
+}
+
+// MARK: - Card
+
+private struct CardView: View {
+    /// What's shown before flipping (the question): term or translation.
+    let prompt: String
+    /// When true the front shows a "listen" prompt instead of `prompt` text.
+    var frontIsPronunciation: Bool = false
+    /// The word being learned, always revealed on the answer side.
+    let term: String
+    var termReading: String?
+    var partsOfSpeech: [String] = []
+    /// The meaning, revealed on the answer side.
+    let translation: String
+    let notes: String
+    let isFlipped: Bool
+
+    private var reading: String? {
+        guard let termReading, !termReading.isEmpty else { return nil }
+        return termReading
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 24)
+                .fill(isFlipped ? Color.accentColor.opacity(0.12) : Color(.secondarySystemBackground))
+                .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
+
+            if isFlipped {
+                answerSide
+            } else if frontIsPronunciation {
+                VStack(spacing: 12) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.tint)
+                    Text("Listen and recall")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(32)
+            } else {
+                Text(prompt)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.5)
+                    .padding(32)
+            }
+        }
+        .frame(height: 280)
+        .overlay(alignment: .top) {
+            Text(isFlipped ? "Answer" : "Tap to flip")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(8)
+        }
+    }
+
+    private var answerSide: some View {
+        VStack(spacing: 10) {
+            Text(term)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.5)
+
+            if let reading {
+                Text(reading)
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !partsOfSpeech.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(partsOfSpeech, id: \.self) { pos in
+                        Text(pos)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tint)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                    }
+                }
+            }
+
+            Divider().padding(.horizontal, 32)
+
+            Text(translation)
+                .font(.title3)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.5)
+
+            if !notes.isEmpty {
+                Text(notes)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(24)
     }
 }

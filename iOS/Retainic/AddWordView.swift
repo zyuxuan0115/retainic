@@ -7,11 +7,6 @@
 
 import SwiftUI
 
-private struct FactDraft: Identifiable {
-    let id = UUID()
-    var text: String
-}
-
 struct AddWordView: View {
     let listId: String
     /// Language of the word being studied (the `term`), from the list.
@@ -32,7 +27,7 @@ struct AddWordView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var term: String
-    @State private var factDrafts: [FactDraft]
+    @State private var translation: String
     @State private var notes: String
     @State private var selectedPOS: Set<PartOfSpeech>
     @State private var hiragana: String
@@ -50,8 +45,7 @@ struct AddWordView: View {
         self.existingWord = word
         self.onDelete = onDelete
         _term = State(initialValue: word?.term ?? "")
-        let facts = word?.translationValues ?? [""]
-        _factDrafts = State(initialValue: (facts.isEmpty ? [""] : facts).map(FactDraft.init(text:)))
+        _translation = State(initialValue: word?.translation ?? "")
         _notes = State(initialValue: word?.notes ?? "")
         _selectedPOS = State(initialValue: Set(word?.partOfSpeechValues ?? []))
         _hiragana = State(initialValue: word?.hiragana ?? "")
@@ -65,15 +59,9 @@ struct AddWordView: View {
     /// Pinyin is shown — and required — when the list's learning language is Chinese.
     private var isLearningChinese: Bool { learningLanguage == "zh" }
 
-    private var factValues: [String] {
-        factDrafts
-            .map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
     private var canSave: Bool {
         guard !term.trimmingCharacters(in: .whitespaces).isEmpty,
-              !factValues.isEmpty,
+              !translation.trimmingCharacters(in: .whitespaces).isEmpty,
               !isSaving else { return false }
         // Pinyin is mandatory for Chinese.
         if isLearningChinese && pinyin.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -88,7 +76,7 @@ struct AddWordView: View {
     private var hasChanges: Bool {
         guard let w = existingWord else { return true }
         if term.trimmingCharacters(in: .whitespaces) != w.term { return true }
-        if factValues != w.translationValues { return true }
+        if translation.trimmingCharacters(in: .whitespaces) != w.translation { return true }
         if notes.trimmingCharacters(in: .whitespaces) != w.notes { return true }
         if hiragana.trimmingCharacters(in: .whitespaces) != (w.hiragana ?? "") { return true }
         if pinyin.trimmingCharacters(in: .whitespaces) != (w.pinyin ?? "") { return true }
@@ -128,24 +116,7 @@ struct AddWordView: View {
             }
 
             Section(Language.named(originalLanguage)?.displayName(in: preferredLanguage) ?? String(localized: "Translation", locale: Language.locale(for: preferredLanguage))) {
-                ForEach($factDrafts) { $fact in
-                    HStack {
-                        TextField("Translation", text: $fact.text)
-                        if factDrafts.count > 1 {
-                            Button(role: .destructive) {
-                                factDrafts.removeAll { $0.id == fact.id }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                            }
-                            .accessibilityLabel(Text("Delete"))
-                        }
-                    }
-                }
-                Button {
-                    factDrafts.append(FactDraft(text: ""))
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
+                TextField("Translation", text: $translation)
             }
 
             Section {
@@ -281,8 +252,7 @@ struct AddWordView: View {
     private func save() {
         guard let uid = auth.uid else { return }
         let trimmedTerm = term.trimmingCharacters(in: .whitespaces)
-        let trimmedTranslations = factValues
-        guard let legacyTranslation = trimmedTranslations.first else { return }
+        let trimmedTranslation = translation.trimmingCharacters(in: .whitespaces)
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
         let trimmedHiragana = hiragana.trimmingCharacters(in: .whitespaces)
         let hiraganaValue = trimmedHiragana.isEmpty ? nil : trimmedHiragana
@@ -302,8 +272,7 @@ struct AddWordView: View {
             do {
                 if var word = existingWord {
                     word.term = trimmedTerm
-                    word.translation = legacyTranslation
-                    word.translations = trimmedTranslations
+                    word.translation = trimmedTranslation
                     word.notes = trimmedNotes
                     word.partsOfSpeech = posList.map(\.rawValue)
                     word.partOfSpeech = nil
@@ -317,8 +286,7 @@ struct AddWordView: View {
                 } else {
                     let word = VocabWord(
                         term: trimmedTerm,
-                        translation: legacyTranslation,
-                        translations: trimmedTranslations,
+                        translation: trimmedTranslation,
                         notes: trimmedNotes,
                         partsOfSpeech: posList,
                         hiragana: hiraganaValue,

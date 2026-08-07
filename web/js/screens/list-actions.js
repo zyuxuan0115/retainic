@@ -35,7 +35,7 @@ export async function downloadListCSV(list) {
     rows.push([
       w.term || "",
       ...(hasReading ? [M.readingFor(w, list.learningLanguage) || ""] : []),
-      M.translationValues(w).join("; "),
+      w.translation || "",
       M.partOfSpeechValues(w).map((p) => M.posLabel(p, preferredLanguage())).join("; "),
       w.notes || "",
     ]);

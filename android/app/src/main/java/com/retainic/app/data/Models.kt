@@ -84,10 +84,7 @@ data class DailyStat(
 data class VocabWord(
     @DocumentId var id: String? = null,
     var term: String = "",
-    /** Legacy scalar, kept non-null so older app builds continue decoding. */
     var translation: String = "",
-    /** Complete ordered fact list. Null so legacy documents still decode. */
-    var translations: List<String>? = null,
     var notes: String = "",
     /** Parts of speech (raw values). A word may have several. */
     var partsOfSpeech: List<String>? = null,
@@ -114,30 +111,6 @@ data class VocabWord(
     /** Non-optional identifier for use as a list/selection key. */
     @get:Exclude
     val idValue: String get() = id ?: ""
-
-    /** Ordered facts, preferring the plural field and falling back to scalar. */
-    @get:Exclude
-    val translationValues: List<String>
-        get() {
-            val plural = translations.orEmpty().map { it.trim() }.filter { it.isNotEmpty() }
-            if (plural.isNotEmpty()) return plural
-            val legacy = translation.trim()
-            return if (legacy.isEmpty()) emptyList() else listOf(legacy)
-        }
-
-    /** Every text fact available to prompt, with the studied term first. */
-    @get:Exclude
-    val factValues: List<String>
-        get() = listOfNotNull(term.trim().takeIf { it.isNotEmpty() }) + translationValues
-
-    /** Re-emits both document shapes before every write for old-client safety. */
-    fun normalizeTranslationsForWrite() {
-        val facts = translationValues
-        if (facts.isNotEmpty()) {
-            translation = facts.first()
-            translations = facts
-        }
-    }
 
     /**
      * Selected parts of speech, reading the array field and falling back to the

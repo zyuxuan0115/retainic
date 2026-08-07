@@ -236,7 +236,8 @@ private fun NewListDialog(uid: String?, onDismiss: () -> Unit, onCreated: () -> 
     var importName by remember { mutableStateOf("") }
     var isImporting by remember { mutableStateOf(false) }
 
-    val canCreate = name.trim().isNotEmpty() && learning.isNotEmpty() && original.isNotEmpty()
+    val canCreate = name.trim().isNotEmpty() && learning.isNotEmpty() &&
+        original.isNotEmpty() && learning != original
 
     fun lookUp() {
         val id = importId.trim()
@@ -274,8 +275,7 @@ private fun NewListDialog(uid: String?, onDismiss: () -> Unit, onCreated: () -> 
                 for (source in shared.words) {
                     val word = VocabWord(
                         term = source.term,
-                        translation = source.translationValues.firstOrNull().orEmpty(),
-                        translations = source.translationValues,
+                        translation = source.translation,
                         notes = source.notes,
                         partsOfSpeech = source.partOfSpeechValues.map { it.raw },
                         hiragana = source.hiragana,
@@ -362,6 +362,9 @@ private fun NewListDialog(uid: String?, onDismiss: () -> Unit, onCreated: () -> 
                             singleLine = true, modifier = Modifier.fillMaxWidth())
                         LanguageDropdown(stringResource(R.string.im_learning), learning, preferred) { learning = it }
                         LanguageDropdown(stringResource(R.string.translated_into), original, preferred) { original = it }
+                        if (learning.isNotEmpty() && learning == original) {
+                            Text(stringResource(R.string.two_languages_different), color = MaterialTheme.colorScheme.error)
+                        }
                     } else {
                         OutlinedTextField(importId, { importId = it },
                             label = { Text(stringResource(R.string.unique_id)) },

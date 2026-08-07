@@ -105,10 +105,7 @@ struct DailyStat: Codable, Identifiable {
 struct VocabWord: Codable, Identifiable {
     @DocumentID var id: String?
     var term: String
-    /// Legacy scalar, kept non-optional so older app builds continue decoding.
     var translation: String
-    /// Complete ordered fact list. Optional so legacy documents still decode.
-    var translations: [String]?
     var notes: String
     /// Parts of speech (raw values). A word may have several.
     var partsOfSpeech: [String]?
@@ -149,7 +146,6 @@ struct VocabWord: Codable, Identifiable {
         id: String? = nil,
         term: String,
         translation: String,
-        translations: [String]? = nil,
         notes: String = "",
         partsOfSpeech: [PartOfSpeech] = [],
         hiragana: String? = nil,
@@ -169,13 +165,7 @@ struct VocabWord: Codable, Identifiable {
     ) {
         self.id = id
         self.term = term
-        let plural = (translations ?? [])
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        let legacy = translation.trimmingCharacters(in: .whitespacesAndNewlines)
-        let facts = plural.isEmpty ? (legacy.isEmpty ? [] : [legacy]) : plural
-        self.translation = facts.first ?? legacy
-        self.translations = facts
+        self.translation = translation
         self.notes = notes
         self.partsOfSpeech = partsOfSpeech.map(\.rawValue)
         self.partOfSpeech = nil
@@ -201,32 +191,6 @@ struct VocabWord: Codable, Identifiable {
 extension VocabWord {
     /// Non-optional identifier for use as a `ForEach`/selection id.
     var idValue: String { id ?? "" }
-
-    /// Ordered related facts, preferring the plural field and falling back to
-    /// the required legacy scalar for documents written by older clients.
-    var translationValues: [String] {
-        let plural = (translations ?? [])
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        if !plural.isEmpty { return plural }
-        let legacy = translation.trimmingCharacters(in: .whitespacesAndNewlines)
-        return legacy.isEmpty ? [] : [legacy]
-    }
-
-    /// Every text fact available to prompt, with the studied term first.
-    var factValues: [String] {
-        let trimmedTerm = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        return (trimmedTerm.isEmpty ? [] : [trimmedTerm]) + translationValues
-    }
-
-    /// Re-emits both document shapes before every write. The scalar must stay
-    /// non-empty because unupdated typed clients still require it.
-    mutating func normalizeTranslationsForWrite() {
-        let facts = translationValues
-        guard let first = facts.first else { return }
-        translation = first
-        translations = facts
-    }
 
     /// The selected parts of speech, reading the new array field and falling
     /// back to the legacy single value. Excludes `.unspecified`.
