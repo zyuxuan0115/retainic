@@ -306,8 +306,9 @@ fun AddWordScreen(
     }
 }
 
+/** Small heading above a form field. Shared with the glossary term editor. */
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

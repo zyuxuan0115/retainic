@@ -69,8 +69,8 @@
     <!-- Trash -->
     <string name="empty_trash">Empty Trash</string>
     <string name="trash_is_empty">Trash is Empty</string>
-    <string name="trash_empty_desc">Deleted lists are kept here until you restore or permanently delete them.</string>
-    <string name="empty_trash_confirm">Permanently delete all lists in the Trash? This can\'t be undone.</string>
+    <string name="trash_empty_desc">Deleted lists and glossaries are kept here until you restore or permanently delete them.</string>
+    <string name="empty_trash_confirm">Permanently delete everything in the Trash? This can\'t be undone.</string>
     <string name="restore">Restore</string>
     <string name="delete_forever">Delete Forever</string>
     <string name="delete_forever_msg">“%1$s” will be permanently deleted. This can\'t be undone.</string>
@@ -161,7 +161,7 @@
     <!-- Stats -->
     <string name="no_stats_yet">No Stats Yet</string>
     <string name="no_stats_desc">Add words and practice them. Once you\'ve memorized some, your progress shows up here.</string>
-    <string name="words_memorized">words memorized</string>
+    <string name="words_and_terms_memorized">words and terms memorized</string>
     <string name="out_of_n_total">out of %1$d total</string>
     <string name="remembered_today">Remembered today</string>
     <string name="this_week">This week</string>
@@ -193,4 +193,39 @@
     <string name="about_body">Retainic lets you build vocabulary lists, add words with translations, readings, parts of speech and recorded pronunciation, then practice them with per-aspect spaced repetition. This Android app shares the same account and data as the Retainic iOS and web apps.</string>
     <string name="source_code">Source code</string>
     <string name="copyright" translatable="false">© 2026 Retainic</string>
+
+    <!-- Glossaries -->
+    <string name="my_glossaries">My Glossaries</string>
+    <string name="new_glossary">New Glossary</string>
+    <string name="no_glossaries_yet">No Glossaries Yet</string>
+    <string name="create_first_glossary">Create your first glossary to collect terms and what they mean.</string>
+    <string name="create_a_glossary">Create a Glossary</string>
+    <string name="glossary_will_move_trash">“%1$s” will be moved to the Trash.</string>
+    <string name="n_terms">%1$d terms</string>
+    <string name="glossary_name">Glossary name</string>
+    <string name="eg_legal_terms">e.g. Legal terms</string>
+    <string name="terms_are_in">Terms are in</string>
+    <string name="glossary_language_footer">Terms and definitions are both written in this language.</string>
+    <string name="lists">Lists</string>
+    <string name="glossaries">Glossaries</string>
+    <string name="term">Term</string>
+    <string name="definition">Definition</string>
+    <string name="what_it_means">What it means</string>
+    <string name="new_term">New Term</string>
+    <string name="edit_term">Edit Term</string>
+    <string name="delete_term">Delete Term</string>
+    <string name="delete_term_msg">This term will be permanently deleted.</string>
+    <string name="delete_this_term">Delete this term?</string>
+    <string name="delete_n_terms">Delete %1$d terms?</string>
+    <string name="add_term">Add Term</string>
+    <string name="add_first_term">Add Your First Term</string>
+    <string name="no_terms_yet">No Terms Yet</string>
+    <string name="add_terms_to_glossary">Add the terms you want to remember to “%1$s”.</string>
+    <string name="search_terms">Search terms</string>
+    <string name="select_terms">Select Terms</string>
+    <string name="glossary_settings">Glossary Settings</string>
+    <string name="show_terms">Show terms</string>
+    <string name="mark_all_terms_not_remembered_title">Mark all terms as not remembered?</string>
+    <string name="mark_all_terms_not_remembered_footer">Every term in this glossary will show up again in practice.</string>
+    <string name="nothing_to_practice_glossary_desc">Add some terms to a glossary first, then come back to review them.</string>
 </resources>

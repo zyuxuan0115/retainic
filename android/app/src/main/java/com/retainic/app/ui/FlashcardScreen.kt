@@ -351,8 +351,10 @@ private fun PracticeView(
     }
 }
 
+/** The flip card itself. Shared with glossary practice, which fills the answer
+ *  side with a term and its definition and leaves the word-only fields empty. */
 @Composable
-private fun FlipCard(
+internal fun FlipCard(
     prompt: String,
     frontIsPronunciation: Boolean,
     term: String,
@@ -415,8 +417,9 @@ private fun FlipCard(
     }
 }
 
+/** End-of-session results, shared with glossary practice. */
 @Composable
-private fun SummaryView(correctCount: Int, totalCards: Int, onDone: () -> Unit) {
+internal fun SummaryView(correctCount: Int, totalCards: Int, onDone: () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retainic.app.R
 import com.retainic.app.data.AuthService
+import com.retainic.app.data.GlossaryEntry
+import com.retainic.app.data.GlossaryRepository
 import com.retainic.app.data.VocabRepository
 import com.retainic.app.data.VocabWord
 import java.text.DateFormat
@@ -52,10 +54,15 @@ import java.util.Locale
 
 private val AspectColors = listOf(Color(0xFF3B82F6), Color(0xFF22C55E), Color(0xFFF59E0B))
 
-private class LearningStats(words: List<VocabWord>) {
-    val totalWords = words.size
-    val totalMemorized = words.count { it.isRemembered }
-    val startDate: Date? = words.mapNotNull { it.createdAt }.minByOrNull { it.time }
+/**
+ * Glossary practice records the same daily tallies as list practice, so the
+ * totals cover both a user's words and their glossary terms.
+ */
+private class LearningStats(words: List<VocabWord>, entries: List<GlossaryEntry> = emptyList()) {
+    val totalWords = words.size + entries.size
+    val totalMemorized = words.count { it.isRemembered } + entries.count { it.isRemembered }
+    val startDate: Date? = (words.mapNotNull { it.createdAt } + entries.mapNotNull { it.createdAt })
+        .minByOrNull { it.time }
     val activeDays: Int
     val perDay: Double
     val perWeek: Double
@@ -91,8 +98,14 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
                 val id = list.id ?: continue
                 all += VocabRepository.fetchWords(uid, id)
             }
-            stats = LearningStats(all)
-            today = countTodayRemembered(all)
+            val glossaries = GlossaryRepository.fetchGlossaries(uid)
+            val allEntries = mutableListOf<GlossaryEntry>()
+            for (glossary in glossaries) {
+                val id = glossary.id ?: continue
+                allEntries += GlossaryRepository.fetchEntries(uid, id)
+            }
+            stats = LearningStats(all, allEntries)
+            today = countTodayRemembered(all, allEntries)
             val daily = runCatching { VocabRepository.fetchDailyStats(uid, 7) }.getOrDefault(emptyList())
             week = buildWeekPoints(daily, today)
         } catch (e: Exception) {
@@ -147,7 +160,7 @@ private fun StatsContent(
             Icon(Icons.Filled.Psychology, contentDescription = null, modifier = Modifier.size(44.dp),
                 tint = MaterialTheme.colorScheme.primary)
             Text("${stats.totalMemorized}", fontSize = 52.sp, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.words_memorized), style = MaterialTheme.typography.titleMedium,
+            Text(stringResource(R.string.words_and_terms_memorized), style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(stringResource(R.string.out_of_n_total, stats.totalWords),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -270,7 +283,15 @@ private fun WeekLineChart(
     }
 }
 
-private fun countTodayRemembered(words: List<VocabWord>): Map<String, Int> {
+/**
+ * Counts words and glossary terms whose per-aspect last-remembered date is
+ * today. A term's two methods line up with a word's first two: recalling the
+ * term itself, and recalling what it means.
+ */
+private fun countTodayRemembered(
+    words: List<VocabWord>,
+    entries: List<GlossaryEntry> = emptyList(),
+): Map<String, Int> {
     val now = Date()
     fun isToday(d: Date?) = d != null && VocabWord.isSameDay(d, now)
     var word = 0; var translation = 0; var pronunciation = 0
@@ -278,6 +299,10 @@ private fun countTodayRemembered(words: List<VocabWord>): Map<String, Int> {
         if (isToday(w.lastWordRemembered)) word++
         if (isToday(w.lastTranslationRemembered)) translation++
         if (isToday(w.lastPronounciationRemembered)) pronunciation++
+    }
+    for (e in entries) {
+        if (isToday(e.lastTermRemembered)) word++
+        if (isToday(e.lastDefinitionRemembered)) translation++
     }
     return mapOf("word" to word, "translation" to translation, "pronunciation" to pronunciation)
 }

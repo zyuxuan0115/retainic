@@ -61,8 +61,8 @@
 
     <string name="empty_trash">Vaciar papelera</string>
     <string name="trash_is_empty">La papelera está vacía</string>
-    <string name="trash_empty_desc">Las listas eliminadas se guardan aquí hasta que las restaures o las elimines definitivamente.</string>
-    <string name="empty_trash_confirm">¿Eliminar definitivamente todas las listas de la papelera? Esta acción no se puede deshacer.</string>
+    <string name="trash_empty_desc">Las listas y los glosarios eliminados se guardan aquí hasta que los restaures o los elimines definitivamente.</string>
+    <string name="empty_trash_confirm">¿Eliminar definitivamente todo lo que hay en la papelera? Esto no se puede deshacer.</string>
     <string name="restore">Restaurar</string>
     <string name="delete_forever">Eliminar definitivamente</string>
     <string name="delete_forever_msg">«%1$s» se eliminará definitivamente. Esta acción no se puede deshacer.</string>
@@ -147,7 +147,7 @@
 
     <string name="no_stats_yet">Aún no hay estadísticas</string>
     <string name="no_stats_desc">Añade palabras y practícalas. Cuando memorices algunas, tu progreso aparecerá aquí.</string>
-    <string name="words_memorized">palabras memorizadas</string>
+    <string name="words_and_terms_memorized">palabras y términos memorizados</string>
     <string name="out_of_n_total">de %1$d en total</string>
     <string name="remembered_today">Recordadas hoy</string>
     <string name="this_week">Esta semana</string>
@@ -176,4 +176,39 @@
     <string name="about_section">Acerca de</string>
     <string name="about_body">Retainic te permite crear listas de vocabulario, añadir palabras con traducciones, lecturas, categorías gramaticales y pronunciación grabada, y practicarlas con repetición espaciada por aspecto. Esta aplicación para Android comparte la misma cuenta y los mismos datos que las apps de Retainic para iOS y web.</string>
     <string name="source_code">Código fuente</string>
+
+    <!-- Glossaries -->
+    <string name="my_glossaries">Mis glosarios</string>
+    <string name="new_glossary">Nuevo glosario</string>
+    <string name="no_glossaries_yet">Aún no hay glosarios</string>
+    <string name="create_first_glossary">Crea tu primer glosario para reunir términos y su significado.</string>
+    <string name="create_a_glossary">Crear un glosario</string>
+    <string name="glossary_will_move_trash">«%1$s» se moverá a la papelera.</string>
+    <string name="n_terms">%1$d términos</string>
+    <string name="glossary_name">Nombre del glosario</string>
+    <string name="eg_legal_terms">p. ej. Términos jurídicos</string>
+    <string name="terms_are_in">Los términos están en</string>
+    <string name="glossary_language_footer">Los términos y las definiciones se escriben en este idioma.</string>
+    <string name="lists">Listas</string>
+    <string name="glossaries">Glosarios</string>
+    <string name="term">Término</string>
+    <string name="definition">Definición</string>
+    <string name="what_it_means">Qué significa</string>
+    <string name="new_term">Nuevo término</string>
+    <string name="edit_term">Editar término</string>
+    <string name="delete_term">Eliminar término</string>
+    <string name="delete_term_msg">Este término se eliminará definitivamente.</string>
+    <string name="delete_this_term">¿Eliminar este término?</string>
+    <string name="delete_n_terms">¿Eliminar %1$d términos?</string>
+    <string name="add_term">Añadir término</string>
+    <string name="add_first_term">Añade tu primer término</string>
+    <string name="no_terms_yet">Aún no hay términos</string>
+    <string name="add_terms_to_glossary">Añade los términos que quieres recordar a «%1$s».</string>
+    <string name="search_terms">Buscar términos</string>
+    <string name="select_terms">Seleccionar términos</string>
+    <string name="glossary_settings">Ajustes del glosario</string>
+    <string name="show_terms">Mostrar términos</string>
+    <string name="mark_all_terms_not_remembered_title">¿Marcar todos los términos como no recordados?</string>
+    <string name="mark_all_terms_not_remembered_footer">Todos los términos de este glosario volverán a aparecer en la práctica.</string>
+    <string name="nothing_to_practice_glossary_desc">Primero añade algunos términos a un glosario y luego vuelve para repasarlos.</string>
 </resources>

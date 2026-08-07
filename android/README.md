@@ -18,6 +18,11 @@ It reproduces the iOS app's interface and functionality:
   (Firebase Storage), optional **text-to-speech** fallback, and notes.
 - **Bulk select** to delete or **move** words to a compatible list (progress and
   audio preserved).
+- **Glossaries** — a separate **My Glossaries** tab for single-language
+  reference decks: one language, and each entry a **term** and its
+  **definition** (plus notes). Independent of vocabulary lists, but sharing the
+  Trash, the review schedule, and Statistics, and practised on two methods —
+  **Term** and **Definition** — instead of three.
 - **Flashcard practice** — Daily assignment (only cards due today under each
   aspect's spaced-repetition schedule) or Free practice; multi-select "Show
   first" (Word / Translation / Audio); flip, grade "Got It" / "Practice Again",
@@ -80,7 +85,9 @@ app/src/main/java/com/retainic/app/
 ├── MainActivity.kt           Locale override + Compose entry, language CompositionLocals
 ├── data/
 │   ├── Models.kt             Firestore models + per-aspect spaced-repetition logic
+│   ├── GlossaryModels.kt     Glossary + entry models and their review schedule
 │   ├── VocabRepository.kt    Firestore + Storage read/write helpers
+│   ├── GlossaryRepository.kt Firestore read/write helpers for glossaries
 │   ├── AuthService.kt        Firebase Auth + profile (ViewModel)
 │   └── PartOfSpeech.kt       Parts of speech + localized labels
 ├── audio/AudioManager.kt     Recording, playback, and text-to-speech
@@ -90,6 +97,10 @@ app/src/main/java/com/retainic/app/
 └── ui/                       Compose screens and navigation
     ├── ListDetailScreen.kt       Word-list state and interaction coordinator
     ├── ListDetailComponents.kt   Word row, settings, and bulk-move dialogs
+    ├── GlossariesScreen.kt       Glossary overview, row, and creation dialog
+    ├── GlossaryDetailScreen.kt   Terms in a glossary, plus glossary settings
+    ├── AddEntryScreen.kt         Create/edit a term
+    ├── GlossaryFlashcardScreen.kt  Glossary practice (term / definition)
     └── Components.kt             Shared empty, loading, error, and POS controls
 app/src/main/res/values*/strings.xml   UI translations (en, es, zh, ja, ko)
 ```

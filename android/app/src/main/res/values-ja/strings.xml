@@ -61,8 +61,8 @@
 
     <string name="empty_trash">ゴミ箱を空にする</string>
     <string name="trash_is_empty">ゴミ箱は空です</string>
-    <string name="trash_empty_desc">削除したリストは、復元または完全に削除するまでここに保管されます。</string>
-    <string name="empty_trash_confirm">ゴミ箱内のすべてのリストを完全に削除しますか？この操作は取り消せません。</string>
+    <string name="trash_empty_desc">削除したリストと用語集は、復元または完全に削除するまでここに保管されます。</string>
+    <string name="empty_trash_confirm">ゴミ箱内のすべてを完全に削除しますか？この操作は取り消せません。</string>
     <string name="restore">復元</string>
     <string name="delete_forever">完全に削除</string>
     <string name="delete_forever_msg">「%1$s」を完全に削除します。この操作は取り消せません。</string>
@@ -147,7 +147,7 @@
 
     <string name="no_stats_yet">統計がまだありません</string>
     <string name="no_stats_desc">単語を追加して練習しましょう。いくつか覚えると、ここに進捗が表示されます。</string>
-    <string name="words_memorized">覚えた単語</string>
+    <string name="words_and_terms_memorized">覚えた単語・用語</string>
     <string name="out_of_n_total">全 %1$d 個中</string>
     <string name="remembered_today">今日覚えた数</string>
     <string name="this_week">今週</string>
@@ -176,4 +176,39 @@
     <string name="about_section">アプリについて</string>
     <string name="about_body">Retainic では単語リストを作成し、翻訳・読み・品詞・録音した発音付きの単語を追加して、項目ごとの間隔反復で練習できます。この Android アプリは Retainic の iOS およびウェブアプリと同じアカウントとデータを共有します。</string>
     <string name="source_code">ソースコード</string>
+
+    <!-- Glossaries -->
+    <string name="my_glossaries">マイ用語集</string>
+    <string name="new_glossary">新しい用語集</string>
+    <string name="no_glossaries_yet">用語集がまだありません</string>
+    <string name="create_first_glossary">最初の用語集を作成して、用語とその意味を集めましょう。</string>
+    <string name="create_a_glossary">用語集を作成</string>
+    <string name="glossary_will_move_trash">「%1$s」はゴミ箱に移動されます。</string>
+    <string name="n_terms">%1$d 件の用語</string>
+    <string name="glossary_name">用語集名</string>
+    <string name="eg_legal_terms">例：法律用語</string>
+    <string name="terms_are_in">用語の言語</string>
+    <string name="glossary_language_footer">用語も定義もこの言語で書きます。</string>
+    <string name="lists">リスト</string>
+    <string name="glossaries">用語集</string>
+    <string name="term">用語</string>
+    <string name="definition">定義</string>
+    <string name="what_it_means">その意味</string>
+    <string name="new_term">新しい用語</string>
+    <string name="edit_term">用語を編集</string>
+    <string name="delete_term">用語を削除</string>
+    <string name="delete_term_msg">この用語は完全に削除されます。</string>
+    <string name="delete_this_term">この用語を削除しますか？</string>
+    <string name="delete_n_terms">%1$d 件の用語を削除しますか？</string>
+    <string name="add_term">用語を追加</string>
+    <string name="add_first_term">最初の用語を追加</string>
+    <string name="no_terms_yet">用語がまだありません</string>
+    <string name="add_terms_to_glossary">覚えたい用語を「%1$s」に追加しましょう。</string>
+    <string name="search_terms">用語を検索</string>
+    <string name="select_terms">用語を選択</string>
+    <string name="glossary_settings">用語集の設定</string>
+    <string name="show_terms">用語の表示</string>
+    <string name="mark_all_terms_not_remembered_title">すべての用語を未記憶にしますか？</string>
+    <string name="mark_all_terms_not_remembered_footer">この用語集のすべての用語が、練習で再び表示されます。</string>
+    <string name="nothing_to_practice_glossary_desc">まず用語集に用語を追加してから、復習に戻りましょう。</string>
 </resources>

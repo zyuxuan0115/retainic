@@ -61,8 +61,8 @@
 
     <string name="empty_trash">清空回收站</string>
     <string name="trash_is_empty">回收站是空的</string>
-    <string name="trash_empty_desc">删除的列表会保留在这里，直到你恢复或永久删除它们。</string>
-    <string name="empty_trash_confirm">永久删除回收站中的所有列表？此操作无法撤销。</string>
+    <string name="trash_empty_desc">删除的词表和术语表会保留在这里，直到你恢复或永久删除它们。</string>
+    <string name="empty_trash_confirm">永久删除回收站中的所有内容？此操作无法撤销。</string>
     <string name="restore">恢复</string>
     <string name="delete_forever">永久删除</string>
     <string name="delete_forever_msg">“%1$s”将被永久删除。此操作无法撤销。</string>
@@ -147,7 +147,7 @@
 
     <string name="no_stats_yet">还没有统计</string>
     <string name="no_stats_desc">添加单词并练习。当你记住一些后，进度会显示在这里。</string>
-    <string name="words_memorized">已记住的单词</string>
+    <string name="words_and_terms_memorized">已记住的单词和术语</string>
     <string name="out_of_n_total">共 %1$d 个</string>
     <string name="remembered_today">今天记住的</string>
     <string name="this_week">本周</string>
@@ -176,4 +176,39 @@
     <string name="about_section">关于</string>
     <string name="about_body">Retainic 让你创建词汇表，添加带有翻译、读音、词性和录音发音的单词，然后通过分项的间隔重复来练习它们。此 Android 应用与 Retainic 的 iOS 和网页应用共享相同的账户和数据。</string>
     <string name="source_code">源代码</string>
+
+    <!-- Glossaries -->
+    <string name="my_glossaries">我的术语表</string>
+    <string name="new_glossary">新建术语表</string>
+    <string name="no_glossaries_yet">还没有术语表</string>
+    <string name="create_first_glossary">创建你的第一个术语表，收集术语及其含义。</string>
+    <string name="create_a_glossary">创建术语表</string>
+    <string name="glossary_will_move_trash">“%1$s”将被移到回收站。</string>
+    <string name="n_terms">%1$d 个术语</string>
+    <string name="glossary_name">术语表名称</string>
+    <string name="eg_legal_terms">例如：法律术语</string>
+    <string name="terms_are_in">术语语言</string>
+    <string name="glossary_language_footer">术语和释义都使用这种语言。</string>
+    <string name="lists">词表</string>
+    <string name="glossaries">术语表</string>
+    <string name="term">术语</string>
+    <string name="definition">释义</string>
+    <string name="what_it_means">它的含义</string>
+    <string name="new_term">新建术语</string>
+    <string name="edit_term">编辑术语</string>
+    <string name="delete_term">删除术语</string>
+    <string name="delete_term_msg">该术语将被永久删除。</string>
+    <string name="delete_this_term">删除这个术语？</string>
+    <string name="delete_n_terms">删除这 %1$d 个术语？</string>
+    <string name="add_term">添加术语</string>
+    <string name="add_first_term">添加你的第一个术语</string>
+    <string name="no_terms_yet">还没有术语</string>
+    <string name="add_terms_to_glossary">把你想记住的术语添加到“%1$s”。</string>
+    <string name="search_terms">搜索术语</string>
+    <string name="select_terms">选择术语</string>
+    <string name="glossary_settings">术语表设置</string>
+    <string name="show_terms">显示术语</string>
+    <string name="mark_all_terms_not_remembered_title">将所有术语标记为未记住？</string>
+    <string name="mark_all_terms_not_remembered_footer">此术语表中的所有术语将在练习中再次出现。</string>
+    <string name="nothing_to_practice_glossary_desc">请先向术语表添加一些术语，然后回来复习。</string>
 </resources>

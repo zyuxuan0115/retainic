@@ -4,7 +4,9 @@ Retainic is a vocabulary-learning app. You create vocabulary lists, add the word
 you're studying (with translations, readings, parts of speech, and a recorded
 pronunciation), then practice them with spaced-repetition flashcards. Each word is
 reviewed along three independent tracks — **spelling**, **translation**, and
-**pronunciation** — and the app charts your progress over time.
+**pronunciation** — and the app charts your progress over time. Alongside your
+lists you can keep **glossaries**: single-language decks of terms and their
+definitions, practised on the same schedule with two tracks instead of three.
 
 There are three clients — native iOS and Android apps plus a browser app — that
 share the **same Firebase project** (`retainic-85b91`), so your accounts, lists,
@@ -37,8 +39,8 @@ All three clients talk directly to Firebase:
 
 - **Firebase Authentication** — email/password accounts; each user's data is
   private to them.
-- **Cloud Firestore** — vocabulary lists, words, and daily stats, scoped per
-  user (`users/{uid}/...`).
+- **Cloud Firestore** — vocabulary lists, words, glossaries, and daily stats,
+  scoped per user (`users/{uid}/...`).
 - **Cloud Storage** — recorded pronunciations.
 
 Access is restricted per user by the security rules in `firebase/`, which are the

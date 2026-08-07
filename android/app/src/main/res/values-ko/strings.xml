@@ -61,8 +61,8 @@
 
     <string name="empty_trash">휴지통 비우기</string>
     <string name="trash_is_empty">휴지통이 비어 있습니다</string>
-    <string name="trash_empty_desc">삭제된 목록은 복원하거나 영구적으로 삭제할 때까지 여기에 보관됩니다.</string>
-    <string name="empty_trash_confirm">휴지통의 모든 목록을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다.</string>
+    <string name="trash_empty_desc">삭제된 목록과 용어집은 복원하거나 영구적으로 삭제할 때까지 여기에 보관됩니다.</string>
+    <string name="empty_trash_confirm">휴지통의 모든 항목을 영구적으로 삭제할까요? 이 작업은 취소할 수 없습니다.</string>
     <string name="restore">복원</string>
     <string name="delete_forever">영구 삭제</string>
     <string name="delete_forever_msg">‘%1$s’이(가) 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.</string>
@@ -147,7 +147,7 @@
 
     <string name="no_stats_yet">아직 통계가 없습니다</string>
     <string name="no_stats_desc">단어를 추가하고 연습하세요. 몇 개를 외우면 여기에 진행 상황이 표시됩니다.</string>
-    <string name="words_memorized">외운 단어</string>
+    <string name="words_and_terms_memorized">외운 단어와 용어</string>
     <string name="out_of_n_total">총 %1$d개 중</string>
     <string name="remembered_today">오늘 기억한 수</string>
     <string name="this_week">이번 주</string>
@@ -176,4 +176,39 @@
     <string name="about_section">정보</string>
     <string name="about_body">Retainic에서는 단어 목록을 만들고 번역, 읽기, 품사, 녹음된 발음이 포함된 단어를 추가한 다음 항목별 간격 반복으로 연습할 수 있습니다. 이 Android 앱은 Retainic iOS 및 웹 앱과 동일한 계정 및 데이터를 공유합니다.</string>
     <string name="source_code">소스 코드</string>
+
+    <!-- Glossaries -->
+    <string name="my_glossaries">내 용어집</string>
+    <string name="new_glossary">새 용어집</string>
+    <string name="no_glossaries_yet">아직 용어집이 없습니다</string>
+    <string name="create_first_glossary">첫 용어집을 만들어 용어와 그 뜻을 모아 보세요.</string>
+    <string name="create_a_glossary">용어집 만들기</string>
+    <string name="glossary_will_move_trash">‘%1$s’이(가) 휴지통으로 이동됩니다.</string>
+    <string name="n_terms">용어 %1$d개</string>
+    <string name="glossary_name">용어집 이름</string>
+    <string name="eg_legal_terms">예: 법률 용어</string>
+    <string name="terms_are_in">용어 언어</string>
+    <string name="glossary_language_footer">용어와 정의를 모두 이 언어로 작성합니다.</string>
+    <string name="lists">목록</string>
+    <string name="glossaries">용어집</string>
+    <string name="term">용어</string>
+    <string name="definition">정의</string>
+    <string name="what_it_means">뜻</string>
+    <string name="new_term">새 용어</string>
+    <string name="edit_term">용어 편집</string>
+    <string name="delete_term">용어 삭제</string>
+    <string name="delete_term_msg">이 용어는 영구적으로 삭제됩니다.</string>
+    <string name="delete_this_term">이 용어를 삭제할까요?</string>
+    <string name="delete_n_terms">용어 %1$d개를 삭제할까요?</string>
+    <string name="add_term">용어 추가</string>
+    <string name="add_first_term">첫 용어 추가하기</string>
+    <string name="no_terms_yet">아직 용어가 없습니다</string>
+    <string name="add_terms_to_glossary">기억하고 싶은 용어를 ‘%1$s’에 추가하세요.</string>
+    <string name="search_terms">용어 검색</string>
+    <string name="select_terms">용어 선택</string>
+    <string name="glossary_settings">용어집 설정</string>
+    <string name="show_terms">용어 표시</string>
+    <string name="mark_all_terms_not_remembered_title">모든 용어를 기억 안 함으로 표시할까요?</string>
+    <string name="mark_all_terms_not_remembered_footer">이 용어집의 모든 용어가 연습에서 다시 나타납니다.</string>
+    <string name="nothing_to_practice_glossary_desc">먼저 용어집에 용어를 추가한 다음 복습하러 돌아오세요.</string>
 </resources>
