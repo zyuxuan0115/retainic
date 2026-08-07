@@ -442,7 +442,9 @@ struct FlashcardView: View {
 
 // MARK: - Card
 
-private struct CardView: View {
+/// The flip card itself. Shared with glossary practice, which fills the answer
+/// side with a term and its definition and leaves the word-only fields empty.
+struct CardView: View {
     /// What's shown before flipping (the question): term or translation.
     let prompt: String
     /// When true the front shows a "listen" prompt instead of `prompt` text.

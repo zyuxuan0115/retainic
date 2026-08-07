@@ -1,0 +1,324 @@
+//
+//  GlossaryFlashcardView.swift
+//  Retainic
+//
+//  Flip-card practice for a glossary. Same session flow as FlashcardView (and
+//  the same card), but over terms and definitions: two methods instead of
+//  three, and no audio.
+//
+
+import SwiftUI
+
+/// A card in the running session together with the method it's shown in.
+private struct GlossarySessionItem {
+    var card: GlossaryPracticeCard
+    let aspect: GlossaryAspect
+}
+
+struct GlossaryFlashcardView: View {
+    let cards: [GlossaryPracticeCard]
+
+    @EnvironmentObject private var auth: AuthService
+
+    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
+
+    @State private var session: [GlossarySessionItem] = []
+    @State private var index = 0
+    @State private var isFlipped = false
+    @State private var selectedAspects: Set<GlossaryAspect> = [.term]
+    @State private var correctCount = 0
+    /// Distinct cards in this session (missed ones are re-queued, so
+    /// `session.count` grows; this stays the count of unique cards).
+    @State private var totalCards = 0
+    @State private var isFinished = false
+    @State private var dueOnly = true
+
+    var body: some View {
+        Group {
+            if cards.isEmpty {
+                emptyState
+            } else if session.isEmpty {
+                setupView
+            } else if isFinished {
+                summaryView
+            } else {
+                practiceView
+            }
+        }
+        .navigationTitle("Practice".localized(preferredLanguage))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !session.isEmpty && !isFinished {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("End", role: .cancel) { isFinished = true }
+                }
+            }
+        }
+    }
+
+    // MARK: - States
+
+    private var emptyState: some View {
+        ContentUnavailableView(
+            "Nothing to Practice",
+            systemImage: "rectangle.on.rectangle.angled",
+            description: Text("Add some terms to a glossary first, then come back to review them.")
+        )
+    }
+
+    /// Number of aspect-cards the current settings would include.
+    private var dueCount: Int {
+        selectedAspects.reduce(0) { sum, aspect in
+            sum + cards.filter { includes($0, aspect: aspect) }.count
+        }
+    }
+
+    private func toggleAspect(_ aspect: GlossaryAspect) {
+        if selectedAspects.contains(aspect) {
+            selectedAspects.remove(aspect)
+        } else {
+            selectedAspects.insert(aspect)
+        }
+    }
+
+    private var setupView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "rectangle.on.rectangle.angled")
+                .font(.system(size: 56))
+                .foregroundStyle(.tint)
+
+            VStack(spacing: 6) {
+                Text("Ready to practice?")
+                    .font(.title2.bold())
+                Text(dueCount > 0
+                     ? "\(dueCount) cards due for review."
+                     : "You finished your daily assignment.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(alignment: .leading, spacing: 16) {
+                Toggle("Daily assignment", isOn: $dueOnly)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Show first")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach(GlossaryAspect.allCases) { aspect in
+                        Button {
+                            toggleAspect(aspect)
+                        } label: {
+                            HStack {
+                                Image(systemName: selectedAspects.contains(aspect) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selectedAspects.contains(aspect) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                                Text(aspect.label)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal)
+
+            Button {
+                startSession()
+            } label: {
+                Text("Start Session")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(deck().isEmpty)
+            .padding(.horizontal)
+
+            Spacer()
+        }
+        .padding()
+    }
+
+    private var practiceView: some View {
+        let item = session[index]
+        let entry = item.card.entry
+        // The front is a bare prompt (the term, or its definition); the answer
+        // side always reveals the whole entry.
+        return VStack(spacing: 24) {
+            ProgressView(value: Double(index), total: Double(session.count))
+                .padding(.top)
+            Text("\(index + 1) of \(session.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            CardView(
+                prompt: item.aspect == .definition ? entry.definition : entry.term,
+                term: entry.term,
+                translation: entry.definition,
+                notes: entry.notes,
+                isFlipped: isFlipped
+            )
+            .onTapGesture {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isFlipped.toggle()
+                }
+            }
+
+            Spacer()
+
+            if isFlipped {
+                HStack(spacing: 16) {
+                    answerButton(title: "Practice Again", systemImage: "arrow.counterclockwise", tint: .orange) {
+                        handleAnswer(correct: false)
+                    }
+                    answerButton(title: "Got It", systemImage: "checkmark", tint: .green) {
+                        handleAnswer(correct: true)
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                Text("Tap the card to reveal the answer")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(height: 44)
+            }
+        }
+        .padding()
+        .animation(.easeInOut, value: isFlipped)
+    }
+
+    private var summaryView: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.green)
+            Text("Session Complete!")
+                .font(.title.bold())
+            Text("You got \(correctCount) of \(totalCards) right.")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button {
+                resetToSetup()
+            } label: {
+                Text("Done")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding(.horizontal)
+        }
+        .padding()
+    }
+
+    // MARK: - Components
+
+    private func answerButton(title: String, systemImage: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .tint(tint)
+    }
+
+    // MARK: - Session logic
+
+    /// Whether a card belongs in the deck for a method: in the daily assignment
+    /// that method must be due; in free practice every unmemorized term counts.
+    private func includes(_ card: GlossaryPracticeCard, aspect: GlossaryAspect) -> Bool {
+        dueOnly ? card.entry.isDue(aspect) : card.entry.remember_final != true
+    }
+
+    private func deck() -> [GlossarySessionItem] {
+        guard !selectedAspects.isEmpty else { return [] }
+        var items: [GlossarySessionItem] = []
+        for aspect in selectedAspects {
+            for card in cards where includes(card, aspect: aspect) {
+                items.append(GlossarySessionItem(card: card, aspect: aspect))
+            }
+        }
+        return items.shuffled()
+    }
+
+    private func startSession() {
+        let deck = deck()
+        guard !deck.isEmpty else { return }
+        session = deck
+        totalCards = deck.count
+        index = 0
+        correctCount = 0
+        isFlipped = false
+        isFinished = false
+    }
+
+    private func handleAnswer(correct: Bool) {
+        var item = session[index]
+        // Progress is only recorded for the daily assignment; free practice
+        // doesn't affect schedules or stats.
+        if dueOnly {
+            if correct {
+                item.card.entry.markCorrect(aspect: item.aspect)
+                recordDailyStat(aspect: item.aspect)
+            } else {
+                item.card.entry.markIncorrect(aspect: item.aspect)
+            }
+            session[index] = item
+            // An entry can be queued for both methods; keep its copies in sync
+            // so one method's save doesn't clobber the other's stats.
+            syncEntry(item.card.entry)
+            persist(item.card)
+        }
+        if correct {
+            correctCount += 1
+        } else {
+            // Not remembered: move on, but re-queue it (same method) for review.
+            session.append(item)
+        }
+        advance()
+    }
+
+    private func syncEntry(_ entry: GlossaryEntry) {
+        for i in session.indices where session[i].card.entry.id == entry.id {
+            session[i].card.entry = entry
+        }
+    }
+
+    private func persist(_ card: GlossaryPracticeCard) {
+        guard let uid = auth.uid else { return }
+        Task { try? await GlossaryRepository.updateEntry(uid: uid, glossaryId: card.glossaryId, entry: card.entry) }
+    }
+
+    /// Glossary practice shares the daily tallies with list practice, so the
+    /// Statistics charts count both.
+    private func recordDailyStat(aspect: GlossaryAspect) {
+        guard let uid = auth.uid else { return }
+        Task { try? await VocabRepository.recordRemembered(uid: uid, aspect: aspect.dailyAspect) }
+    }
+
+    private func advance() {
+        withAnimation { isFlipped = false }
+        if index + 1 < session.count {
+            index += 1
+        } else {
+            isFinished = true
+        }
+    }
+
+    private func resetToSetup() {
+        session = []
+        index = 0
+        correctCount = 0
+        isFlipped = false
+        isFinished = false
+    }
+}

@@ -53,7 +53,7 @@ enum GlossaryAspect: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var label: LocalizedStringResource {
+    var label: LocalizedStringKey {
         switch self {
         case .term: return "Term"
         case .definition: return "Definition"

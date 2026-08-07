@@ -36,16 +36,19 @@ struct LearningStats {
     let perWeek: Double
     let perMonth: Double
 
-    init(words: [VocabWord]) {
-        totalWords = words.count
+    /// Glossary practice records the same daily tallies as list practice, so the
+    /// totals cover both a user's words and their glossary terms.
+    init(words: [VocabWord], entries: [GlossaryEntry] = []) {
+        totalWords = words.count + entries.count
         // Fully memorized = recalled enough times in every aspect (remember_final:
-        // 8× word, 10× translation, 7× pronunciation).
-        let memorized = words.filter { $0.isRemembered }
-        totalMemorized = memorized.count
+        // 8× word, 10× translation, 7× pronunciation; for a term, 8× term and
+        // 10× definition).
+        totalMemorized = words.filter { $0.isRemembered }.count
+            + entries.filter { $0.isRemembered }.count
 
         let now = Date()
         let cal = Calendar.current
-        let start = words.map(\.createdAt).min()
+        let start = (words.map(\.createdAt) + entries.map(\.createdAt)).min()
         startDate = start
 
         // Days the user has been learning, counting the first day.
@@ -88,16 +91,24 @@ final class StatsViewModel: ObservableObject {
                 guard let listId = list.id else { continue }
                 all += try await VocabRepository.fetchWords(uid: uid, listId: listId)
             }
-            stats = LearningStats(words: all)
-            todayRemembered = Self.countTodayRemembered(all)
+            let glossaries = try await GlossaryRepository.fetchGlossaries(uid: uid)
+            var allEntries: [GlossaryEntry] = []
+            for glossary in glossaries {
+                guard let glossaryId = glossary.id else { continue }
+                allEntries += try await GlossaryRepository.fetchEntries(uid: uid, glossaryId: glossaryId)
+            }
+            stats = LearningStats(words: all, entries: allEntries)
+            todayRemembered = Self.countTodayRemembered(all, entries: allEntries)
             dailyStats = (try? await VocabRepository.fetchDailyStats(uid: uid, days: 7)) ?? []
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    /// Counts words across all lists whose per-aspect last-remembered date is today.
-    private static func countTodayRemembered(_ words: [VocabWord]) -> [String: Int] {
+    /// Counts words and glossary terms whose per-aspect last-remembered date is
+    /// today. A term's two methods line up with a word's first two: recalling
+    /// the term itself, and recalling what it means.
+    private static func countTodayRemembered(_ words: [VocabWord], entries: [GlossaryEntry] = []) -> [String: Int] {
         let cal = Calendar.current
         func isToday(_ date: Date?) -> Bool { date.map(cal.isDateInToday) ?? false }
         var counts = ["word": 0, "translation": 0, "pronunciation": 0]
@@ -105,6 +116,10 @@ final class StatsViewModel: ObservableObject {
             if isToday(word.lastWordRemembered) { counts["word", default: 0] += 1 }
             if isToday(word.lastTranslationRemembered) { counts["translation", default: 0] += 1 }
             if isToday(word.lastPronounciationRemembered) { counts["pronunciation", default: 0] += 1 }
+        }
+        for entry in entries {
+            if isToday(entry.lastTermRemembered) { counts["word", default: 0] += 1 }
+            if isToday(entry.lastDefinitionRemembered) { counts["translation", default: 0] += 1 }
         }
         return counts
     }
@@ -272,7 +287,7 @@ struct StatsView: View {
                 .foregroundStyle(.tint)
             Text("\(stats.totalMemorized)")
                 .font(.system(size: 56, weight: .bold, design: .rounded))
-            Text("words memorized")
+            Text("words and terms memorized")
                 .font(.headline)
                 .foregroundStyle(.secondary)
             Text("out of \(stats.totalWords) total")

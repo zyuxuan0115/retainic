@@ -13,14 +13,19 @@ import Combine
 @MainActor
 final class TrashViewModel: ObservableObject {
     @Published var lists: [VocabularyList] = []
+    @Published var glossaries: [Glossary] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+
+    /// Nothing left to restore or purge.
+    var isEmpty: Bool { lists.isEmpty && glossaries.isEmpty }
 
     func load(uid: String) async {
         isLoading = true
         defer { isLoading = false }
         do {
             lists = try await VocabRepository.fetchTrashedLists(uid: uid)
+            glossaries = try await GlossaryRepository.fetchTrashedGlossaries(uid: uid)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -46,7 +51,27 @@ final class TrashViewModel: ObservableObject {
         }
     }
 
-    /// Permanently deletes every list currently in the trash.
+    func restore(uid: String, glossary: Glossary) async {
+        guard let id = glossary.id else { return }
+        do {
+            try await GlossaryRepository.restoreGlossary(uid: uid, glossaryId: id)
+            glossaries.removeAll { $0.id == id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func purge(uid: String, glossary: Glossary) async {
+        guard let id = glossary.id else { return }
+        do {
+            try await GlossaryRepository.purgeGlossary(uid: uid, glossaryId: id)
+            glossaries.removeAll { $0.id == id }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Permanently deletes everything currently in the trash.
     func purgeAll(uid: String) async {
         for list in lists {
             guard let id = list.id else { continue }
@@ -54,11 +79,17 @@ final class TrashViewModel: ObservableObject {
             catch { errorMessage = error.localizedDescription }
         }
         lists.removeAll()
+        for glossary in glossaries {
+            guard let id = glossary.id else { continue }
+            do { try await GlossaryRepository.purgeGlossary(uid: uid, glossaryId: id) }
+            catch { errorMessage = error.localizedDescription }
+        }
+        glossaries.removeAll()
     }
 }
 
-/// Lists that have been moved to the trash. Each can be restored (put back into
-/// "My Lists") or permanently deleted.
+/// Lists and glossaries that have been moved to the trash. Each can be restored
+/// (put back into "My Lists" / "My Glossaries") or permanently deleted.
 struct TrashView: View {
     @EnvironmentObject private var auth: AuthService
     @Environment(\.dismiss) private var dismiss
@@ -66,15 +97,16 @@ struct TrashView: View {
 
     @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
     @State private var pendingPurge: VocabularyList?
+    @State private var pendingPurgeGlossary: Glossary?
     @State private var isPurging = false
     @State private var showingEmptyConfirm = false
 
     var body: some View {
         NavigationStack {
             Group {
-                if vm.isLoading && vm.lists.isEmpty {
+                if vm.isLoading && vm.isEmpty {
                     ProgressView("Loading…")
-                } else if vm.lists.isEmpty {
+                } else if vm.isEmpty {
                     emptyState
                 } else {
                     listContent
@@ -87,7 +119,7 @@ struct TrashView: View {
                     Text("Trash".localized(preferredLanguage)).font(.headline)
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    if !vm.lists.isEmpty {
+                    if !vm.isEmpty {
                         Button(role: .destructive) {
                             showingEmptyConfirm = true
                         } label: {
@@ -110,7 +142,7 @@ struct TrashView: View {
                 Button("Empty Trash".localized(preferredLanguage), role: .destructive) { emptyTrash() }
                 Button("Cancel".localized(preferredLanguage), role: .cancel) {}
             } message: {
-                Text("Permanently delete all lists in the Trash? This can't be undone.")
+                Text("Permanently delete everything in the Trash? This can't be undone.")
             }
             .task(id: auth.uid) {
                 if let uid = auth.uid { await vm.load(uid: uid) }
@@ -133,6 +165,21 @@ struct TrashView: View {
             } message: { list in
                 Text("“\(list.name)” will be permanently deleted. This can't be undone.")
             }
+            .alert(
+                "Delete Forever".localized(preferredLanguage),
+                isPresented: Binding(
+                    get: { pendingPurgeGlossary != nil },
+                    set: { if !$0 { pendingPurgeGlossary = nil } }
+                ),
+                presenting: pendingPurgeGlossary
+            ) { glossary in
+                Button("Delete Forever".localized(preferredLanguage), role: .destructive) {
+                    purge(glossary)
+                }
+                Button("Cancel".localized(preferredLanguage), role: .cancel) { pendingPurgeGlossary = nil }
+            } message: { glossary in
+                Text("“\(glossary.name)” will be permanently deleted. This can't be undone.")
+            }
             .repositoryErrorAlert($vm.errorMessage, language: preferredLanguage)
         }
         // While purging, hold on a blocking "Deleting…" overlay: taps outside do
@@ -153,23 +200,55 @@ struct TrashView: View {
 
     private var listContent: some View {
         List {
-            ForEach(vm.lists) { list in
-                ListRow(list: list)
-                    .swipeActions(edge: .leading) {
-                        Button {
-                            restore(list)
-                        } label: {
-                            Label("Restore", systemImage: "arrow.uturn.backward")
-                        }
-                        .tint(.green)
+            // Lists and glossaries are trashed separately; with both present the
+            // headers say which is which, and with one they'd be noise.
+            if !vm.lists.isEmpty {
+                Section {
+                    ForEach(vm.lists) { list in
+                        ListRow(list: list)
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    restore(list)
+                                } label: {
+                                    Label("Restore", systemImage: "arrow.uturn.backward")
+                                }
+                                .tint(.green)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    pendingPurge = list
+                                } label: {
+                                    Label("Delete Forever", systemImage: "trash")
+                                }
+                            }
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            pendingPurge = list
-                        } label: {
-                            Label("Delete Forever", systemImage: "trash")
-                        }
+                } header: {
+                    if !vm.glossaries.isEmpty { Text("Lists") }
+                }
+            }
+            if !vm.glossaries.isEmpty {
+                Section {
+                    ForEach(vm.glossaries) { glossary in
+                        GlossaryRow(glossary: glossary)
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    restore(glossary)
+                                } label: {
+                                    Label("Restore", systemImage: "arrow.uturn.backward")
+                                }
+                                .tint(.green)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    pendingPurgeGlossary = glossary
+                                } label: {
+                                    Label("Delete Forever", systemImage: "trash")
+                                }
+                            }
                     }
+                } header: {
+                    if !vm.lists.isEmpty { Text("Glossaries") }
+                }
             }
         }
     }
@@ -178,13 +257,18 @@ struct TrashView: View {
         ContentUnavailableView {
             Label("Trash is Empty", systemImage: "trash")
         } description: {
-            Text("Deleted lists are kept here until you restore or permanently delete them.")
+            Text("Deleted lists and glossaries are kept here until you restore or permanently delete them.")
         }
     }
 
     private func restore(_ list: VocabularyList) {
         guard let uid = auth.uid else { return }
         Task { await vm.restore(uid: uid, list: list) }
+    }
+
+    private func restore(_ glossary: Glossary) {
+        guard let uid = auth.uid else { return }
+        Task { await vm.restore(uid: uid, glossary: glossary) }
     }
 
     private func purge(_ list: VocabularyList) {
@@ -196,6 +280,17 @@ struct TrashView: View {
             // perceptible, then perform it and only then dismiss the overlay.
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             await vm.purge(uid: uid, list: list)
+            withAnimation { isPurging = false }
+        }
+    }
+
+    private func purge(_ glossary: Glossary) {
+        guard let uid = auth.uid else { return }
+        pendingPurgeGlossary = nil
+        withAnimation { isPurging = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            await vm.purge(uid: uid, glossary: glossary)
             withAnimation { isPurging = false }
         }
     }
