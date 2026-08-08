@@ -283,15 +283,25 @@ function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS
       el("option", { value: "remembered", selected: filter === "remembered" }, t("Show remembered only")),
       el("option", { value: "unremembered", selected: filter === "unremembered" }, t("Show unremembered only")),
     );
+    // The text-to-speech switch is pending until Save: flipping it changes
+    // nothing until the checkmark applies it, and closing the panel discards it.
+    const initialTTS = ttsEnabled === true;
+    let pendingTTS = initialTTS;
     const saveBtn = el("button.icon-btn", {
-      onclick: () => { if (!saveBtn.disabled) { onRename(nameInput.value); api.close(); } },
+      onclick: () => {
+        if (saveBtn.disabled) return;
+        if (pendingTTS !== initialTTS) onSetTTS(pendingTTS);
+        if (nameInput.value.trim() !== name.trim()) onRename(nameInput.value);
+        api.close();
+      },
       title: t("Save"), "aria-label": t("Save"),
     }, icon("check", 24));
-    // Save is enabled only once the name is non-empty and differs from the
-    // list's current name — nothing to save otherwise.
+    // Save needs a usable name and something to apply: a new name, a flipped
+    // text-to-speech switch, or both.
     function validateSave() {
       const trimmed = nameInput.value.trim();
-      const changed = trimmed.length > 0 && trimmed !== name.trim();
+      const changed = trimmed.length > 0
+        && (trimmed !== name.trim() || pendingTTS !== initialTTS);
       saveBtn.disabled = !changed;
       saveBtn.classList.toggle("disabled", !changed);
     }
@@ -309,7 +319,7 @@ function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS
         formSection(t("List name"), el(".form-card", {}, nameInput)),
         formSection(t("Show words"), el(".form-card", {}, pickerRow(t("Show words"), filterSel))),
         formSection(null,
-          el(".form-card", {}, ttsToggleRow(ttsEnabled, onSetTTS)),
+          el(".form-card", {}, ttsToggleRow(initialTTS, (on) => { pendingTTS = on; validateSave(); })),
           el(".form-note", {}, t("Read words aloud with a synthesized voice when they have no recording."))),
         formSection(null,
           el(".form-card", {},
@@ -358,7 +368,8 @@ function presentListSettingsSheet({ name, filter, ttsEnabled, onFilter, onSetTTS
 }
 
 /** A labelled on/off switch for the list's text-to-speech setting, mirroring the
- *  toggle style used in the practice setup. Applies immediately via `onChange`. */
+ *  toggle style used in the practice setup. `onChange` reports the switch's new
+ *  position; the panel applies it when Save is tapped. */
 function ttsToggleRow(initial, onChange) {
   let on = initial === true;
   const sw = el(".switch" + (on ? ".on" : ""), {}, el(".knob"));

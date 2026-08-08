@@ -7,6 +7,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageMetadata
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import java.io.File
 import java.security.MessageDigest
@@ -168,11 +171,44 @@ object VocabRepository {
     /** Permanently delete a list, its words, and any pronunciation audio. */
     suspend fun purgeList(uid: String, listId: String) {
         val words = wordsRef(uid, listId).get().await()
-        for (doc in words.documents) {
-            deleteAudio(audioStoragePath(uid, listId, doc.id))
-            doc.reference.delete().await()
+        // Only a word with a recording has anything in Storage, and those
+        // deletes don't have to wait on each other — emptying the Trash of a
+        // list that never had audio now costs no Storage requests at all.
+        coroutineScope {
+            words.documents
+                .mapNotNull { it.getString("audioPath") }
+                .filter { it.isNotEmpty() }
+                .map { path -> async { deleteAudio(path) } }
+                .awaitAll()
         }
-        listsRef(uid).document(listId).delete().await()
+        deleteDocuments(words.documents.map { it.reference }, listsRef(uid).document(listId))
+    }
+
+    /**
+     * The most documents one delete batch holds: a batch takes 500 operations,
+     * and the last one here spends its 500th on the parent document.
+     */
+    private const val DELETE_BATCH_LIMIT = 499
+
+    /**
+     * Deletes many documents in batches — emptying the Trash of a long list is
+     * one round trip per 499 documents instead of one per document. [parent]
+     * (the list itself) goes last, in the final batch, so a failure part-way
+     * through leaves it in the Trash to be purged again rather than orphaning
+     * the documents still under it.
+     */
+    private suspend fun deleteDocuments(refs: List<DocumentReference>, parent: DocumentReference) {
+        if (refs.isEmpty()) {
+            parent.delete().await()
+            return
+        }
+        val chunks = refs.chunked(DELETE_BATCH_LIMIT)
+        for ((index, chunk) in chunks.withIndex()) {
+            val batch = db.batch()
+            for (ref in chunk) batch.delete(ref)
+            if (index == chunks.lastIndex) batch.delete(parent)
+            batch.commit().await()
+        }
     }
 
     // MARK: - Words

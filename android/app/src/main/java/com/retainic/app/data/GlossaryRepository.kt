@@ -1,5 +1,6 @@
 package com.retainic.app.data
 
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -64,8 +65,34 @@ object GlossaryRepository {
     /** Permanently delete a glossary and its entries. */
     suspend fun purgeGlossary(uid: String, glossaryId: String) {
         val entries = entriesRef(uid, glossaryId).get().await()
-        for (doc in entries.documents) doc.reference.delete().await()
-        glossariesRef(uid).document(glossaryId).delete().await()
+        deleteDocuments(entries.documents.map { it.reference }, glossariesRef(uid).document(glossaryId))
+    }
+
+    /**
+     * The most documents one delete batch holds: a batch takes 500 operations,
+     * and the last one here spends its 500th on the glossary document.
+     */
+    private const val DELETE_BATCH_LIMIT = 499
+
+    /**
+     * Deletes many documents in batches — emptying the Trash of a long glossary
+     * is one round trip per 499 terms instead of one per term. [parent] (the
+     * glossary itself) goes last, in the final batch, so a failure part-way
+     * through leaves it in the Trash to be purged again rather than orphaning
+     * the terms still under it.
+     */
+    private suspend fun deleteDocuments(refs: List<DocumentReference>, parent: DocumentReference) {
+        if (refs.isEmpty()) {
+            parent.delete().await()
+            return
+        }
+        val chunks = refs.chunked(DELETE_BATCH_LIMIT)
+        for ((index, chunk) in chunks.withIndex()) {
+            val batch = db.batch()
+            for (ref in chunk) batch.delete(ref)
+            if (index == chunks.lastIndex) batch.delete(parent)
+            batch.commit().await()
+        }
     }
 
     // MARK: - Entries

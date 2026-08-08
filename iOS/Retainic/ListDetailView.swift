@@ -104,7 +104,7 @@ struct ListDetailView: View {
             ListSettingsSheet(
                 name: listName,
                 filter: $wordFilter,
-                ttsEnabled: $ttsEnabled,
+                ttsEnabled: ttsEnabled,
                 publicId: list.publicId,
                 onSave: { renameList(to: $0) },
                 onSetTTS: { setTTS($0) },

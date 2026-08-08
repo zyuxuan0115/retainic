@@ -190,11 +190,42 @@ enum VocabRepository {
         // Remove the words subcollection (and any pronunciation audio) first,
         // then the list document.
         let words = try await wordsRef(uid, listId).getDocuments()
-        for doc in words.documents {
-            await deleteAudio(path: audioStoragePath(uid: uid, listId: listId, wordId: doc.documentID))
-            try await doc.reference.delete()
+        // Only a word with a recording has anything in Storage, and those
+        // deletes don't have to wait on each other — emptying the Trash of a
+        // list that never had audio now costs no Storage requests at all.
+        let audioPaths = words.documents
+            .compactMap { $0.data()["audioPath"] as? String }
+            .filter { !$0.isEmpty }
+        await withTaskGroup(of: Void.self) { group in
+            for path in audioPaths { group.addTask { await deleteAudio(path: path) } }
         }
-        try await listsRef(uid).document(listId).delete()
+        try await deleteDocuments(words.documents.map(\.reference),
+                                  parent: listsRef(uid).document(listId))
+    }
+
+    /// The most documents one delete batch holds: a batch takes 500 operations,
+    /// and the last one here spends its 500th on the parent document.
+    private static let deleteBatchLimit = 499
+
+    /// Deletes many documents in batches — emptying the Trash of a long list is
+    /// one round trip per 499 documents instead of one per document. `parent`
+    /// (the list itself) goes last, in the final batch, so a failure part-way
+    /// through leaves it in the Trash to be purged again rather than orphaning
+    /// the documents still under it.
+    private static func deleteDocuments(_ refs: [DocumentReference], parent: DocumentReference) async throws {
+        guard !refs.isEmpty else {
+            try await parent.delete()
+            return
+        }
+        var start = refs.startIndex
+        while start < refs.endIndex {
+            let end = min(start + deleteBatchLimit, refs.endIndex)
+            let batch = db.batch()
+            for ref in refs[start ..< end] { batch.deleteDocument(ref) }
+            if end == refs.endIndex { batch.deleteDocument(parent) }
+            try await batch.commit()
+            start = end
+        }
     }
 
     // MARK: - Words

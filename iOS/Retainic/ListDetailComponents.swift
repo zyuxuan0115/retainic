@@ -80,31 +80,36 @@ struct ListSettingsSheet: View {
 
     @State private var name: String
     @Binding private var filter: WordFilter
-    @Binding private var ttsEnabled: Bool
+    /// The text-to-speech switch is pending until Save: flipping it changes
+    /// nothing until the checkmark applies it, and closing the sheet discards it.
+    @State private var ttsOn: Bool
     @State private var showingResetConfirm = false
     @State private var showingShareConfirm = false
     private let originalName: String
+    private let originalTTS: Bool
     let publicId: String?
     let onSave: (String) -> Void
     let onSetTTS: (Bool) -> Void
     let onResetMemory: () -> Void
 
-    init(name: String, filter: Binding<WordFilter>, ttsEnabled: Binding<Bool>, publicId: String?, onSave: @escaping (String) -> Void, onSetTTS: @escaping (Bool) -> Void, onResetMemory: @escaping () -> Void) {
+    init(name: String, filter: Binding<WordFilter>, ttsEnabled: Bool, publicId: String?, onSave: @escaping (String) -> Void, onSetTTS: @escaping (Bool) -> Void, onResetMemory: @escaping () -> Void) {
         _name = State(initialValue: name)
         _filter = filter
-        _ttsEnabled = ttsEnabled
+        _ttsOn = State(initialValue: ttsEnabled)
         self.originalName = name
+        self.originalTTS = ttsEnabled
         self.publicId = publicId
         self.onSave = onSave
         self.onSetTTS = onSetTTS
         self.onResetMemory = onResetMemory
     }
 
-    /// Save is enabled only once the name is non-empty and actually differs from
-    /// the list's current name — nothing to save otherwise.
+    /// Save needs a usable name and something to apply: a new name, a flipped
+    /// text-to-speech switch, or both.
     private var canSave: Bool {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return !trimmed.isEmpty && trimmed != originalName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        return trimmed != originalName.trimmingCharacters(in: .whitespaces) || ttsOn != originalTTS
     }
 
     var body: some View {
@@ -124,10 +129,7 @@ struct ListSettingsSheet: View {
                 }
 
                 Section {
-                    Toggle("Text-to-speech", isOn: Binding(
-                        get: { ttsEnabled },
-                        set: { onSetTTS($0) }
-                    ))
+                    Toggle("Text-to-speech", isOn: $ttsOn)
                 } footer: {
                     Text("Read words aloud with a synthesized voice when they have no recording.")
                 }
@@ -171,7 +173,9 @@ struct ListSettingsSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        onSave(name)
+                        if ttsOn != originalTTS { onSetTTS(ttsOn) }
+                        if name.trimmingCharacters(in: .whitespaces)
+                            != originalName.trimmingCharacters(in: .whitespaces) { onSave(name) }
                         dismiss()
                     } label: {
                         Image(systemName: "checkmark")

@@ -69,8 +69,33 @@ enum GlossaryRepository {
     /// Permanently delete a glossary and its entries.
     static func purgeGlossary(uid: String, glossaryId: String) async throws {
         let entries = try await entriesRef(uid, glossaryId).getDocuments()
-        for doc in entries.documents { try await doc.reference.delete() }
-        try await glossariesRef(uid).document(glossaryId).delete()
+        try await deleteDocuments(entries.documents.map(\.reference),
+                                  parent: glossariesRef(uid).document(glossaryId))
+    }
+
+    /// The most documents one delete batch holds: a batch takes 500 operations,
+    /// and the last one here spends its 500th on the glossary document.
+    private static let deleteBatchLimit = 499
+
+    /// Deletes many documents in batches — emptying the Trash of a long
+    /// glossary is one round trip per 499 terms instead of one per term.
+    /// `parent` (the glossary itself) goes last, in the final batch, so a
+    /// failure part-way through leaves it in the Trash to be purged again
+    /// rather than orphaning the terms still under it.
+    private static func deleteDocuments(_ refs: [DocumentReference], parent: DocumentReference) async throws {
+        guard !refs.isEmpty else {
+            try await parent.delete()
+            return
+        }
+        var start = refs.startIndex
+        while start < refs.endIndex {
+            let end = min(start + deleteBatchLimit, refs.endIndex)
+            let batch = db.batch()
+            for ref in refs[start ..< end] { batch.deleteDocument(ref) }
+            if end == refs.endIndex { batch.deleteDocument(parent) }
+            try await batch.commit()
+            start = end
+        }
     }
 
     // MARK: - Entries

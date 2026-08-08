@@ -121,11 +121,16 @@ internal fun ListSettingsDialog(
     onResetMemory: () -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
+    // The text-to-speech switch is pending until Save: flipping it changes
+    // nothing until the checkmark applies it, and closing the panel discards it.
     var tts by remember { mutableStateOf(ttsEnabled) }
     var showResetConfirm by remember { mutableStateOf(false) }
     var showShareConfirm by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
-    val canSave = name.trim().isNotEmpty() && name.trim() != initialName.trim()
+    // Save needs a usable name and something to apply: a new name, a flipped
+    // text-to-speech switch, or both.
+    val canSave = name.trim().isNotEmpty() &&
+        (name.trim() != initialName.trim() || tts != ttsEnabled)
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Scaffold(
@@ -138,7 +143,14 @@ internal fun ListSettingsDialog(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onSave(name) }, enabled = canSave) {
+                        IconButton(
+                            onClick = {
+                                if (tts != ttsEnabled) onSetTTS(tts)
+                                if (name.trim() != initialName.trim()) onSave(name)
+                                onDismiss()
+                            },
+                            enabled = canSave,
+                        ) {
                             Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.save))
                         }
                     },
@@ -168,7 +180,7 @@ internal fun ListSettingsDialog(
                         Text(stringResource(R.string.tts_footer), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = tts, onCheckedChange = { tts = it; onSetTTS(it) })
+                    Switch(checked = tts, onCheckedChange = { tts = it })
                 }
 
                 HorizontalDivider()
