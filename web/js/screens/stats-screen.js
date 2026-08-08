@@ -40,7 +40,8 @@ export async function StatsScreen(content) {
 
   // Aggregate stats (LearningStats). A word counts as memorized only once it is
   // fully remembered: 8× word, 10× translation, 7× pronunciation (remember_final);
-  // a glossary term once its 8× term and 10× definition recalls are done.
+  // a glossary term once the term and each of its definitions have had their
+  // five recalls.
   const totalWords = words.length + entries.length;
   const totalMemorized = words.filter(M.isRemembered).length + entries.filter(G.isRemembered).length;
   const dates = [...words, ...entries].map((w) => w.createdAt).filter(Boolean);
@@ -66,7 +67,25 @@ export async function StatsScreen(content) {
   }
   for (const e of entries) {
     if (M.isToday(e.lastTermRemembered)) today.word += 1;
-    if (M.isToday(e.lastDefinitionRemembered)) today.translation += 1;
+    // Every definition is a card of its own, so each one recalled today counts
+    // — the same way the daily tallies were written during practice.
+    today.translation += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
+  }
+
+  // Glossary progress, for the charts glossaries get to themselves. A term is
+  // memorized once its term side and every one of its definitions have had
+  // their five recalls; anything with at least one recall behind it is under
+  // way, and the rest hasn't been started.
+  const glossaryToday = { term: 0, definition: 0 };
+  const glossaryProgress = { memorized: 0, started: 0, untouched: 0 };
+  for (const e of entries) {
+    if (M.isToday(e.lastTermRemembered)) glossaryToday.term += 1;
+    const defs = G.definitions(e);
+    glossaryToday.definition += defs.filter((d) => M.isToday(d.lastRemembered)).length;
+    const recalls = (e.timesTermCorrect ?? 0) + defs.reduce((sum, d) => sum + d.timesCorrect, 0);
+    if (G.isRemembered(e)) glossaryProgress.memorized += 1;
+    else if (recalls > 0) glossaryProgress.started += 1;
+    else glossaryProgress.untouched += 1;
   }
 
   const aspectKeys = ["word", "translation", "pronunciation"];
@@ -89,6 +108,24 @@ export async function StatsScreen(content) {
       el("h3", {}, t("This week")),
       weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
     ),
+    // Glossaries get their own two charts: how far the terms have come, and
+    // what was practised today. Only shown once there are terms to chart.
+    entries.length ? el(".stat-block", {},
+      el("h3", {}, t("Glossary terms")),
+      barChart([
+        { label: t("Memorized"), value: glossaryProgress.memorized, color: colors.word },
+        { label: t("In progress"), value: glossaryProgress.started, color: colors.translation },
+        { label: t("Not started"), value: glossaryProgress.untouched, color: colors.pronunciation },
+      ]),
+      el("p.caption.center", {}, tf("%lld of %lld terms memorized", glossaryProgress.memorized, entries.length)),
+    ) : null,
+    entries.length ? el(".stat-block", {},
+      el("h3", {}, t("Glossary practice today")),
+      barChart([
+        { label: t("Term"), value: glossaryToday.term, color: colors.word },
+        { label: t("Definition"), value: glossaryToday.definition, color: colors.translation },
+      ]),
+    ) : null,
     el(".stat-block", {},
       el("h3", {}, t("Average pace")),
       el(".pace-row", {},

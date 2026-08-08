@@ -10,10 +10,11 @@ import java.util.Date
  *
  * A glossary is a single-language reference deck: each entry is a term and its
  * definitions. Glossaries are independent of vocabulary lists — their own
- * documents, screens and practice — but they run on the same spaced-repetition
- * schedule as words, with two methods instead of three: recalling the term and
- * recalling the definition. There is no audio and no translation language, so
- * the pronunciation method never applies.
+ * documents, screens and practice — and they run on the same spaced-repetition
+ * machinery as words but with a schedule of their own: two methods instead of
+ * three — recalling the term and recalling the definition — each finished after
+ * five correct recalls. There is no audio and no translation language, so the
+ * pronunciation method never applies.
  *
  * A term can mean several things, so an entry carries a list of definitions,
  * each with its own schedule: shown a definition, you recall the term, and
@@ -123,12 +124,12 @@ data class GlossaryEntry(
     val joinedDefinitions: String get() = definitionTexts.joinToString("; ")
 
     fun isTermDue(now: Date = Date()): Boolean =
-        isDue(timesTermCorrect ?: 0, lastTermRemembered, termReviewGaps, now)
+        isDue(timesTermCorrect ?: 0, lastTermRemembered, reviewGaps, now)
 
     /** Whether a definition is due. With no [index], whether any is. */
     fun isDefinitionDue(now: Date = Date(), index: Int? = null): Boolean {
         val list = definitionList
-        fun due(i: Int) = isDue(list[i].timesCorrect, list[i].lastRemembered, definitionReviewGaps, now)
+        fun due(i: Int) = isDue(list[i].timesCorrect, list[i].lastRemembered, reviewGaps, now)
         if (index != null) return if (index in list.indices) due(index) else false
         return list.indices.any { due(it) }
     }
@@ -214,15 +215,15 @@ data class GlossaryEntry(
     }
 
     /**
-     * An entry is memorized once both methods have run their schedules out:
-     * 8x term and 10x for every definition — a term with five meanings isn't
-     * done until all five are. Entries carry no audio, so the pronunciation
-     * requirement words can have never applies here.
+     * An entry is memorized once every side of it is finished: the term
+     * recalled its five times, and each definition its own five. A term that
+     * means five things isn't done until all five meanings are. Entries carry
+     * no audio, so the pronunciation requirement words can have never applies.
      */
     private fun updateRememberFinal() {
         val list = definitionList
-        remember_final = (timesTermCorrect ?: 0) >= termReviewGaps.size &&
-            list.isNotEmpty() && list.all { it.timesCorrect >= definitionReviewGaps.size }
+        remember_final = (timesTermCorrect ?: 0) >= requiredRecalls &&
+            list.isNotEmpty() && list.all { it.timesCorrect >= requiredRecalls }
     }
 
     private fun record(aspect: GlossaryAspect, correct: Boolean, now: Date) {
@@ -238,10 +239,17 @@ data class GlossaryEntry(
     }
 
     companion object {
-        /** The term side follows the word (spelling) schedule... */
-        val termReviewGaps = VocabWord.wordReviewGaps
-        /** ...and the definition side the translation schedule. */
-        val definitionReviewGaps = VocabWord.translationReviewGaps
+        /**
+         * The glossary schedule. Glossaries review on their own gaps rather
+         * than a word's: the term, and every one of its definitions, is
+         * recalled five times, spaced further apart each time. The value at
+         * index n is how many days to wait after the nth correct recall; past
+         * the end of the table that side is finished and never comes due again.
+         */
+        val reviewGaps = intArrayOf(0, 1, 2, 4, 7)
+
+        /** How many correct recalls finish the term, and each definition. */
+        val requiredRecalls: Int get() = reviewGaps.size
 
         private fun isDue(count: Int, last: Date?, gaps: IntArray, now: Date): Boolean {
             if (count >= gaps.size) return false

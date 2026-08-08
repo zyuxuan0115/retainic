@@ -151,6 +151,12 @@
     <string name="out_of_n_total">총 %1$d개 중</string>
     <string name="remembered_today">오늘 기억한 수</string>
     <string name="this_week">이번 주</string>
+    <string name="glossary_terms">용어집 용어</string>
+    <string name="glossary_practice_today">오늘의 용어집 연습</string>
+    <string name="memorized">암기 완료</string>
+    <string name="in_progress">학습 중</string>
+    <string name="not_started">시작 전</string>
+    <string name="n_of_m_terms_memorized">용어 %1$d / %2$d개 암기 완료</string>
     <string name="average_pace">평균 속도</string>
     <string name="per_day">하루 평균</string>
     <string name="per_week">주간 평균</string>

@@ -23,9 +23,10 @@ It reproduces the iOS app's interface and functionality:
   **definitions** (plus notes). A term can mean several things, and each
   definition is scheduled and practised on its own — five definitions are five
   cards when the definition comes first, and one card revealing them all the
-  other way round. Independent of vocabulary lists, but sharing the Trash, the
-  review schedule, and Statistics, and practised on two methods — **Term** and
-  **Definition** — instead of three.
+  other way round. Independent of vocabulary lists, but sharing the Trash and
+  Statistics, and practised on two methods — **Term** and **Definition** —
+  instead of three, on a schedule of their own: five correct recalls finish the
+  term and five finish each definition, and only then is the term memorized.
 - **Flashcard practice** — Daily assignment (only cards due today under each
   aspect's spaced-repetition schedule) or Free practice; multi-select "Show
   first" (Word / Translation / Audio); flip, grade "Got It" / "Practice Again",

@@ -6,8 +6,9 @@ pronunciation), then practice them with spaced-repetition flashcards. Each word 
 reviewed along three independent tracks — **spelling**, **translation**, and
 **pronunciation** — and the app charts your progress over time. Alongside your
 lists you can keep **glossaries**: single-language decks of terms and their
-definitions, practised on the same schedule with two tracks instead of three. A
-term can carry several definitions, and each one is a flashcard of its own.
+definitions, practised on a schedule of their own with two tracks instead of
+three. A term can carry several definitions, and each one is a flashcard of its
+own, finished after five correct recalls — as is the term itself.
 
 There are three clients — native iOS and Android apps plus a browser app — that
 share the **same Firebase project** (`retainic-85b91`), so your accounts, lists,

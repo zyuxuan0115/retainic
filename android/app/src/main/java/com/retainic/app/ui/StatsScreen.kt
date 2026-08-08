@@ -85,6 +85,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
     var stats by remember { mutableStateOf<LearningStats?>(null) }
     var today by remember { mutableStateOf(mapOf("word" to 0, "translation" to 0, "pronunciation" to 0)) }
     var week by remember { mutableStateOf<List<Triple<Date, String, Int>>>(emptyList()) }
+    var glossary by remember { mutableStateOf(GlossaryStats()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -106,6 +107,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
             }
             stats = LearningStats(all, allEntries)
             today = countTodayRemembered(all, allEntries)
+            glossary = glossaryStats(allEntries)
             val daily = runCatching { VocabRepository.fetchDailyStats(uid, 7) }.getOrDefault(emptyList())
             week = buildWeekPoints(daily, today)
         } catch (e: Exception) {
@@ -128,7 +130,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
                     title = stringResource(R.string.no_stats_yet),
                     description = stringResource(R.string.no_stats_desc),
                 )
-                else -> StatsContent(s, today, week)
+                else -> StatsContent(s, today, week, glossary)
             }
         }
     }
@@ -141,6 +143,7 @@ private fun StatsContent(
     stats: LearningStats,
     today: Map<String, Int>,
     week: List<Triple<Date, String, Int>>,
+    glossary: GlossaryStats,
 ) {
     val aspectKeys = listOf("word", "translation", "pronunciation")
     val aspectLabels = listOf(stringResource(R.string.word), stringResource(R.string.translation), stringResource(R.string.pronunciation))
@@ -173,6 +176,26 @@ private fun StatsContent(
         // This week (line chart)
         Text(stringResource(R.string.this_week), style = MaterialTheme.typography.titleMedium)
         WeekLineChart(week, aspectKeys, aspectLabels, AspectColors)
+
+        // Glossaries get their own two charts: how far the terms have come, and
+        // what was practised today.
+        if (glossary.total > 0) {
+            Text(stringResource(R.string.glossary_terms), style = MaterialTheme.typography.titleMedium)
+            BarChart(listOf(
+                Triple(stringResource(R.string.memorized), glossary.memorized, AspectColors[0]),
+                Triple(stringResource(R.string.in_progress), glossary.started, AspectColors[1]),
+                Triple(stringResource(R.string.not_started), glossary.untouched, AspectColors[2]),
+            ))
+            Text(stringResource(R.string.n_of_m_terms_memorized, glossary.memorized, glossary.total),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+
+            Text(stringResource(R.string.glossary_practice_today), style = MaterialTheme.typography.titleMedium)
+            BarChart(listOf(
+                Triple(stringResource(R.string.term), glossary.termsToday, AspectColors[0]),
+                Triple(stringResource(R.string.definition), glossary.definitionsToday, AspectColors[1]),
+            ))
+        }
 
         // Average pace
         Text(stringResource(R.string.average_pace), style = MaterialTheme.typography.titleMedium)
@@ -284,6 +307,42 @@ private fun WeekLineChart(
 }
 
 /**
+ * How far a user's glossary terms have come, for the charts glossaries get to
+ * themselves. A term is memorized once its term side and every one of its
+ * definitions have had their five recalls; anything with at least one recall
+ * behind it is under way, and the rest hasn't been started.
+ */
+data class GlossaryStats(
+    val total: Int = 0,
+    val memorized: Int = 0,
+    val started: Int = 0,
+    val untouched: Int = 0,
+    val termsToday: Int = 0,
+    val definitionsToday: Int = 0,
+)
+
+private fun glossaryStats(entries: List<GlossaryEntry>): GlossaryStats {
+    val now = Date()
+    fun isToday(d: Date?) = d != null && VocabWord.isSameDay(d, now)
+    var memorized = 0; var started = 0; var untouched = 0
+    var termsToday = 0; var definitionsToday = 0
+    for (e in entries) {
+        val definitions = e.definitionList
+        if (isToday(e.lastTermRemembered)) termsToday++
+        // Every definition is a card of its own, so each one recalled today
+        // counts on its own.
+        definitionsToday += definitions.count { isToday(it.lastRemembered) }
+        val recalls = (e.timesTermCorrect ?: 0) + definitions.sumOf { it.timesCorrect }
+        when {
+            e.isRemembered -> memorized++
+            recalls > 0 -> started++
+            else -> untouched++
+        }
+    }
+    return GlossaryStats(entries.size, memorized, started, untouched, termsToday, definitionsToday)
+}
+
+/**
  * Counts words and glossary terms whose per-aspect last-remembered date is
  * today. A term's two methods line up with a word's first two: recalling the
  * term itself, and recalling what it means.
@@ -302,7 +361,9 @@ private fun countTodayRemembered(
     }
     for (e in entries) {
         if (isToday(e.lastTermRemembered)) word++
-        if (isToday(e.lastDefinitionRemembered)) translation++
+        // Every definition is a card of its own, so each one recalled today
+        // counts — the same way the daily tallies were written in practice.
+        translation += e.definitionList.count { isToday(it.lastRemembered) }
     }
     return mapOf("word" to word, "translation" to translation, "pronunciation" to pronunciation)
 }

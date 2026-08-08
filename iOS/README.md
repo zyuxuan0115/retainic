@@ -35,7 +35,8 @@ progress over time.
   Glossaries are independent of vocabulary lists (their own documents, screens
   and practice) but share the Trash, the review schedule and the Statistics
   dashboard, practising two methods — **Term** and **Definition** — instead of
-  three.
+  three, on a schedule of their own: five correct recalls finish the term and
+  five finish each definition, and only then is the term memorized.
 - **Bulk editing** — multi-select words in a list to **delete** them or **move**
   them to another list (only lists with a matching learning + original language
   are offered as destinations). Moving a word preserves its review progress and

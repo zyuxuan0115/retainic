@@ -21,7 +21,7 @@ test("a correct answer schedules that method and leaves the other alone", () => 
   G.markCorrect(entry, "term");
   assert.equal(entry.timesTermCorrect, 1);
   assert.equal(entry.timesSeen, 1);
-  // The built-in schedule waits a day after the first correct term recall.
+  // The glossary schedule waits a day after the first correct term recall.
   assert.equal(G.isTermDue(entry), false);
   assert.equal(G.isTermDue(entry, new Date(Date.now() + 86400000)), true);
   // The definition has its own schedule and is still waiting.
@@ -43,11 +43,11 @@ test("a wrong answer counts as seen but doesn't advance the schedule", () => {
 
 test("an entry is memorized once both methods are finished", () => {
   const entry = G.newEntry({ term: "novation", definition: "replacing a contract party" });
-  // The built-in schedule finishes at 8 term recalls + 10 definition recalls,
-  // and glossary entries never carry the audio requirement words can.
-  for (let i = 0; i < 8; i++) G.markCorrect(entry, "term");
+  // The glossary schedule finishes each side after five correct recalls.
+  assert.equal(G.REQUIRED_RECALLS, 5);
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "term");
   assert.equal(G.isRemembered(entry), false);
-  for (let i = 0; i < 9; i++) G.markCorrect(entry, "definition");
+  for (let i = 0; i < G.REQUIRED_RECALLS - 1; i++) G.markCorrect(entry, "definition");
   assert.equal(G.isRemembered(entry), false);
   G.markCorrect(entry, "definition");
   assert.equal(G.isRemembered(entry), true);
@@ -87,14 +87,34 @@ test("each definition is scheduled on its own", () => {
 
 test("mastery waits for every definition", () => {
   const entry = G.newEntry({ term: "bank", definitions: ["a financial institution", "the side of a river"] });
-  for (let i = 0; i < 8; i++) G.markCorrect(entry, "term");
-  for (let i = 0; i < 10; i++) G.markCorrect(entry, "definition", 0);
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "term");
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "definition", 0);
   // One definition is finished; the other has never been recalled.
   assert.equal(G.isRemembered(entry), false);
   assert.deepEqual(G.dueDefinitionIndexes(entry), [1]);
-  for (let i = 0; i < 10; i++) G.markCorrect(entry, "definition", 1);
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "definition", 1);
   assert.equal(G.isRemembered(entry), true);
   assert.deepEqual(G.dueDefinitionIndexes(entry), []);
+});
+
+test("the five showings of a side are spaced further apart each time", () => {
+  const entry = G.newEntry({ term: "laches", definitions: ["unreasonable delay"] });
+  const day = 86400000;
+  // Nothing is due again until that side's gap has passed: 0, 1, 2, 4, then 7
+  // days. A recall on the day it comes due keeps the schedule moving.
+  const gaps = [0, 1, 2, 4, 7];
+  let at = Date.now();
+  for (const wait of gaps) {
+    at += wait * day;
+    assert.equal(G.isTermDue(entry, new Date(at)), true);
+    assert.equal(G.isDefinitionDue(entry, new Date(at), 0), true);
+    G.markCorrect(entry, "term");
+    G.markCorrect(entry, "definition", 0);
+  }
+  // Five recalls each: both sides are finished and never come due again.
+  assert.equal(G.isRemembered(entry), true);
+  assert.equal(G.isTermDue(entry, new Date(at + 365 * day)), false);
+  assert.equal(G.isDefinitionDue(entry, new Date(at + 365 * day)), false);
 });
 
 test("an entry stored with a single definition reads as a list of one", () => {

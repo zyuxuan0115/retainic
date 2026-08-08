@@ -151,6 +151,12 @@
     <string name="out_of_n_total">全 %1$d 個中</string>
     <string name="remembered_today">今日覚えた数</string>
     <string name="this_week">今週</string>
+    <string name="glossary_terms">用語集の用語</string>
+    <string name="glossary_practice_today">今日の用語集の練習</string>
+    <string name="memorized">暗記済み</string>
+    <string name="in_progress">学習中</string>
+    <string name="not_started">未着手</string>
+    <string name="n_of_m_terms_memorized">%1$d / %2$d 件の用語を暗記済み</string>
     <string name="average_pace">平均ペース</string>
     <string name="per_day">1日あたり</string>
     <string name="per_week">1週間あたり</string>

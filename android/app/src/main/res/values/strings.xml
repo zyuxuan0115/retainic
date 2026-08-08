@@ -165,6 +165,12 @@
     <string name="out_of_n_total">out of %1$d total</string>
     <string name="remembered_today">Remembered today</string>
     <string name="this_week">This week</string>
+    <string name="glossary_terms">Glossary terms</string>
+    <string name="glossary_practice_today">Glossary practice today</string>
+    <string name="memorized">Memorized</string>
+    <string name="in_progress">In progress</string>
+    <string name="not_started">Not started</string>
+    <string name="n_of_m_terms_memorized">%1$d of %2$d terms memorized</string>
     <string name="average_pace">Average pace</string>
     <string name="per_day">Per day</string>
     <string name="per_week">Per week</string>

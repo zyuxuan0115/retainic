@@ -4,9 +4,10 @@
 //
 //  A glossary is a single-language reference deck: each entry is a term and its
 //  definitions. Glossaries are independent of vocabulary lists — their own
-//  documents, screens and practice — but they run on the same spaced-repetition
-//  schedule (see ReviewSchedule), with two methods instead of three: recalling
-//  the term and recalling the definition. There is no audio and no translation
+//  documents, screens and practice — and they run on the same spaced-repetition
+//  machinery (see ReviewSchedule) but with a schedule of their own: two methods
+//  instead of three — recalling the term and recalling the definition — each
+//  finished after five correct recalls. There is no audio and no translation
 //  language, so the pronunciation method never applies.
 //
 //  A term can mean several things, so an entry carries a list of definitions,
@@ -159,10 +160,15 @@ extension GlossaryEntry {
     /// filter, exactly as it does for words.
     var isRemembered: Bool { remember_final == true }
 
-    /// The term side follows the word (spelling) schedule, the definition side
-    /// the translation schedule — the same gaps a word is reviewed on.
-    static let termReviewGaps = VocabWord.wordReviewGaps
-    static let definitionReviewGaps = VocabWord.translationReviewGaps
+    /// The glossary schedule. Glossaries review on their own gaps rather than a
+    /// word's: the term, and every one of its definitions, is recalled five
+    /// times, spaced further apart each time. The value at index n is how many
+    /// days to wait after the nth correct recall; past the end of the table
+    /// that side is finished and never comes due again.
+    static let reviewGaps = [0, 1, 2, 4, 7]
+
+    /// How many correct recalls finish the term, and each definition.
+    static var requiredRecalls: Int { reviewGaps.count }
 
     /// The entry's definitions, each with its own schedule. An entry written
     /// before a term could mean several things reads as a single definition
@@ -183,7 +189,7 @@ extension GlossaryEntry {
 
     func isTermDue(now: Date = Date()) -> Bool {
         ReviewSchedule.isDue(count: timesTermCorrect ?? 0, last: lastTermRemembered,
-                             gaps: Self.termReviewGaps, now: now)
+                             gaps: Self.reviewGaps, now: now)
     }
 
     /// Whether a definition is due. With no `index`, whether any is.
@@ -191,7 +197,7 @@ extension GlossaryEntry {
         let list = definitionList
         func due(_ i: Int) -> Bool {
             ReviewSchedule.isDue(count: list[i].timesCorrect, last: list[i].lastRemembered,
-                                 gaps: Self.definitionReviewGaps, now: now)
+                                 gaps: Self.reviewGaps, now: now)
         }
         if let index { return list.indices.contains(index) ? due(index) : false }
         return list.indices.contains { due($0) }
@@ -277,14 +283,15 @@ extension GlossaryEntry {
         remember_final = false
     }
 
-    /// An entry is memorized once both methods have run their schedules out:
-    /// 8× term and 10× for every definition — a term with five meanings isn't
-    /// done until all five are. Entries carry no audio, so the pronunciation
-    /// requirement words can have never applies here.
+    /// An entry is memorized once every side of it is finished: the term
+    /// recalled its five times, and each definition its own five. A term that
+    /// means five things isn't done until all five meanings are. Entries carry
+    /// no audio, so the pronunciation requirement words can have never applies.
     private mutating func updateRememberFinal() {
-        let definitionsFinished = definitionList.allSatisfy { $0.timesCorrect >= Self.definitionReviewGaps.count }
-        remember_final = (timesTermCorrect ?? 0) >= Self.termReviewGaps.count
-            && !definitionList.isEmpty && definitionsFinished
+        let list = definitionList
+        remember_final = (timesTermCorrect ?? 0) >= Self.requiredRecalls
+            && !list.isEmpty
+            && list.allSatisfy { $0.timesCorrect >= Self.requiredRecalls }
     }
 
     private mutating func record(aspect: GlossaryAspect, correct: Bool, now: Date) {

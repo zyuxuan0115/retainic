@@ -4,10 +4,10 @@
 //
 //  The glossary model: a single-language reference deck whose entries are a
 //  term and its definitions. Glossaries are independent of vocabulary lists —
-//  separate documents, separate screens — but they practise on the same
-//  spaced-repetition engine (models.js), with two methods instead of three:
-//  recalling the term and recalling the definition. There is no audio and no
-//  translation language, so the pronunciation method never applies.
+//  separate documents, separate screens — and they review on a schedule of
+//  their own: two methods instead of three (recalling the term and recalling
+//  the definition), each finished after five correct recalls. There is no audio
+//  and no translation language, so the pronunciation method never applies.
 //
 //  A term can mean several things, so an entry carries a list of definitions,
 //  each with its own review schedule: shown a definition, you recall the term,
@@ -18,7 +18,7 @@
 //    users/{uid}/glossaries/{glossaryId}/entries/{entryId} -> entry
 //
 
-import { methodDue, reviewSchedule } from "./models.js";
+import { methodDue } from "./models.js";
 
 /** The two things a glossary entry is practised on. `dailyAspect` is the word
  *  aspect its daily tally shares, so glossary practice shows up in Statistics
@@ -77,33 +77,33 @@ function syncLegacyFields(entry) {
   entry.lastDefinitionRemembered = dates.length ? new Date(Math.max(...dates)) : null;
 }
 
-/** The state the review algorithm sees for an entry. The algorithm is written
- *  against words, so the term maps onto its "word" method and the definition
- *  onto its "translation" one; with no audio, `masteredTotal` comes back
- *  without the pronunciation requirement. `definitionIndex` picks which
- *  definition's schedule to ask about; without one the entry is judged by its
- *  least-practised definition, so mastery waits for all of them. */
-function entryState(entry, definitionIndex = null) {
-  const counts = definitions(entry).map((d) => d.timesCorrect);
-  let timesDefinition;
-  if (definitionIndex != null) timesDefinition = counts[definitionIndex] ?? 0;
-  else timesDefinition = counts.length ? Math.min(...counts) : 0;
-  return {
-    times_word: entry.timesTermCorrect ?? 0,
-    times_translation: timesDefinition,
-    times_pronunciation: 0,
-    has_audio: false,
-  };
+// MARK: - The glossary schedule
+//
+// Glossaries run their own review algorithm rather than borrowing a word's.
+// Each side of an entry — the term, and every one of its definitions — is
+// recalled five times, spaced further apart each time, and that is the whole
+// requirement. The value at index n is how many days to wait after the nth
+// correct recall; past the end of the table that side is finished and never
+// comes due again.
+
+const REVIEW_GAPS = [0, 1, 2, 4, 7];
+
+/** How many correct recalls finish the term, and each definition. */
+export const REQUIRED_RECALLS = REVIEW_GAPS.length;
+
+/** Days to wait after `count` correct recalls, or -1 once it's finished. */
+function gapAfter(count) {
+  return count < REVIEW_GAPS.length ? REVIEW_GAPS[count] : -1;
 }
 
 export function isTermDue(entry, now = new Date()) {
-  return methodDue(reviewSchedule(entryState(entry)).word, entry.lastTermRemembered, now);
+  return methodDue(gapAfter(entry.timesTermCorrect ?? 0), entry.lastTermRemembered, now);
 }
 
 /** Whether a definition is due. With no `definitionIndex`, whether any is. */
 export function isDefinitionDue(entry, now = new Date(), definitionIndex = null) {
   const defs = definitions(entry);
-  const due = (i) => methodDue(reviewSchedule(entryState(entry, i)).translation, defs[i].lastRemembered, now);
+  const due = (i) => methodDue(gapAfter(defs[i].timesCorrect), defs[i].lastRemembered, now);
   if (definitionIndex != null) return defs[definitionIndex] ? due(definitionIndex) : false;
   return defs.some((_, i) => due(i));
 }
@@ -122,12 +122,14 @@ export function isRemembered(entry) {
   return entry.remember_final === true;
 }
 
-/** An entry is memorized once its term count and its weakest definition's
- *  count together reach the algorithm's mastery total — so a term with five
- *  meanings isn't done until all five are. */
+/** An entry is memorized once every side of it is finished: the term recalled
+ *  its five times, and each definition its own five. A term that means five
+ *  things isn't done until all five meanings are. */
 function updateRememberFinal(entry) {
-  const s = entryState(entry);
-  entry.remember_final = s.times_word + s.times_translation >= reviewSchedule(s).masteredTotal;
+  const defs = definitions(entry);
+  entry.remember_final = (entry.timesTermCorrect ?? 0) >= REQUIRED_RECALLS
+    && defs.length > 0
+    && defs.every((d) => d.timesCorrect >= REQUIRED_RECALLS);
 }
 
 function record(entry, aspect, correct, now) {

@@ -41,8 +41,8 @@ struct LearningStats {
     init(words: [VocabWord], entries: [GlossaryEntry] = []) {
         totalWords = words.count + entries.count
         // Fully memorized = recalled enough times in every aspect (remember_final:
-        // 8× word, 10× translation, 7× pronunciation; for a term, 8× term and
-        // 10× definition).
+        // 8× word, 10× translation, 7× pronunciation; for a term, 5× the term
+        // and 5× each of its definitions).
         totalMemorized = words.filter { $0.isRemembered }.count
             + entries.filter { $0.isRemembered }.count
 
@@ -71,6 +71,38 @@ struct LearningStats {
     }
 }
 
+/// How far a user's glossary terms have come, for the charts glossaries get to
+/// themselves. A term is memorized once its term side and every one of its
+/// definitions have had their five recalls; anything with at least one recall
+/// behind it is under way, and the rest hasn't been started.
+struct GlossaryStats {
+    var total = 0
+    var memorized = 0
+    var started = 0
+    var untouched = 0
+    var termsToday = 0
+    var definitionsToday = 0
+
+    init() {}
+
+    init(entries: [GlossaryEntry]) {
+        let cal = Calendar.current
+        func isToday(_ date: Date?) -> Bool { date.map(cal.isDateInToday) ?? false }
+        total = entries.count
+        for entry in entries {
+            let definitions = entry.definitionList
+            if isToday(entry.lastTermRemembered) { termsToday += 1 }
+            // Every definition is a card of its own, so each one recalled today
+            // counts on its own.
+            definitionsToday += definitions.filter { isToday($0.lastRemembered) }.count
+            let recalls = (entry.timesTermCorrect ?? 0) + definitions.reduce(0) { $0 + $1.timesCorrect }
+            if entry.isRemembered { memorized += 1 }
+            else if recalls > 0 { started += 1 }
+            else { untouched += 1 }
+        }
+    }
+}
+
 @MainActor
 final class StatsViewModel: ObservableObject {
     @Published var stats: LearningStats?
@@ -78,6 +110,8 @@ final class StatsViewModel: ObservableObject {
     @Published var dailyStats: [DailyStat] = []
     /// Today's remembered counts per aspect, derived from the words themselves.
     @Published var todayRemembered: [String: Int] = [:]
+    /// Glossary-only counts, for the glossary charts.
+    @Published var glossary = GlossaryStats()
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -99,6 +133,7 @@ final class StatsViewModel: ObservableObject {
             }
             stats = LearningStats(words: all, entries: allEntries)
             todayRemembered = Self.countTodayRemembered(all, entries: allEntries)
+            glossary = GlossaryStats(entries: allEntries)
             dailyStats = (try? await VocabRepository.fetchDailyStats(uid: uid, days: 7)) ?? []
         } catch {
             errorMessage = error.localizedDescription
@@ -119,7 +154,10 @@ final class StatsViewModel: ObservableObject {
         }
         for entry in entries {
             if isToday(entry.lastTermRemembered) { counts["word", default: 0] += 1 }
-            if isToday(entry.lastDefinitionRemembered) { counts["translation", default: 0] += 1 }
+            // Every definition is a card of its own, so each one recalled today
+            // counts — the same way the daily tallies were written in practice.
+            counts["translation", default: 0] += entry.definitionList
+                .filter { isToday($0.lastRemembered) }.count
         }
         return counts
     }
@@ -160,6 +198,13 @@ struct StatsView: View {
 
                 todayChart
                 weekChart
+
+                // Glossaries get their own two charts: how far the terms have
+                // come, and what was practised today.
+                if vm.glossary.total > 0 {
+                    glossaryProgressChart
+                    glossaryTodayChart
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Average pace")
@@ -240,19 +285,7 @@ struct StatsView: View {
             Text("Remembered today")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Chart(todayBars) { bar in
-                BarMark(
-                    x: .value("Type", bar.label),
-                    y: .value("Remembered", bar.count)
-                )
-                .foregroundStyle(by: .value("Type", bar.label))
-                .annotation(position: .top) {
-                    Text("\(bar.count)").font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            .chartForegroundStyleScale(domain: styleDomain, range: styleRange)
-            .chartLegend(.hidden)
-            .frame(height: 200)
+            barChart(todayBars, labels: styleDomain)
         }
     }
 
@@ -278,6 +311,61 @@ struct StatsView: View {
             }
             .frame(height: 240)
         }
+    }
+
+    private var glossaryProgressBars: [AspectBar] {
+        [
+            AspectBar(key: "memorized", label: "Memorized".localized(preferredLanguage), count: vm.glossary.memorized),
+            AspectBar(key: "started", label: "In progress".localized(preferredLanguage), count: vm.glossary.started),
+            AspectBar(key: "untouched", label: "Not started".localized(preferredLanguage), count: vm.glossary.untouched),
+        ]
+    }
+
+    private var glossaryTodayBars: [AspectBar] {
+        [
+            AspectBar(key: "term", label: "Term".localized(preferredLanguage), count: vm.glossary.termsToday),
+            AspectBar(key: "definition", label: "Definition".localized(preferredLanguage), count: vm.glossary.definitionsToday),
+        ]
+    }
+
+    private var glossaryProgressChart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Glossary terms")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            barChart(glossaryProgressBars, labels: glossaryProgressBars.map(\.label))
+            Text("\(vm.glossary.memorized) of \(vm.glossary.total) terms memorized")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var glossaryTodayChart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Glossary practice today")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            barChart(glossaryTodayBars, labels: glossaryTodayBars.map(\.label))
+        }
+    }
+
+    /// The same bar chart the "Remembered today" chart draws, over whichever
+    /// bars it's given.
+    private func barChart(_ bars: [AspectBar], labels: [String]) -> some View {
+        Chart(bars) { bar in
+            BarMark(
+                x: .value("Type", bar.label),
+                y: .value("Remembered", bar.count)
+            )
+            .foregroundStyle(by: .value("Type", bar.label))
+            .annotation(position: .top) {
+                Text("\(bar.count)").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .chartForegroundStyleScale(domain: labels, range: Array(styleRange.prefix(labels.count)))
+        .chartLegend(.hidden)
+        .frame(height: 200)
     }
 
     private func totalCard(_ stats: LearningStats) -> some View {

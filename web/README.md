@@ -31,8 +31,9 @@ SDK loaded from a CDN. No build step.
   term with five definitions is five cards when the definition comes first, and
   one card revealing them all the other way round. Glossaries are independent of
   vocabulary lists — their own documents, screens and practice — but they share
-  the Trash and the spaced-repetition schedule, practising two methods (*Term*
-  and *Definition*) instead of three. Glossaries have their own CSV pair:
+  the Trash, practising two methods (*Term* and *Definition*) instead of three
+  on a schedule of their own: five correct recalls finish the term and five
+  finish each definition, and only then is the term memorized. Glossaries have their own CSV pair:
   **New Glossary → Import CSV** fills a new glossary from a file (columns: term,
   definitions, notes — several definitions separated by semicolons, or the same
   term repeated on another row, which merges into one entry), and **Glossary

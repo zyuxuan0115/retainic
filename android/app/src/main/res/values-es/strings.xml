@@ -151,6 +151,12 @@
     <string name="out_of_n_total">de %1$d en total</string>
     <string name="remembered_today">Recordadas hoy</string>
     <string name="this_week">Esta semana</string>
+    <string name="glossary_terms">Términos del glosario</string>
+    <string name="glossary_practice_today">Práctica de glosario de hoy</string>
+    <string name="memorized">Memorizados</string>
+    <string name="in_progress">En curso</string>
+    <string name="not_started">Sin empezar</string>
+    <string name="n_of_m_terms_memorized">%1$d de %2$d términos memorizados</string>
     <string name="average_pace">Ritmo promedio</string>
     <string name="per_day">Por día</string>
     <string name="per_week">Por semana</string>
