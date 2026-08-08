@@ -2,6 +2,7 @@ package com.retainic.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,8 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,10 +29,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -58,18 +63,26 @@ fun AddEntryScreen(
     val isEditing = existing != null
 
     var term by remember { mutableStateOf(existing?.term ?: "") }
-    var definition by remember { mutableStateOf(existing?.definition ?: "") }
+    // One field per definition — a term can mean several things, and each
+    // meaning is practised on its own.
+    val savedDefinitions = existing?.definitionTexts.orEmpty()
+    val definitions = remember {
+        mutableStateListOf<String>().apply { addAll(savedDefinitions.ifEmpty { listOf("") }) }
+    }
     var notes by remember { mutableStateOf(existing?.notes ?: "") }
     var isSaving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    // The definitions that would be saved: trimmed, with the blank fields dropped.
+    val filledDefinitions = definitions.map { it.trim() }.filter { it.isNotEmpty() }
+
     // When editing, Save stays disabled until something actually changes.
     val hasChanges = if (existing == null) true else
         term.trim() != existing.term ||
-            definition.trim() != existing.definition ||
+            filledDefinitions != savedDefinitions ||
             notes.trim() != existing.notes
-    val canSave = term.trim().isNotEmpty() && definition.trim().isNotEmpty() && !isSaving && hasChanges
+    val canSave = term.trim().isNotEmpty() && filledDefinitions.isNotEmpty() && !isSaving && hasChanges
 
     fun save() {
         val uid = auth.uid ?: return
@@ -78,24 +91,13 @@ fun AddEntryScreen(
         scope.launch {
             try {
                 if (existing != null) {
-                    GlossaryRepository.updateEntry(
-                        uid, glossaryId,
-                        existing.copy(
-                            term = term.trim(),
-                            definition = definition.trim(),
-                            notes = notes.trim(),
-                        ),
-                    )
+                    val updated = existing.copy(term = term.trim(), notes = notes.trim())
+                    updated.setDefinitions(filledDefinitions)
+                    GlossaryRepository.updateEntry(uid, glossaryId, updated)
                 } else {
-                    GlossaryRepository.addEntry(
-                        uid, glossaryId,
-                        GlossaryEntry(
-                            term = term.trim(),
-                            definition = definition.trim(),
-                            notes = notes.trim(),
-                            createdAt = Date(),
-                        ),
-                    )
+                    val entry = GlossaryEntry(term = term.trim(), notes = notes.trim(), createdAt = Date())
+                    entry.setDefinitions(filledDefinitions)
+                    GlossaryRepository.addEntry(uid, glossaryId, entry)
                 }
                 nav.pop()
             } catch (e: Exception) {
@@ -131,10 +133,27 @@ fun AddEntryScreen(
             OutlinedTextField(term, { term = it }, label = { Text(stringResource(R.string.term)) },
                 singleLine = true, modifier = Modifier.fillMaxWidth())
 
-            SectionLabel(stringResource(R.string.definition))
-            OutlinedTextField(definition, { definition = it },
-                label = { Text(stringResource(R.string.what_it_means)) },
-                modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5)
+            SectionLabel(stringResource(R.string.definitions))
+            definitions.forEachIndexed { index, value ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(value, { definitions[index] = it },
+                        label = { Text(stringResource(R.string.what_it_means)) },
+                        modifier = Modifier.weight(1f), minLines = 2, maxLines = 5)
+                    // The last remaining field stays: an entry always has a definition.
+                    if (definitions.size > 1) {
+                        IconButton(onClick = { definitions.removeAt(index) }) {
+                            Icon(Icons.Filled.RemoveCircle,
+                                contentDescription = stringResource(R.string.remove_definition),
+                                tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+            TextButton(onClick = { definitions.add("") }) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.add_definition))
+            }
 
             SectionLabel(stringResource(R.string.notes_optional))
             OutlinedTextField(notes, { notes = it }, label = { Text(stringResource(R.string.notes_hint)) },

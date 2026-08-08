@@ -193,6 +193,9 @@
     <string name="glossaries">用語集</string>
     <string name="term">用語</string>
     <string name="definition">定義</string>
+    <string name="definitions">定義</string>
+    <string name="add_definition">定義を追加</string>
+    <string name="remove_definition">定義を削除</string>
     <string name="what_it_means">その意味</string>
     <string name="new_term">新しい用語</string>
     <string name="edit_term">用語を編集</string>

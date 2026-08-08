@@ -20,9 +20,12 @@ It reproduces the iOS app's interface and functionality:
   audio preserved).
 - **Glossaries** — a separate **My Glossaries** tab for single-language
   reference decks: one language, and each entry a **term** and its
-  **definition** (plus notes). Independent of vocabulary lists, but sharing the
-  Trash, the review schedule, and Statistics, and practised on two methods —
-  **Term** and **Definition** — instead of three.
+  **definitions** (plus notes). A term can mean several things, and each
+  definition is scheduled and practised on its own — five definitions are five
+  cards when the definition comes first, and one card revealing them all the
+  other way round. Independent of vocabulary lists, but sharing the Trash, the
+  review schedule, and Statistics, and practised on two methods — **Term** and
+  **Definition** — instead of three.
 - **Flashcard practice** — Daily assignment (only cards due today under each
   aspect's spaced-repetition schedule) or Free practice; multi-select "Show
   first" (Word / Translation / Audio); flip, grade "Got It" / "Practice Again",

@@ -28,11 +28,14 @@ progress over time.
   - free-form notes.
 - **Glossaries** — a separate **My Glossaries** tab for single-language
   reference decks. A glossary has one language, and each entry is a **term** and
-  its **definition** (plus optional notes) — no translation language, readings,
-  parts of speech or recordings. Glossaries are independent of vocabulary lists
-  (their own documents, screens and practice) but share the Trash, the review
-  schedule and the Statistics dashboard, practising two methods — **Term** and
-  **Definition** — instead of three.
+  its **definitions** (plus optional notes) — no translation language, readings,
+  parts of speech or recordings. A term can mean several things: each definition
+  has its own schedule, so a term with five definitions is five cards when the
+  definition comes first, and one card revealing them all the other way round.
+  Glossaries are independent of vocabulary lists (their own documents, screens
+  and practice) but share the Trash, the review schedule and the Statistics
+  dashboard, practising two methods — **Term** and **Definition** — instead of
+  three.
 - **Bulk editing** — multi-select words in a list to **delete** them or **move**
   them to another list (only lists with a matching learning + original language
   are offered as destinations). Moving a word preserves its review progress and
@@ -86,8 +89,9 @@ users/{uid}/lists/{listId}/words/{wordId}   -> VocabWord (term, translation, …
                                                  per-aspect review progress)
 users/{uid}/glossaries/{glossaryId}         -> Glossary (name, language, entryCount)
 users/{uid}/glossaries/{glossaryId}/entries/{entryId}
-                                            -> GlossaryEntry (term, definition,
-                                                 notes, review progress)
+                                            -> GlossaryEntry (term, definitions,
+                                                 notes, per-definition review
+                                                 progress)
 users/{uid}/dailyStats/{yyyy-MM-dd}         -> DailyStat (per-aspect remembered counts)
 
 Firebase Storage:

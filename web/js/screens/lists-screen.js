@@ -216,7 +216,7 @@ function presentNewListSheet(onCreated) {
       actionBtn.appendChild(icon("progress_activity", 24)); // shows the copy is in progress
       try {
         const listId = await Repo.createList(authState.uid, finalName, learning, original);
-        for (const w of words) await Repo.addWord(authState.uid, listId, w);
+        await Repo.addWords(authState.uid, listId, words);
         api.close();
         onCreated();
         toast(tf("Imported “%@” with %lld words.", finalName, words.length));
@@ -305,17 +305,14 @@ function presentImportNameSheet(shared, onCreated) {
       try {
         const newListId = await Repo.createList(
           authState.uid, finalName, src.learningLanguage || "", src.originalLanguage || "");
-        for (const sw of shared.words) {
-          const w = M.newWord({
-            term: sw.term || "",
-            translation: sw.translation || "",
-            notes: sw.notes || "",
-            partsOfSpeech: M.partOfSpeechValues(sw),
-            hiragana: sw.hiragana || null,
-            pinyin: sw.pinyin || null,
-          });
-          await Repo.addWord(authState.uid, newListId, w);
-        }
+        await Repo.addWords(authState.uid, newListId, shared.words.map((sw) => M.newWord({
+          term: sw.term || "",
+          translation: sw.translation || "",
+          notes: sw.notes || "",
+          partsOfSpeech: M.partOfSpeechValues(sw),
+          hiragana: sw.hiragana || null,
+          pinyin: sw.pinyin || null,
+        })));
         api.close();
         onCreated();
         toast(tf("Imported “%@” with %lld words.", finalName, shared.words.length));

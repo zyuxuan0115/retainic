@@ -17,7 +17,7 @@
 import { db, storage } from "./firebase.js";
 import {
   collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, increment, Timestamp, deleteField,
+  query, where, orderBy, limit, increment, Timestamp, deleteField, writeBatch,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -243,6 +243,24 @@ export async function addWord(uid, listId, word, audioBlob = null) {
   await setDoc(ref, toFirestore(w));
   await updateDoc(doc(listsRef(uid), listId), { wordCount: increment(1) });
   return ref.id;
+}
+
+/** The most words one batch writes. A batch takes 500 operations, and each one
+ *  here spends its last on the list's word count. */
+const WORD_BATCH_LIMIT = 499;
+
+/** Writes many words at once, for the import flows. Storing them in batches
+ *  costs one round trip per 499 words instead of two per word, and each batch
+ *  either lands whole or not at all. Imported words never carry audio, so
+ *  there's nothing to upload alongside them. */
+export async function addWords(uid, listId, words) {
+  for (let i = 0; i < words.length; i += WORD_BATCH_LIMIT) {
+    const chunk = words.slice(i, i + WORD_BATCH_LIMIT);
+    const batch = writeBatch(db);
+    for (const word of chunk) batch.set(doc(wordsRef(uid, listId)), toFirestore(word));
+    batch.update(doc(listsRef(uid), listId), { wordCount: increment(chunk.length) });
+    await batch.commit();
+  }
 }
 
 /** Updates a word. Pass `audioBlob` to (re)upload a recording, or

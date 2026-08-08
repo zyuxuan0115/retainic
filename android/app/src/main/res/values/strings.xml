@@ -210,6 +210,9 @@
     <string name="glossaries">Glossaries</string>
     <string name="term">Term</string>
     <string name="definition">Definition</string>
+    <string name="definitions">Definitions</string>
+    <string name="add_definition">Add definition</string>
+    <string name="remove_definition">Remove definition</string>
     <string name="what_it_means">What it means</string>
     <string name="new_term">New Term</string>
     <string name="edit_term">Edit Term</string>

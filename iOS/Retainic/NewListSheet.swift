@@ -239,8 +239,8 @@ struct NewListSheet: View {
                     learningLanguage: shared.list.learningLanguage ?? "",
                     originalLanguage: shared.list.originalLanguage ?? ""
                 )
-                for source in shared.words {
-                    let word = VocabWord(
+                let words = shared.words.map { source in
+                    VocabWord(
                         term: source.term,
                         translation: source.translation,
                         notes: source.notes,
@@ -248,8 +248,8 @@ struct NewListSheet: View {
                         hiragana: source.hiragana,
                         pinyin: source.pinyin
                     )
-                    try await VocabRepository.addWord(uid: uid, listId: newListId, word: word)
                 }
+                try await VocabRepository.addWords(uid: uid, listId: newListId, words: words)
                 isImporting = false
                 onImported()
                 dismiss()

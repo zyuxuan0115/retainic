@@ -99,9 +99,9 @@ struct GlossaryDetailView: View {
         case .unremembered: result = result.filter { !$0.isRemembered }
         }
         if !searchText.isEmpty {
-            result = result.filter {
-                $0.term.localizedCaseInsensitiveContains(searchText) ||
-                $0.definition.localizedCaseInsensitiveContains(searchText)
+            result = result.filter { entry in
+                entry.term.localizedCaseInsensitiveContains(searchText) ||
+                entry.definitionTexts.contains { $0.localizedCaseInsensitiveContains(searchText) }
             }
         }
         return result
@@ -309,7 +309,7 @@ struct GlossaryEntryRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(entry.term)
                 .font(.headline)
-            Text(entry.definition)
+            Text(entry.joinedDefinitions)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)

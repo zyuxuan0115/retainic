@@ -193,6 +193,9 @@
     <string name="glossaries">용어집</string>
     <string name="term">용어</string>
     <string name="definition">정의</string>
+    <string name="definitions">정의</string>
+    <string name="add_definition">정의 추가</string>
+    <string name="remove_definition">정의 삭제</string>
     <string name="what_it_means">뜻</string>
     <string name="new_term">새 용어</string>
     <string name="edit_term">용어 편집</string>

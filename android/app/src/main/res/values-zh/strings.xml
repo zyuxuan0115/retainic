@@ -193,6 +193,9 @@
     <string name="glossaries">术语表</string>
     <string name="term">术语</string>
     <string name="definition">释义</string>
+    <string name="definitions">释义</string>
+    <string name="add_definition">添加释义</string>
+    <string name="remove_definition">删除释义</string>
     <string name="what_it_means">它的含义</string>
     <string name="new_term">新建术语</string>
     <string name="edit_term">编辑术语</string>

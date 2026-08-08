@@ -75,10 +75,23 @@ enum GlossaryAspect: String, CaseIterable, Identifiable {
     }
 }
 
+/// One of the things a term means, with the review progress of its own card.
+struct GlossaryDefinition: Codable, Hashable {
+    var text: String = ""
+    var timesCorrect: Int = 0
+    var lastRemembered: Date?
+}
+
 /// A single term inside a glossary.
 struct GlossaryEntry: Codable, Identifiable {
     @DocumentID var id: String?
     var term: String
+    /// Everything the term means, each definition scheduled separately. Empty
+    /// on entries written before a term could mean several things, which store
+    /// the one meaning in `definition` instead.
+    var definitions: [GlossaryDefinition]?
+    /// The definitions as one line. Kept in step with `definitions` so clients
+    /// that only know about a single definition still read something coherent.
     var definition: String
     var notes: String
     /// Memory stats per aspect, keyed "term" and "definition". Stored for
@@ -100,7 +113,7 @@ struct GlossaryEntry: Codable, Identifiable {
     init(
         id: String? = nil,
         term: String,
-        definition: String,
+        definitions: [String],
         notes: String = "",
         memoryStats: [String: MemoryStat]? = nil,
         createdAt: Date = Date(),
@@ -114,7 +127,8 @@ struct GlossaryEntry: Codable, Identifiable {
     ) {
         self.id = id
         self.term = term
-        self.definition = definition
+        self.definitions = definitions.map { GlossaryDefinition(text: $0) }
+        self.definition = definitions.joined(separator: "; ")
         self.notes = notes
         self.memoryStats = memoryStats
         self.createdAt = createdAt
@@ -150,25 +164,54 @@ extension GlossaryEntry {
     static let termReviewGaps = VocabWord.wordReviewGaps
     static let definitionReviewGaps = VocabWord.translationReviewGaps
 
+    /// The entry's definitions, each with its own schedule. An entry written
+    /// before a term could mean several things reads as a single definition
+    /// carrying the entry's definition counters.
+    var definitionList: [GlossaryDefinition] {
+        if let definitions, !definitions.isEmpty { return definitions }
+        guard !definition.isEmpty else { return [] }
+        return [GlossaryDefinition(text: definition,
+                                   timesCorrect: timesDefinitionCorrect ?? 0,
+                                   lastRemembered: lastDefinitionRemembered)]
+    }
+
+    /// Just the text of each definition, for display and search.
+    var definitionTexts: [String] { definitionList.map(\.text) }
+
+    /// The definitions as one line, for list rows and the legacy single field.
+    var joinedDefinitions: String { definitionTexts.joined(separator: "; ") }
+
     func isTermDue(now: Date = Date()) -> Bool {
         ReviewSchedule.isDue(count: timesTermCorrect ?? 0, last: lastTermRemembered,
                              gaps: Self.termReviewGaps, now: now)
     }
 
-    func isDefinitionDue(now: Date = Date()) -> Bool {
-        ReviewSchedule.isDue(count: timesDefinitionCorrect ?? 0, last: lastDefinitionRemembered,
-                             gaps: Self.definitionReviewGaps, now: now)
+    /// Whether a definition is due. With no `index`, whether any is.
+    func isDefinitionDue(at index: Int? = nil, now: Date = Date()) -> Bool {
+        let list = definitionList
+        func due(_ i: Int) -> Bool {
+            ReviewSchedule.isDue(count: list[i].timesCorrect, last: list[i].lastRemembered,
+                                 gaps: Self.definitionReviewGaps, now: now)
+        }
+        if let index { return list.indices.contains(index) ? due(index) : false }
+        return list.indices.contains { due($0) }
     }
 
-    func isDue(_ aspect: GlossaryAspect, now: Date = Date()) -> Bool {
+    /// The positions of the definitions due for review right now.
+    func dueDefinitionIndexes(now: Date = Date()) -> [Int] {
+        definitionList.indices.filter { isDefinitionDue(at: $0, now: now) }
+    }
+
+    func isDue(_ aspect: GlossaryAspect, definitionIndex: Int? = nil, now: Date = Date()) -> Bool {
         switch aspect {
         case .term: return isTermDue(now: now)
-        case .definition: return isDefinitionDue(now: now)
+        case .definition: return isDefinitionDue(at: definitionIndex, now: now)
         }
     }
 
-    /// Records a correct recall for the given method.
-    mutating func markCorrect(aspect: GlossaryAspect) {
+    /// Records a correct recall for the given method. A definition recall
+    /// advances only the definition that was practised.
+    mutating func markCorrect(aspect: GlossaryAspect, definitionIndex: Int = 0) {
         let now = Date()
         timesSeen += 1
         switch aspect {
@@ -176,12 +219,42 @@ extension GlossaryEntry {
             timesTermCorrect = (timesTermCorrect ?? 0) + 1
             lastTermRemembered = now
         case .definition:
-            timesDefinitionCorrect = (timesDefinitionCorrect ?? 0) + 1
-            lastDefinitionRemembered = now
+            var list = definitionList
+            if list.indices.contains(definitionIndex) {
+                list[definitionIndex].timesCorrect += 1
+                list[definitionIndex].lastRemembered = now
+            }
+            definitions = list
+            syncDefinitionFields()
         }
         updateRememberFinal()
         lastReviewed = now
         record(aspect: aspect, correct: true, now: now)
+    }
+
+    /// Replaces the entry's definitions with `texts`, keeping the review
+    /// progress at each position: editing the wording of a definition leaves
+    /// its schedule alone, a new one starts unlearned, and a removed one takes
+    /// its progress with it.
+    mutating func setDefinitions(_ texts: [String]) {
+        let previous = definitionList
+        definitions = texts.enumerated().map { index, text in
+            GlossaryDefinition(text: text,
+                               timesCorrect: previous.indices.contains(index) ? previous[index].timesCorrect : 0,
+                               lastRemembered: previous.indices.contains(index) ? previous[index].lastRemembered : nil)
+        }
+        syncDefinitionFields()
+        updateRememberFinal()
+    }
+
+    /// Mirrors the definition list onto the fields that predate it: the joined
+    /// text, the lowest per-definition count (what mastery waits on), and the
+    /// most recent recall (what Statistics counts).
+    private mutating func syncDefinitionFields() {
+        let list = definitionList
+        definition = list.map(\.text).joined(separator: "; ")
+        timesDefinitionCorrect = list.map(\.timesCorrect).min() ?? 0
+        lastDefinitionRemembered = list.compactMap(\.lastRemembered).max()
     }
 
     mutating func markIncorrect(aspect: GlossaryAspect) {
@@ -199,16 +272,19 @@ extension GlossaryEntry {
         timesSeen = 0
         timesTermCorrect = 0
         timesDefinitionCorrect = 0
+        definitions = definitionTexts.map { GlossaryDefinition(text: $0) }
         memoryStats = nil
         remember_final = false
     }
 
     /// An entry is memorized once both methods have run their schedules out:
-    /// 8× term and 10× definition. Entries carry no audio, so the pronunciation
+    /// 8× term and 10× for every definition — a term with five meanings isn't
+    /// done until all five are. Entries carry no audio, so the pronunciation
     /// requirement words can have never applies here.
     private mutating func updateRememberFinal() {
+        let definitionsFinished = definitionList.allSatisfy { $0.timesCorrect >= Self.definitionReviewGaps.count }
         remember_final = (timesTermCorrect ?? 0) >= Self.termReviewGaps.count
-            && (timesDefinitionCorrect ?? 0) >= Self.definitionReviewGaps.count
+            && !definitionList.isEmpty && definitionsFinished
     }
 
     private mutating func record(aspect: GlossaryAspect, correct: Bool, now: Date) {

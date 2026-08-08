@@ -25,11 +25,14 @@ SDK loaded from a CDN. No build step.
   don't match the format are skipped and counted: no word, a part of speech
   that isn't one, or data in a column the file doesn't name.
 - **Glossaries** — a separate **My Glossaries** dashboard for single-language
-  reference decks: each entry is a term and its definition (plus optional
-  notes), with no translation language, readings or recordings. Glossaries are
-  independent of vocabulary lists — their own documents, screens and practice —
-  but they share the Trash and the spaced-repetition schedule, practising two
-  methods (*Term* and *Definition*) instead of three.
+  reference decks: each entry is a term and its definitions (plus optional
+  notes), with no translation language, readings or recordings. A term can mean
+  several things: every definition is scheduled and practised on its own, so a
+  term with five definitions is five cards when the definition comes first, and
+  one card revealing them all the other way round. Glossaries are independent of
+  vocabulary lists — their own documents, screens and practice — but they share
+  the Trash and the spaced-repetition schedule, practising two methods (*Term*
+  and *Definition*) instead of three.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list

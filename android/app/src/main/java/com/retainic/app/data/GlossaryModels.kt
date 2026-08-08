@@ -9,11 +9,16 @@ import java.util.Date
  * Glossary models, ported from the iOS app's GlossaryModels.swift.
  *
  * A glossary is a single-language reference deck: each entry is a term and its
- * definition. Glossaries are independent of vocabulary lists — their own
+ * definitions. Glossaries are independent of vocabulary lists — their own
  * documents, screens and practice — but they run on the same spaced-repetition
  * schedule as words, with two methods instead of three: recalling the term and
  * recalling the definition. There is no audio and no translation language, so
  * the pronunciation method never applies.
+ *
+ * A term can mean several things, so an entry carries a list of definitions,
+ * each with its own schedule: shown a definition, you recall the term, and
+ * every definition is a card of its own. The other direction — shown the term,
+ * recall what it means — stays one card that reveals them all.
  *
  * Layout:
  *   users/{uid}/glossaries/{glossaryId}                   -> Glossary
@@ -48,11 +53,29 @@ data class GlossaryPracticeCard(
     val glossaryId: String,
 )
 
+/** One of the things a term means, with the review progress of its own card. */
+@IgnoreExtraProperties
+data class GlossaryDefinition(
+    var text: String = "",
+    var timesCorrect: Int = 0,
+    var lastRemembered: Date? = null,
+)
+
 /** A single term inside a glossary. */
 @IgnoreExtraProperties
 data class GlossaryEntry(
     @DocumentId var id: String? = null,
     var term: String = "",
+    /**
+     * Everything the term means, each definition scheduled separately. Null or
+     * empty on entries written before a term could mean several things, which
+     * store the one meaning in [definition] instead.
+     */
+    var definitions: List<GlossaryDefinition>? = null,
+    /**
+     * The definitions as one line. Kept in step with [definitions] so clients
+     * that only know about a single definition still read something coherent.
+     */
     var definition: String = "",
     var notes: String = "",
     /** Per-aspect memory stats keyed "term"/"definition". */
@@ -75,28 +98,100 @@ data class GlossaryEntry(
     @get:Exclude
     val isRemembered: Boolean get() = remember_final == true
 
+    /**
+     * The entry's definitions, each with its own schedule. An entry written
+     * before a term could mean several things reads as a single definition
+     * carrying the entry's definition counters.
+     */
+    @get:Exclude
+    val definitionList: List<GlossaryDefinition>
+        get() {
+            val stored = definitions
+            if (!stored.isNullOrEmpty()) return stored
+            if (definition.isEmpty()) return emptyList()
+            return listOf(
+                GlossaryDefinition(definition, timesDefinitionCorrect ?: 0, lastDefinitionRemembered),
+            )
+        }
+
+    /** Just the text of each definition, for display and search. */
+    @get:Exclude
+    val definitionTexts: List<String> get() = definitionList.map { it.text }
+
+    /** The definitions as one line, for list rows and the legacy single field. */
+    @get:Exclude
+    val joinedDefinitions: String get() = definitionTexts.joinToString("; ")
+
     fun isTermDue(now: Date = Date()): Boolean =
         isDue(timesTermCorrect ?: 0, lastTermRemembered, termReviewGaps, now)
 
-    fun isDefinitionDue(now: Date = Date()): Boolean =
-        isDue(timesDefinitionCorrect ?: 0, lastDefinitionRemembered, definitionReviewGaps, now)
-
-    fun isDue(aspect: GlossaryAspect, now: Date = Date()): Boolean = when (aspect) {
-        GlossaryAspect.TERM -> isTermDue(now)
-        GlossaryAspect.DEFINITION -> isDefinitionDue(now)
+    /** Whether a definition is due. With no [index], whether any is. */
+    fun isDefinitionDue(now: Date = Date(), index: Int? = null): Boolean {
+        val list = definitionList
+        fun due(i: Int) = isDue(list[i].timesCorrect, list[i].lastRemembered, definitionReviewGaps, now)
+        if (index != null) return if (index in list.indices) due(index) else false
+        return list.indices.any { due(it) }
     }
 
-    /** Records a correct recall for the given method. */
-    fun markCorrect(aspect: GlossaryAspect) {
+    /** The positions of the definitions due for review right now. */
+    fun dueDefinitionIndexes(now: Date = Date()): List<Int> =
+        definitionList.indices.filter { isDefinitionDue(now, it) }
+
+    fun isDue(aspect: GlossaryAspect, now: Date = Date(), definitionIndex: Int? = null): Boolean = when (aspect) {
+        GlossaryAspect.TERM -> isTermDue(now)
+        GlossaryAspect.DEFINITION -> isDefinitionDue(now, definitionIndex)
+    }
+
+    /**
+     * Records a correct recall for the given method. A definition recall
+     * advances only the definition that was practised.
+     */
+    fun markCorrect(aspect: GlossaryAspect, definitionIndex: Int = 0) {
         val now = Date()
         timesSeen += 1
         when (aspect) {
             GlossaryAspect.TERM -> { timesTermCorrect = (timesTermCorrect ?: 0) + 1; lastTermRemembered = now }
-            GlossaryAspect.DEFINITION -> { timesDefinitionCorrect = (timesDefinitionCorrect ?: 0) + 1; lastDefinitionRemembered = now }
+            GlossaryAspect.DEFINITION -> {
+                val list = definitionList.map { it.copy() }
+                list.getOrNull(definitionIndex)?.let {
+                    it.timesCorrect += 1
+                    it.lastRemembered = now
+                }
+                definitions = list
+                syncDefinitionFields()
+            }
         }
         updateRememberFinal()
         lastReviewed = now
         record(aspect, correct = true, now)
+    }
+
+    /**
+     * Replaces the entry's definitions with [texts], keeping the review
+     * progress at each position: editing the wording of a definition leaves its
+     * schedule alone, a new one starts unlearned, and a removed one takes its
+     * progress with it.
+     */
+    fun setDefinitions(texts: List<String>) {
+        val previous = definitionList
+        definitions = texts.mapIndexed { index, text ->
+            val old = previous.getOrNull(index)
+            GlossaryDefinition(text, old?.timesCorrect ?: 0, old?.lastRemembered)
+        }
+        syncDefinitionFields()
+        updateRememberFinal()
+    }
+
+    /**
+     * Mirrors the definition list onto the fields that predate it: the joined
+     * text, the lowest per-definition count (what mastery waits on), and the
+     * most recent recall (what Statistics counts).
+     */
+    private fun syncDefinitionFields() {
+        val list = definitionList
+        definition = list.joinToString("; ") { it.text }
+        timesDefinitionCorrect = list.minOfOrNull { it.timesCorrect } ?: 0
+        lastDefinitionRemembered = list.mapNotNull { it.lastRemembered }.maxByOrNull { it.time }
     }
 
     fun markIncorrect(aspect: GlossaryAspect) {
@@ -107,6 +202,7 @@ data class GlossaryEntry(
 
     /** Resets all review progress so the entry counts as never remembered. */
     fun resetMemory() {
+        definitions = definitionTexts.map { GlossaryDefinition(it) }
         lastReviewed = null
         lastTermRemembered = null
         lastDefinitionRemembered = null
@@ -119,12 +215,14 @@ data class GlossaryEntry(
 
     /**
      * An entry is memorized once both methods have run their schedules out:
-     * 8x term and 10x definition. Entries carry no audio, so the pronunciation
+     * 8x term and 10x for every definition — a term with five meanings isn't
+     * done until all five are. Entries carry no audio, so the pronunciation
      * requirement words can have never applies here.
      */
     private fun updateRememberFinal() {
+        val list = definitionList
         remember_final = (timesTermCorrect ?: 0) >= termReviewGaps.size &&
-            (timesDefinitionCorrect ?: 0) >= definitionReviewGaps.size
+            list.isNotEmpty() && list.all { it.timesCorrect >= definitionReviewGaps.size }
     }
 
     private fun record(aspect: GlossaryAspect, correct: Boolean, now: Date) {

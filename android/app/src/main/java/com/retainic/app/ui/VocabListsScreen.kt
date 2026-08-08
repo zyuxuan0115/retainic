@@ -272,8 +272,8 @@ private fun NewListDialog(uid: String?, onDismiss: () -> Unit, onCreated: () -> 
                     shared.list.learningLanguage ?: "",
                     shared.list.originalLanguage ?: "",
                 )
-                for (source in shared.words) {
-                    val word = VocabWord(
+                val words = shared.words.map { source ->
+                    VocabWord(
                         term = source.term,
                         translation = source.translation,
                         notes = source.notes,
@@ -282,8 +282,8 @@ private fun NewListDialog(uid: String?, onDismiss: () -> Unit, onCreated: () -> 
                         pinyin = source.pinyin,
                         createdAt = java.util.Date(),
                     )
-                    VocabRepository.addWord(uid, newListId, word)
                 }
+                VocabRepository.addWords(uid, newListId, words)
                 isImporting = false
                 onCreated()
             } catch (e: Exception) {

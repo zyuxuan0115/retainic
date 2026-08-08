@@ -197,6 +197,27 @@ object VocabRepository {
     }
 
     /**
+     * The most words one batch writes. A batch takes 500 operations, and each
+     * one here spends its last on the list's word count.
+     */
+    private const val WORD_BATCH_LIMIT = 499
+
+    /**
+     * Writes many words at once, for the import flows. Storing them in batches
+     * costs one round trip per 499 words instead of two per word, and each
+     * batch either lands whole or not at all. Imported words never carry audio,
+     * so there's nothing to upload alongside them.
+     */
+    suspend fun addWords(uid: String, listId: String, words: List<VocabWord>) {
+        for (chunk in words.chunked(WORD_BATCH_LIMIT)) {
+            val batch = db.batch()
+            for (word in chunk) batch.set(wordsRef(uid, listId).document(), word.copy(id = null))
+            batch.update(listsRef(uid).document(listId), "wordCount", FieldValue.increment(chunk.size.toLong()))
+            batch.commit().await()
+        }
+    }
+
+    /**
      * Updates a word. Pass [newAudioFile] to (re)upload a recording, or
      * [removeAudio] to delete the existing recording. With neither, the existing
      * audioPath is preserved.

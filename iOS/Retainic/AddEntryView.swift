@@ -23,7 +23,9 @@ struct AddEntryView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var term: String
-    @State private var definition: String
+    /// One field per definition — a term can mean several things, and each
+    /// meaning is practised on its own.
+    @State private var definitions: [String]
     @State private var notes: String
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -35,15 +37,22 @@ struct AddEntryView: View {
         self.existingEntry = entry
         self.onDelete = onDelete
         _term = State(initialValue: entry?.term ?? "")
-        _definition = State(initialValue: entry?.definition ?? "")
+        let saved = entry?.definitionTexts ?? []
+        _definitions = State(initialValue: saved.isEmpty ? [""] : saved)
         _notes = State(initialValue: entry?.notes ?? "")
     }
 
     private var isEditing: Bool { existingEntry != nil }
 
+    /// The definitions that would be saved: trimmed, with the blank fields
+    /// dropped.
+    private var filledDefinitions: [String] {
+        definitions.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+    }
+
     private var canSave: Bool {
         guard !term.trimmingCharacters(in: .whitespaces).isEmpty,
-              !definition.trimmingCharacters(in: .whitespaces).isEmpty,
+              !filledDefinitions.isEmpty,
               !isSaving else { return false }
         // When editing, Save stays disabled until something actually changes.
         return hasChanges
@@ -54,7 +63,7 @@ struct AddEntryView: View {
     private var hasChanges: Bool {
         guard let entry = existingEntry else { return true }
         if term.trimmingCharacters(in: .whitespaces) != entry.term { return true }
-        if definition.trimmingCharacters(in: .whitespaces) != entry.definition { return true }
+        if filledDefinitions != entry.definitionTexts { return true }
         if notes.trimmingCharacters(in: .whitespaces) != entry.notes { return true }
         return false
     }
@@ -67,9 +76,30 @@ struct AddEntryView: View {
                     .textInputAutocapitalization(.never)
             }
 
-            Section("Definition") {
-                TextField("What it means", text: $definition, axis: .vertical)
-                    .lineLimit(2...5)
+            Section("Definitions") {
+                ForEach(definitions.indices, id: \.self) { index in
+                    HStack(alignment: .top, spacing: 8) {
+                        TextField("What it means", text: $definitions[index], axis: .vertical)
+                            .lineLimit(1...5)
+                        // The last remaining field stays: an entry always has
+                        // a definition.
+                        if definitions.count > 1 {
+                            Button {
+                                definitions.remove(at: index)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text("Remove definition"))
+                        }
+                    }
+                }
+                Button {
+                    definitions.append("")
+                } label: {
+                    Label("Add definition", systemImage: "plus.circle")
+                }
             }
 
             Section("Notes (optional)") {
@@ -132,7 +162,7 @@ struct AddEntryView: View {
     private func save() {
         guard let uid = auth.uid else { return }
         let trimmedTerm = term.trimmingCharacters(in: .whitespaces)
-        let trimmedDefinition = definition.trimmingCharacters(in: .whitespaces)
+        let trimmedDefinitions = filledDefinitions
         let trimmedNotes = notes.trimmingCharacters(in: .whitespaces)
 
         isSaving = true
@@ -142,13 +172,13 @@ struct AddEntryView: View {
             do {
                 if var entry = existingEntry {
                     entry.term = trimmedTerm
-                    entry.definition = trimmedDefinition
+                    entry.setDefinitions(trimmedDefinitions)
                     entry.notes = trimmedNotes
                     try await GlossaryRepository.updateEntry(uid: uid, glossaryId: glossaryId, entry: entry)
                 } else {
                     let entry = GlossaryEntry(
                         term: trimmedTerm,
-                        definition: trimmedDefinition,
+                        definitions: trimmedDefinitions,
                         notes: trimmedNotes
                     )
                     try await GlossaryRepository.addEntry(uid: uid, glossaryId: glossaryId, entry: entry)

@@ -6,13 +6,19 @@
 //  the same card), but over terms and definitions: two methods instead of
 //  three, and no audio.
 //
+//  A term that means several things is one card per meaning when the definition
+//  is shown first — each definition has its own schedule — and a single card
+//  the other way round, revealing them all.
+//
 
 import SwiftUI
 
-/// A card in the running session together with the method it's shown in.
+/// A card in the running session together with the method it's shown in, and —
+/// when the definition is the prompt — which definition is being practised.
 private struct GlossarySessionItem {
     var card: GlossaryPracticeCard
     let aspect: GlossaryAspect
+    var definitionIndex: Int = 0
 }
 
 struct GlossaryFlashcardView: View {
@@ -67,11 +73,7 @@ struct GlossaryFlashcardView: View {
     }
 
     /// Number of aspect-cards the current settings would include.
-    private var dueCount: Int {
-        selectedAspects.reduce(0) { sum, aspect in
-            sum + cards.filter { includes($0, aspect: aspect) }.count
-        }
-    }
+    private var dueCount: Int { deck(shuffled: false).count }
 
     private func toggleAspect(_ aspect: GlossaryAspect) {
         if selectedAspects.contains(aspect) {
@@ -134,7 +136,7 @@ struct GlossaryFlashcardView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(deck().isEmpty)
+            .disabled(dueCount == 0)
             .padding(.horizontal)
 
             Spacer()
@@ -145,8 +147,16 @@ struct GlossaryFlashcardView: View {
     private var practiceView: some View {
         let item = session[index]
         let entry = item.card.entry
-        // The front is a bare prompt (the term, or its definition); the answer
-        // side always reveals the whole entry.
+        let texts = entry.definitionTexts
+        // The front is a bare prompt (the term, or one of its definitions); the
+        // answer side always reveals the whole entry — the term with everything
+        // it can mean.
+        let prompt = item.aspect == .definition
+            ? (texts.indices.contains(item.definitionIndex) ? texts[item.definitionIndex] : "")
+            : entry.term
+        let answer = texts.count > 1
+            ? texts.map { "• \($0)" }.joined(separator: "\n")
+            : (texts.first ?? "")
         return VStack(spacing: 24) {
             ProgressView(value: Double(index), total: Double(session.count))
                 .padding(.top)
@@ -157,9 +167,9 @@ struct GlossaryFlashcardView: View {
             Spacer()
 
             CardView(
-                prompt: item.aspect == .definition ? entry.definition : entry.term,
+                prompt: prompt,
                 term: entry.term,
-                translation: entry.definition,
+                translation: answer,
                 notes: entry.notes,
                 isFlipped: isFlipped
             )
@@ -233,21 +243,30 @@ struct GlossaryFlashcardView: View {
 
     // MARK: - Session logic
 
-    /// Whether a card belongs in the deck for a method: in the daily assignment
-    /// that method must be due; in free practice every unmemorized term counts.
-    private func includes(_ card: GlossaryPracticeCard, aspect: GlossaryAspect) -> Bool {
-        dueOnly ? card.entry.isDue(aspect) : card.entry.remember_final != true
+    /// The session items one card contributes to a method: in the daily
+    /// assignment that method must be due; in free practice every unmemorized
+    /// term counts. Shown a definition, each definition is a card of its own.
+    private func items(for card: GlossaryPracticeCard, aspect: GlossaryAspect) -> [GlossarySessionItem] {
+        let entry = card.entry
+        if aspect == .term {
+            let include = dueOnly ? entry.isTermDue() : entry.remember_final != true
+            return include ? [GlossarySessionItem(card: card, aspect: aspect)] : []
+        }
+        let indexes = dueOnly
+            ? entry.dueDefinitionIndexes()
+            : (entry.remember_final != true ? Array(entry.definitionList.indices) : [])
+        return indexes.map { GlossarySessionItem(card: card, aspect: aspect, definitionIndex: $0) }
     }
 
-    private func deck() -> [GlossarySessionItem] {
+    private func deck(shuffled: Bool = true) -> [GlossarySessionItem] {
         guard !selectedAspects.isEmpty else { return [] }
         var items: [GlossarySessionItem] = []
         for aspect in selectedAspects {
-            for card in cards where includes(card, aspect: aspect) {
-                items.append(GlossarySessionItem(card: card, aspect: aspect))
+            for card in cards {
+                items.append(contentsOf: self.items(for: card, aspect: aspect))
             }
         }
-        return items.shuffled()
+        return shuffled ? items.shuffled() : items
     }
 
     private func startSession() {
@@ -267,7 +286,7 @@ struct GlossaryFlashcardView: View {
         // doesn't affect schedules or stats.
         if dueOnly {
             if correct {
-                item.card.entry.markCorrect(aspect: item.aspect)
+                item.card.entry.markCorrect(aspect: item.aspect, definitionIndex: item.definitionIndex)
                 recordDailyStat(aspect: item.aspect)
             } else {
                 item.card.entry.markIncorrect(aspect: item.aspect)

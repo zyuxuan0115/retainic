@@ -219,6 +219,29 @@ enum VocabRepository {
             .updateData(["wordCount": FieldValue.increment(Int64(1))])
     }
 
+    /// The most words one batch writes. A batch takes 500 operations, and each
+    /// one here spends its last on the list's word count.
+    private static let wordBatchLimit = 499
+
+    /// Writes many words at once, for the import flows. Storing them in batches
+    /// costs one round trip per 499 words instead of two per word, and each
+    /// batch either lands whole or not at all. Imported words never carry
+    /// audio, so there's nothing to upload alongside them.
+    static func addWords(uid: String, listId: String, words: [VocabWord]) async throws {
+        var start = words.startIndex
+        while start < words.endIndex {
+            let chunk = words[start ..< min(start + wordBatchLimit, words.endIndex)]
+            let batch = db.batch()
+            for word in chunk {
+                try batch.setData(from: word, forDocument: wordsRef(uid, listId).document())
+            }
+            batch.updateData(["wordCount": FieldValue.increment(Int64(chunk.count))],
+                             forDocument: listsRef(uid).document(listId))
+            try await batch.commit()
+            start += wordBatchLimit
+        }
+    }
+
     /// Updates a word. Pass `newAudioFileURL` to (re)upload a recording, or
     /// `removeAudio: true` to delete the existing recording. With neither, the
     /// existing `audioPath` is preserved (used for spaced-repetition updates).

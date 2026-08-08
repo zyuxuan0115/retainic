@@ -57,8 +57,16 @@ import kotlinx.coroutines.launch
  * Flip-card practice for a glossary. Same session flow as [FlashcardScreen] (and
  * the same card), but over terms and definitions: two methods instead of three,
  * and no audio.
+ *
+ * A term that means several things is one card per meaning when the definition
+ * is shown first — each definition has its own schedule — and a single card the
+ * other way round, revealing them all.
  */
-private data class GlossarySessionItem(val card: GlossaryPracticeCard, val aspect: GlossaryAspect)
+private data class GlossarySessionItem(
+    val card: GlossaryPracticeCard,
+    val aspect: GlossaryAspect,
+    val definitionIndex: Int = 0,
+)
 
 private val GlossaryAspect.labelRes: Int
     get() = when (this) {
@@ -85,21 +93,33 @@ fun GlossaryFlashcardScreen(
     var isFinished by remember { mutableStateOf(false) }
     var dueOnly by remember { mutableStateOf(true) }
 
-    // In the daily assignment a method must be due; in free practice every
-    // unmemorized term counts.
-    fun includes(card: GlossaryPracticeCard, aspect: GlossaryAspect): Boolean =
-        if (dueOnly) card.entry.isDue(aspect) else card.entry.remember_final != true
+    // The session items one card contributes to a method: in the daily
+    // assignment that method must be due; in free practice every unmemorized
+    // term counts. Shown a definition, each definition is a card of its own.
+    fun items(card: GlossaryPracticeCard, aspect: GlossaryAspect): List<GlossarySessionItem> {
+        val entry = card.entry
+        if (aspect == GlossaryAspect.TERM) {
+            val include = if (dueOnly) entry.isTermDue() else entry.remember_final != true
+            return if (include) listOf(GlossarySessionItem(card, aspect)) else emptyList()
+        }
+        val indexes = when {
+            dueOnly -> entry.dueDefinitionIndexes()
+            entry.remember_final != true -> entry.definitionList.indices.toList()
+            else -> emptyList()
+        }
+        return indexes.map { GlossarySessionItem(card, aspect, it) }
+    }
 
     fun deck(): List<GlossarySessionItem> {
         if (selectedAspects.isEmpty()) return emptyList()
-        val items = mutableListOf<GlossarySessionItem>()
+        val out = mutableListOf<GlossarySessionItem>()
         for (aspect in selectedAspects) {
-            for (card in cards) if (includes(card, aspect)) items.add(GlossarySessionItem(card, aspect))
+            for (card in cards) out.addAll(items(card, aspect))
         }
-        return items.shuffled()
+        return out.shuffled()
     }
 
-    val dueCount = selectedAspects.sumOf { aspect -> cards.count { includes(it, aspect) } }
+    val dueCount = selectedAspects.sumOf { aspect -> cards.flatMap { items(it, aspect) }.size }
 
     fun startSession() {
         val d = deck()
@@ -120,7 +140,7 @@ fun GlossaryFlashcardScreen(
         // doesn't affect schedules or stats.
         if (dueOnly) {
             if (correct) {
-                item.card.entry.markCorrect(item.aspect)
+                item.card.entry.markCorrect(item.aspect, item.definitionIndex)
                 // Glossary practice shares the daily tallies with list practice,
                 // so the Statistics charts count both.
                 auth.uid?.let { uid ->
@@ -257,6 +277,15 @@ private fun GlossaryPracticeView(
     onAnswer: (Boolean) -> Unit,
 ) {
     val entry = item.card.entry
+    val texts = entry.definitionTexts
+    // The front is a bare prompt (the term, or one of its definitions); the
+    // answer side always reveals the whole entry — the term with everything it
+    // can mean.
+    val prompt = when (item.aspect) {
+        GlossaryAspect.DEFINITION -> texts.getOrElse(item.definitionIndex) { "" }
+        GlossaryAspect.TERM -> entry.term
+    }
+    val answer = if (texts.size > 1) texts.joinToString("\n") { "• $it" } else texts.firstOrNull().orEmpty()
 
     Column(
         Modifier.fillMaxSize().padding(16.dp),
@@ -273,12 +302,12 @@ private fun GlossaryPracticeView(
         Spacer(Modifier.weight(1f))
 
         FlipCard(
-            prompt = if (item.aspect == GlossaryAspect.DEFINITION) entry.definition else entry.term,
+            prompt = prompt,
             frontIsPronunciation = false,
             term = entry.term,
             reading = null,
             posLabels = emptyList(),
-            translation = entry.definition,
+            translation = answer,
             notes = entry.notes,
             isFlipped = isFlipped,
             onClick = onFlip,

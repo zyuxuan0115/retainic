@@ -193,6 +193,9 @@
     <string name="glossaries">Glosarios</string>
     <string name="term">Término</string>
     <string name="definition">Definición</string>
+    <string name="definitions">Definiciones</string>
+    <string name="add_definition">Añadir definición</string>
+    <string name="remove_definition">Quitar definición</string>
     <string name="what_it_means">Qué significa</string>
     <string name="new_term">Nuevo término</string>
     <string name="edit_term">Editar término</string>

@@ -109,7 +109,7 @@ fun GlossaryDetailScreen(
             WordFilter.UNREMEMBERED -> !entry.isRemembered
         }) && (searchText.isEmpty() ||
             entry.term.contains(searchText, ignoreCase = true) ||
-            entry.definition.contains(searchText, ignoreCase = true))
+            entry.definitionTexts.any { it.contains(searchText, ignoreCase = true) })
     }
 
     fun endSelection() { selecting = false; selection.clear() }
@@ -318,7 +318,7 @@ private fun GlossaryEntryRow(
         }
         Column(Modifier.weight(1f)) {
             Text(entry.term, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(entry.definition, style = MaterialTheme.typography.bodyMedium,
+            Text(entry.joinedDefinitions, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
         }
     }
