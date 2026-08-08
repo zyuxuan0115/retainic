@@ -72,20 +72,11 @@ export async function StatsScreen(content) {
     today.translation += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
   }
 
-  // Glossary progress, for the charts glossaries get to themselves. A term is
-  // memorized once its term side and every one of its definitions have had
-  // their five recalls; anything with at least one recall behind it is under
-  // way, and the rest hasn't been started.
+  // Today's glossary recalls, for the charts glossaries get to themselves.
   const glossaryToday = { term: 0, definition: 0 };
-  const glossaryProgress = { memorized: 0, started: 0, untouched: 0 };
   for (const e of entries) {
     if (M.isToday(e.lastTermRemembered)) glossaryToday.term += 1;
-    const defs = G.definitions(e);
-    glossaryToday.definition += defs.filter((d) => M.isToday(d.lastRemembered)).length;
-    const recalls = (e.timesTermCorrect ?? 0) + defs.reduce((sum, d) => sum + d.timesCorrect, 0);
-    if (G.isRemembered(e)) glossaryProgress.memorized += 1;
-    else if (recalls > 0) glossaryProgress.started += 1;
-    else glossaryProgress.untouched += 1;
+    glossaryToday.definition += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
   }
 
   // The glossary curve reads the fields glossary practice tallies for itself.
@@ -110,24 +101,15 @@ export async function StatsScreen(content) {
       el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
     ),
     el(".stat-block", {},
-      el("h3", {}, t("Words today")),
+      el("h3", {}, t("Words practice today")),
       barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
     ),
     el(".stat-block", {},
       el("h3", {}, t("Words this week")),
       weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
     ),
-    // Glossaries get their own two charts: how far the terms have come, and
-    // what was practised today. Only shown once there are terms to chart.
-    entries.length ? el(".stat-block", {},
-      el("h3", {}, t("Glossary terms")),
-      barChart([
-        { label: t("Memorized"), value: glossaryProgress.memorized, color: colors.word },
-        { label: t("In progress"), value: glossaryProgress.started, color: colors.translation },
-        { label: t("Not started"), value: glossaryProgress.untouched, color: colors.pronunciation },
-      ]),
-      el("p.caption.center", {}, tf("%lld of %lld terms memorized", glossaryProgress.memorized, entries.length)),
-    ) : null,
+    // Glossaries get their own charts: what was practised today, and the week
+    // behind it. Only shown once there are terms to chart.
     entries.length ? el(".stat-block", {},
       el("h3", {}, t("Glossary practice today")),
       barChart([

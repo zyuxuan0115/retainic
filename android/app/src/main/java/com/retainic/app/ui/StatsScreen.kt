@@ -172,27 +172,17 @@ private fun StatsContent(
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // Words today (bar chart)
-        Text(stringResource(R.string.words_today), style = MaterialTheme.typography.titleMedium)
+        // Words practice today (bar chart)
+        Text(stringResource(R.string.words_practice_today), style = MaterialTheme.typography.titleMedium)
         BarChart(aspectKeys.mapIndexed { i, k -> Triple(aspectLabels[i], today[k] ?: 0, AspectColors[i]) })
 
         // Words this week (line chart)
         Text(stringResource(R.string.words_this_week), style = MaterialTheme.typography.titleMedium)
         WeekLineChart(week, aspectKeys, aspectLabels, AspectColors)
 
-        // Glossaries get their own two charts: how far the terms have come, and
-        // what was practised today.
+        // Glossaries get their own charts: what was practised today, and the
+        // week behind it.
         if (glossary.total > 0) {
-            Text(stringResource(R.string.glossary_terms), style = MaterialTheme.typography.titleMedium)
-            BarChart(listOf(
-                Triple(stringResource(R.string.memorized), glossary.memorized, AspectColors[0]),
-                Triple(stringResource(R.string.in_progress), glossary.started, AspectColors[1]),
-                Triple(stringResource(R.string.not_started), glossary.untouched, AspectColors[2]),
-            ))
-            Text(stringResource(R.string.n_of_m_terms_memorized, glossary.memorized, glossary.total),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-
             Text(stringResource(R.string.glossary_practice_today), style = MaterialTheme.typography.titleMedium)
             BarChart(listOf(
                 Triple(stringResource(R.string.term), glossary.termsToday, AspectColors[0]),
@@ -326,16 +316,12 @@ private fun WeekLineChart(
 }
 
 /**
- * How far a user's glossary terms have come, for the charts glossaries get to
- * themselves. A term is memorized once its term side and every one of its
- * definitions have had their five recalls; anything with at least one recall
- * behind it is under way, and the rest hasn't been started.
+ * What a user's glossary practice looks like today, for the charts glossaries
+ * get to themselves. [total] is how many terms there are at all, which decides
+ * whether those charts are worth showing.
  */
 data class GlossaryStats(
     val total: Int = 0,
-    val memorized: Int = 0,
-    val started: Int = 0,
-    val untouched: Int = 0,
     val termsToday: Int = 0,
     val definitionsToday: Int = 0,
 )
@@ -343,22 +329,14 @@ data class GlossaryStats(
 private fun glossaryStats(entries: List<GlossaryEntry>): GlossaryStats {
     val now = Date()
     fun isToday(d: Date?) = d != null && VocabWord.isSameDay(d, now)
-    var memorized = 0; var started = 0; var untouched = 0
     var termsToday = 0; var definitionsToday = 0
     for (e in entries) {
-        val definitions = e.definitionList
         if (isToday(e.lastTermRemembered)) termsToday++
         // Every definition is a card of its own, so each one recalled today
         // counts on its own.
-        definitionsToday += definitions.count { isToday(it.lastRemembered) }
-        val recalls = (e.timesTermCorrect ?: 0) + definitions.sumOf { it.timesCorrect }
-        when {
-            e.isRemembered -> memorized++
-            recalls > 0 -> started++
-            else -> untouched++
-        }
+        definitionsToday += e.definitionList.count { isToday(it.lastRemembered) }
     }
-    return GlossaryStats(entries.size, memorized, started, untouched, termsToday, definitionsToday)
+    return GlossaryStats(entries.size, termsToday, definitionsToday)
 }
 
 /**

@@ -66,8 +66,8 @@ export default {
   "Remembered": {
     "en": "Remembered",
   },
-  "Words today": {
-    "en": "Words today",
+  "Words practice today": {
+    "en": "Words practice today",
     "es": "Palabras de hoy",
     "zh": "今日单词",
     "ja": "今日の単語",
@@ -245,47 +245,12 @@ export default {
     "ko": "두 언어는 서로 달라야 합니다.",
   },
   // MARK: - Glossary charts (web only)
-  "Glossary terms": {
-    "en": "Glossary terms",
-    "es": "Términos del glosario",
-    "zh": "术语表术语",
-    "ja": "用語集の用語",
-    "ko": "용어집 용어",
-  },
   "Glossary practice today": {
     "en": "Glossary practice today",
     "es": "Práctica de glosario de hoy",
     "zh": "今日术语表练习",
     "ja": "今日の用語集の練習",
     "ko": "오늘의 용어집 연습",
-  },
-  "Memorized": {
-    "en": "Memorized",
-    "es": "Memorizados",
-    "zh": "已记住",
-    "ja": "暗記済み",
-    "ko": "암기 완료",
-  },
-  "In progress": {
-    "en": "In progress",
-    "es": "En curso",
-    "zh": "学习中",
-    "ja": "学習中",
-    "ko": "학습 중",
-  },
-  "Not started": {
-    "en": "Not started",
-    "es": "Sin empezar",
-    "zh": "未开始",
-    "ja": "未着手",
-    "ko": "시작 전",
-  },
-  "%lld of %lld terms memorized": {
-    "en": "%lld of %lld terms memorized",
-    "es": "%lld de %lld términos memorizados",
-    "zh": "已记住 %lld / %lld 个术语",
-    "ja": "%lld / %lld 件の用語を暗記済み",
-    "ko": "용어 %lld / %lld개 암기 완료",
   },
   "Glossary this week": {
     "en": "Glossary this week",

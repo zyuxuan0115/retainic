@@ -74,15 +74,11 @@ struct LearningStats {
     }
 }
 
-/// How far a user's glossary terms have come, for the charts glossaries get to
-/// themselves. A term is memorized once its term side and every one of its
-/// definitions have had their five recalls; anything with at least one recall
-/// behind it is under way, and the rest hasn't been started.
+/// What a user's glossary practice looks like today, for the charts glossaries
+/// get to themselves. `total` is how many terms there are at all, which decides
+/// whether those charts are worth showing.
 struct GlossaryStats {
     var total = 0
-    var memorized = 0
-    var started = 0
-    var untouched = 0
     var termsToday = 0
     var definitionsToday = 0
 
@@ -93,15 +89,10 @@ struct GlossaryStats {
         func isToday(_ date: Date?) -> Bool { date.map(cal.isDateInToday) ?? false }
         total = entries.count
         for entry in entries {
-            let definitions = entry.definitionList
             if isToday(entry.lastTermRemembered) { termsToday += 1 }
             // Every definition is a card of its own, so each one recalled today
             // counts on its own.
-            definitionsToday += definitions.filter { isToday($0.lastRemembered) }.count
-            let recalls = (entry.timesTermCorrect ?? 0) + definitions.reduce(0) { $0 + $1.timesCorrect }
-            if entry.isRemembered { memorized += 1 }
-            else if recalls > 0 { started += 1 }
-            else { untouched += 1 }
+            definitionsToday += entry.definitionList.filter { isToday($0.lastRemembered) }.count
         }
     }
 }
@@ -202,10 +193,9 @@ struct StatsView: View {
                 todayChart
                 weekChart
 
-                // Glossaries get their own two charts: how far the terms have
-                // come, and what was practised today.
+                // Glossaries get their own charts: what was practised today,
+                // and the week behind it.
                 if vm.glossary.total > 0 {
-                    glossaryProgressChart
                     glossaryTodayChart
                     glossaryWeekChart
                 }
@@ -286,7 +276,7 @@ struct StatsView: View {
 
     private var todayChart: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Words today")
+            Text("Words practice today")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             barChart(todayBars, labels: styleDomain)
@@ -355,32 +345,11 @@ struct StatsView: View {
         }
     }
 
-    private var glossaryProgressBars: [AspectBar] {
-        [
-            AspectBar(key: "memorized", label: "Memorized".localized(preferredLanguage), count: vm.glossary.memorized),
-            AspectBar(key: "started", label: "In progress".localized(preferredLanguage), count: vm.glossary.started),
-            AspectBar(key: "untouched", label: "Not started".localized(preferredLanguage), count: vm.glossary.untouched),
-        ]
-    }
-
     private var glossaryTodayBars: [AspectBar] {
         [
             AspectBar(key: "term", label: "Term".localized(preferredLanguage), count: vm.glossary.termsToday),
             AspectBar(key: "definition", label: "Definition".localized(preferredLanguage), count: vm.glossary.definitionsToday),
         ]
-    }
-
-    private var glossaryProgressChart: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Glossary terms")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            barChart(glossaryProgressBars, labels: glossaryProgressBars.map(\.label))
-            Text("\(vm.glossary.memorized) of \(vm.glossary.total) terms memorized")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-        }
     }
 
     private var glossaryTodayChart: some View {
