@@ -100,6 +100,9 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 }
 .icon-btn.danger { color: var(--danger); }
 .icon-btn:disabled, .icon-btn.disabled { color: var(--secondary-label); opacity: 0.4; cursor: default; pointer-events: none; }
+/* A button waiting on a write is disabled like any other, but its turning
+   glyph stays fully legible rather than fading out. */
+.icon-btn.busy:disabled, .icon-btn.busy.disabled { color: var(--tint); opacity: 1; }
 .txt-btn { border: none; background: transparent; color: var(--tint); font-size: 17px; padding: 4px 6px; }
 .txt-btn.bold { font-weight: 600; }
 .txt-btn.disabled, .txt-btn:disabled { color: var(--secondary-label); }
@@ -205,6 +208,9 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .auth-logo { display: flex; }
 
 .spinner { width: 28px; height: 28px; border: 3px solid var(--separator); border-top-color: var(--tint); border-radius: 50%; animation: spin .8s linear infinite; }
+/* A glyph that turns while it waits — the progress icon shown in place of a
+   button's own icon while an import writes. */
+.msym.spinning { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Auth */
@@ -242,6 +248,9 @@ textarea.field-input { resize: vertical; }
 .definition-row > textarea { flex: 1; min-width: 0; border: none; background: transparent; color: var(--label); padding: 12px 14px; outline: none; resize: vertical; }
 /* The chosen file's name, in place of the "Choose file…" label. */
 .file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A panel locked by an uninterruptible write. `inert` does the real blocking;
+   this covers browsers without it, and shows the wait in the cursor. */
+.sheet.busy { pointer-events: none; cursor: progress; }
 .form-footer-error, .danger-text { color: var(--danger); font-size: 13px; padding: 0 4px; }
 .form-action { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: transparent; color: var(--tint); padding: 12px 14px; font-size: 16px; border-bottom: 0.5px solid var(--separator); }
 .form-action.danger { color: var(--danger); }

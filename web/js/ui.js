@@ -145,6 +145,21 @@ export function icon(name, size) {
   if (size) s.style.fontSize = size + "px";
   return s;
 }
+/** The turning progress glyph shown while a write runs. */
+export function spinningIcon(size = 24) {
+  const s = icon("progress_activity", size);
+  s.classList.add("spinning");
+  return s;
+}
+
+/** Swaps a button's glyph for the turning progress one while an import writes,
+ *  and back to `symbol` (a fresh glyph) when it's over. */
+export function setButtonBusy(button, busy, symbol = null) {
+  clear(button);
+  button.classList.toggle("busy", busy);
+  button.appendChild(busy ? spinningIcon(24) : symbol);
+}
+
 export function bookIcon(size = 24) { return icon("menu_book", size); }
 export function glyph(name) {
   const map = { person: "person", envelope: "mail", lock: "lock", key: "key" };

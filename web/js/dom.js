@@ -64,6 +64,21 @@ export function svgEl(tag, attrs = {}, ...children) {
   return node;
 }
 
+/** Asks the browser to confirm before the page is left, so a half-written
+ *  import isn't abandoned by a stray reload. Only installed while `setBusy`
+ *  says a write is running. */
+function warnBeforeUnload(e) {
+  e.preventDefault();
+  e.returnValue = "";
+}
+
+/** Takes the app behind the overlay out of play while a write runs. The overlay
+ *  already swallows clicks; this also keeps the keyboard from tabbing into it. */
+function setAppInert(value) {
+  const app = document.getElementById("app");
+  if (app) app.inert = value;
+}
+
 /** A simple modal sheet. Returns { close }. `variant` adds a class to the
  *  overlay (e.g. "alert" for a compact centered confirm dialog). */
 export function presentSheet(contentBuilder, { variant = "" } = {}) {
@@ -72,12 +87,28 @@ export function presentSheet(contentBuilder, { variant = "" } = {}) {
   let dismissible = true;
   const api = {
     close() {
+      // A sheet that closes straight after its write finishes never clears the
+      // busy state itself, so undo the page-wide part of it here too.
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      setAppInert(false);
       overlay.classList.add("closing");
       setTimeout(() => overlay.remove(), 180);
     },
     // Toggle whether a click outside the sheet dismisses it (e.g. disabled while
     // a non-interruptible operation runs). `close()` still works programmatically.
     setDismissible(value) { dismissible = value; },
+    // Locks the panel for an uninterruptible write, such as importing a large
+    // file: nothing inside it can be clicked, focused or typed into, a click
+    // outside won't close it, and leaving the page asks for confirmation first.
+    // Everything behind the sheet is already covered by the overlay.
+    setBusy(busy) {
+      dismissible = !busy;
+      sheet.inert = busy;
+      sheet.classList.toggle("busy", busy);
+      setAppInert(busy);
+      if (busy) window.addEventListener("beforeunload", warnBeforeUnload);
+      else window.removeEventListener("beforeunload", warnBeforeUnload);
+    },
   };
   overlay.addEventListener("click", (e) => { if (e.target === overlay && dismissible) api.close(); });
   sheet.appendChild(contentBuilder(api));

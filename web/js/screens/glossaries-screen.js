@@ -13,7 +13,7 @@ import { entriesFromCsv, nameFromFile } from "../csv.js";
 import * as Repo from "../repository.js";
 import * as Auth from "../auth.js";
 import { authState } from "../auth.js";
-import { navBar, iconButton, spinner, emptyState, formSection, pickerRow, languageSelect, icon, errorState } from "../ui.js";
+import { navBar, iconButton, spinner, emptyState, formSection, pickerRow, languageSelect, icon, setButtonBusy, errorState } from "../ui.js";
 
 /** The glyph a glossary is shown with, everywhere it is listed. */
 export function glossaryGlyph(size = 24) {
@@ -165,9 +165,10 @@ function presentNewGlossarySheet(onCreated) {
       createBtn.classList.toggle("disabled", !ok);
     }
 
-    /** Locks the whole panel while a non-interruptible write runs. */
+    /** Locks the whole panel while a non-interruptible write runs: no field,
+     *  mode or button inside it can be touched until the import finishes. */
     function setBusy(busy) {
-      api.setDismissible(!busy);
+      api.setBusy(busy);
       for (const btn of [createBtn, cancelBtn]) {
         btn.disabled = busy;
         btn.classList.toggle("disabled", busy);
@@ -189,8 +190,7 @@ function presentNewGlossarySheet(onCreated) {
       const finalName = name.value.trim();
       const entries = csvEntries;
       setBusy(true);
-      clear(createBtn);
-      createBtn.appendChild(icon("progress_activity", 24)); // shows the import is in progress
+      setButtonBusy(createBtn, true); // a turning glyph while the terms are written
       try {
         const glossaryId = await Repo.createGlossary(authState.uid, finalName, language);
         await Repo.addEntries(authState.uid, glossaryId, entries);
@@ -200,8 +200,7 @@ function presentNewGlossarySheet(onCreated) {
       } catch (e) {
         csvFooter.textContent = Auth.friendlyMessage(e);
         setBusy(false);
-        clear(createBtn);
-        createBtn.appendChild(icon("check", 24));
+        setButtonBusy(createBtn, false, icon("check", 24));
         validate();
       }
     }

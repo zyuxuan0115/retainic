@@ -10,7 +10,7 @@ import * as Repo from "../repository.js";
 import * as M from "../models.js";
 import * as Auth from "../auth.js";
 import { authState } from "../auth.js";
-import { navBar, iconButton, spinner, emptyState, formSection, pickerRow, languageSelect, icon, rectStackGlyph, errorState } from "../ui.js";
+import { navBar, iconButton, spinner, emptyState, formSection, pickerRow, languageSelect, icon, setButtonBusy, rectStackGlyph, errorState } from "../ui.js";
 
 // MARK: - Lists screen
 
@@ -155,6 +155,7 @@ function presentNewListSheet(onCreated) {
     function updateActionBtn() {
       const creating = mode !== "import";
       clear(actionBtn);
+      actionBtn.classList.remove("busy"); // back from the turning glyph, if it was showing
       actionBtn.appendChild(icon(creating ? "check" : "arrow_forward", 24));
       const lbl = creating ? t("Create") : t("Import");
       actionBtn.title = lbl;
@@ -197,9 +198,10 @@ function presentNewListSheet(onCreated) {
       actionBtn.classList.toggle("disabled", !ok);
     }
 
-    /** Locks the whole panel while a non-interruptible write runs. */
+    /** Locks the whole panel while a non-interruptible write runs: no field,
+     *  mode or button inside it can be touched until the import finishes. */
     function setBusy(busy) {
-      api.setDismissible(!busy);
+      api.setBusy(busy);
       for (const btn of [actionBtn, cancelBtn]) {
         btn.disabled = busy;
         btn.classList.toggle("disabled", busy);
@@ -227,8 +229,7 @@ function presentNewListSheet(onCreated) {
       const finalName = name.value.trim();
       const words = csvWords;
       setBusy(true);
-      clear(actionBtn);
-      actionBtn.appendChild(icon("progress_activity", 24)); // shows the copy is in progress
+      setButtonBusy(actionBtn, true); // a turning glyph while the words are written
       try {
         const listId = await Repo.createList(authState.uid, finalName, learning, original);
         await Repo.addWords(authState.uid, listId, words);
@@ -292,7 +293,11 @@ function presentImportNameSheet(shared, onCreated) {
     nameInput.addEventListener("input", validate);
     const addBtn = el("button.icon-btn", { onclick: finish, title: t("Add"), "aria-label": t("Add") }, icon("check", 24));
     const cancelBtn = el("button.icon-btn", { onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel") }, icon("close", 24));
-    const setAddIcon = (glyph) => { clear(addBtn); addBtn.appendChild(icon(glyph, 24)); };
+    const setAddIcon = (glyph) => {
+      clear(addBtn);
+      addBtn.classList.remove("busy"); // back from the turning glyph, if it was showing
+      addBtn.appendChild(icon(glyph, 24));
+    };
 
     function validate() {
       if (importing) return;
@@ -306,6 +311,11 @@ function presentImportNameSheet(shared, onCreated) {
     let importing = false;
     function setLocked(locked) {
       importing = locked;
+      // Nothing in the panel — the name field included — can be touched while
+      // the copy runs. Unlocking after a failure restores the panel but not the
+      // click-outside dismissal: this sheet never had it.
+      api.setBusy(locked);
+      api.setDismissible(false);
       cancelBtn.disabled = locked;
       cancelBtn.classList.toggle("disabled", locked);
       addBtn.disabled = locked;
@@ -315,7 +325,7 @@ function presentImportNameSheet(shared, onCreated) {
     async function finish() {
       if (addBtn.disabled) return;
       setLocked(true);
-      setAddIcon("progress_activity"); // shows the copy is in progress
+      setButtonBusy(addBtn, true); // a turning glyph while the words are copied
       const finalName = nameInput.value.trim() || src.name || t("Imported list");
       try {
         const newListId = await Repo.createList(

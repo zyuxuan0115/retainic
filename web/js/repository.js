@@ -218,11 +218,14 @@ export async function restoreList(uid, listId) {
 /** Permanently delete a list, its words, and any pronunciation audio. */
 export async function purgeList(uid, listId) {
   const words = await getDocs(wordsRef(uid, listId));
-  for (const d of words.docs) {
-    await deleteAudio(audioStoragePath(uid, listId, d.id));
-    await deleteDoc(d.ref);
-  }
-  await deleteDoc(doc(listsRef(uid), listId));
+  // Only a word with a recording has anything in Storage, and those deletes
+  // don't have to wait on each other — emptying the Trash of a list that never
+  // had audio now costs no Storage requests at all.
+  await Promise.all(words.docs
+    .map((d) => d.data().audioPath)
+    .filter(Boolean)
+    .map((path) => deleteAudio(path)));
+  await deleteDocuments(words.docs.map((d) => d.ref), doc(listsRef(uid), listId));
 }
 
 // MARK: - Words
@@ -248,6 +251,23 @@ export async function addWord(uid, listId, word, audioBlob = null) {
 /** The most documents one batch writes. A batch takes 500 operations, and each
  *  one here spends its last on the parent's count of them. */
 const BATCH_LIMIT = 499;
+
+/** Deletes many documents in batches — emptying the Trash of a long list is one
+ *  round trip per 499 documents instead of one per document. `parent` (the list
+ *  or glossary itself) goes last, in the final batch, so a failure part-way
+ *  through leaves it in the Trash to be purged again rather than orphaning the
+ *  documents still under it. */
+async function deleteDocuments(refs, parent) {
+  for (let i = 0; i < refs.length; i += BATCH_LIMIT) {
+    const chunk = refs.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    for (const ref of chunk) batch.delete(ref);
+    if (i + BATCH_LIMIT >= refs.length) batch.delete(parent);
+    await batch.commit();
+  }
+  // A list or glossary with nothing under it still has itself to delete.
+  if (!refs.length) await deleteDoc(parent);
+}
 
 /** Writes many words at once, for the import flows. Storing them in batches
  *  costs one round trip per 499 words instead of two per word, and each batch
@@ -348,8 +368,7 @@ export async function restoreGlossary(uid, glossaryId) {
 /** Permanently delete a glossary and its entries. */
 export async function purgeGlossary(uid, glossaryId) {
   const entries = await getDocs(entriesRef(uid, glossaryId));
-  for (const d of entries.docs) await deleteDoc(d.ref);
-  await deleteDoc(doc(glossariesRef(uid), glossaryId));
+  await deleteDocuments(entries.docs.map((d) => d.ref), doc(glossariesRef(uid), glossaryId));
 }
 
 // MARK: - Glossary entries
