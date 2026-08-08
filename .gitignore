@@ -1,0 +1,34 @@
+# Gradle output (the Android app).
+#
+# None of this is source: it is produced by a build and rebuilt from scratch on
+# the next one. `build/` is deliberately unanchored so it catches both the
+# project's own output (android/build/) and each module's (android/app/build/).
+
+build/
+.gradle/
+
+# The local SDK path Gradle writes on first sync — machine-specific.
+local.properties
+
+# Packaged and intermediate build products, wherever they land.
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+
+# Xcode: per-user window, scheme and breakpoint state.
+xcuserdata/
+DerivedData/
+
+# IDE project state.
+.idea/
+
+# Generated code index.
+graphify-out/
+
+# Node.
+node_modules/
+
+# macOS.
+.DS_Store
