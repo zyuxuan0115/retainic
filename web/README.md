@@ -32,7 +32,11 @@ SDK loaded from a CDN. No build step.
   one card revealing them all the other way round. Glossaries are independent of
   vocabulary lists — their own documents, screens and practice — but they share
   the Trash and the spaced-repetition schedule, practising two methods (*Term*
-  and *Definition*) instead of three.
+  and *Definition*) instead of three. Glossaries have their own CSV pair:
+  **New Glossary → Import CSV** fills a new glossary from a file (columns: term,
+  definitions, notes — several definitions separated by semicolons, or the same
+  term repeated on another row, which merges into one entry), and **Glossary
+  Settings → Download CSV** writes those same columns back out.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list

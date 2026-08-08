@@ -8,6 +8,7 @@
 
 import { LANGUAGES, t } from "./i18n.js";
 import { newWord, posKey } from "./models.js";
+import { newEntry } from "./glossary.js";
 
 /** Escapes one CSV field per RFC 4180: wrap in quotes when it contains a comma,
  *  quote, or newline, doubling any interior quotes. */
@@ -73,38 +74,58 @@ const EXPORTED = {
   "Reading": "reading",
 };
 
+/** What one kind of file looks like: the column order assumed without a header
+ *  row, columns only a header can name, the extra spellings each column answers
+ *  to, and the localized headers this app's own export writes. `lookup` is
+ *  built on first use. */
+const WORD_SCHEMA = {
+  columns: COLUMNS, headerOnly: ["reading"], aliases: ALIASES, exported: EXPORTED, lookup: null,
+};
+
 function normalize(value) {
   return String(value).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-let headerNames = null;
-
-/** Header label → column, covering the canonical names, their aliases, and the
- *  exported headers in every supported interface language. */
-function headerLookup() {
-  if (headerNames) return headerNames;
-  headerNames = new Map();
-  for (const field of [...COLUMNS, "reading"]) headerNames.set(normalize(field), field);
-  for (const [field, aliases] of Object.entries(ALIASES)) {
-    for (const alias of aliases) headerNames.set(normalize(alias), field);
+/** Header label → column for a schema, covering the canonical names, their
+ *  aliases, and the exported headers in every supported interface language. */
+function headerLookup(schema) {
+  if (schema.lookup) return schema.lookup;
+  const names = new Map();
+  for (const field of [...schema.columns, ...schema.headerOnly]) names.set(normalize(field), field);
+  for (const [field, aliases] of Object.entries(schema.aliases)) {
+    for (const alias of aliases) names.set(normalize(alias), field);
   }
   for (const language of LANGUAGES) {
-    for (const [key, field] of Object.entries(EXPORTED)) {
-      headerNames.set(normalize(t(key, language.code)), field);
+    for (const [key, field] of Object.entries(schema.exported)) {
+      names.set(normalize(t(key, language.code)), field);
     }
   }
-  return headerNames;
+  schema.lookup = names;
+  return names;
 }
 
 /** The columns named by a header row, or null when the row isn't one. A row
  *  counts as a header only if every filled cell names a known column and one of
  *  them is the term — so a data row starting with a real word is never eaten. */
-function headerFields(row) {
-  const lookup = headerLookup();
+function headerFields(row, schema) {
+  const lookup = headerLookup(schema);
   const cells = row.map(normalize);
   const fields = cells.map((cell) => (cell ? lookup.get(cell) ?? null : null));
   if (cells.some((cell, i) => cell && !fields[i])) return null;
   return fields.includes("term") ? fields : null;
+}
+
+/** The rows of a file that hold data, dropping the blank ones. */
+function dataRows(text) {
+  return parseCsv(text).filter((row) => row.some((field) => field.trim() !== ""));
+}
+
+/** Reads one row's cell for `field`, or "" when the file has no such column. */
+function cellReader(row, fields) {
+  return (field) => {
+    const index = fields.indexOf(field);
+    return index < 0 ? "" : (row[index] ?? "").trim();
+  };
 }
 
 /** Parts of speech from one cell: labels in any supported language (or their
@@ -136,19 +157,16 @@ function partsOfSpeechFrom(raw) {
  *  cell holds something that isn't a part of speech in any supported language,
  *  and rows with data in a column the file doesn't name. */
 export function wordsFromCsv(text, learningLanguage = "") {
-  const rows = parseCsv(text).filter((row) => row.some((field) => field.trim() !== ""));
+  const rows = dataRows(text);
   if (!rows.length) return { words: [], skipped: 0 };
 
-  const header = headerFields(rows[0]);
+  const header = headerFields(rows[0], WORD_SCHEMA);
   const fields = header ?? COLUMNS;
   const words = [];
   let skipped = 0;
 
   for (const row of rows.slice(header ? 1 : 0)) {
-    const cell = (field) => {
-      const index = fields.indexOf(field);
-      return index < 0 ? "" : (row[index] ?? "").trim();
-    };
+    const cell = cellReader(row, fields);
     const term = cell("term");
     if (!term) { skipped++; continue; }
     // Content past the last known column (or under a blank header) means the
@@ -167,4 +185,84 @@ export function wordsFromCsv(text, learningLanguage = "") {
     }));
   }
   return { words, skipped };
+}
+
+// MARK: - CSV → glossary entries
+
+/** The column order assumed for a glossary file with no header row. */
+const ENTRY_COLUMNS = ["term", "definitions", "notes"];
+
+const ENTRY_SCHEMA = {
+  columns: ENTRY_COLUMNS,
+  headerOnly: [],
+  aliases: {
+    definitions: ["definition", "meaning", "meanings", "what it means"],
+    notes: ["note"],
+  },
+  // The localized headers `downloadGlossaryCSV` writes. "Definition" is here
+  // too so a file exported before a term could mean several things still reads.
+  exported: { "Term": "term", "Definitions": "definitions", "Definition": "definitions", "Notes": "notes" },
+  lookup: null,
+};
+
+/** The separator between definitions inside one cell, and what the glossary
+ *  export joins them with. */
+export const DEFINITION_SEPARATOR = "; ";
+
+/** The definitions in one cell: several meanings separated by semicolons or
+ *  pipes, blank pieces dropped. */
+function definitionsFrom(raw) {
+  return String(raw).split(/[;|]/).map((piece) => piece.trim()).filter(Boolean);
+}
+
+/** Reads CSV text into new entry objects ready for `Repo.addEntries`.
+ *
+ *  Columns are taken positionally in `ENTRY_COLUMNS` order — term, definitions,
+ *  notes — unless the file starts with a header row, in which case they're
+ *  matched by name, including the localized headers this app's own export
+ *  writes.
+ *
+ *  A term that means several things can be written either way: as one cell of
+ *  definitions separated by semicolons (what the export writes), or as one row
+ *  per definition — rows that repeat a term are merged into a single entry
+ *  holding all of its definitions, keeping the first notes given.
+ *
+ *  A row that doesn't fit that shape is skipped rather than half-imported, and
+ *  the skipped rows are counted: rows with no term, rows with no definition,
+ *  and rows with data in a column the file doesn't name. */
+export function entriesFromCsv(text) {
+  const rows = dataRows(text);
+  if (!rows.length) return { entries: [], skipped: 0 };
+
+  const header = headerFields(rows[0], ENTRY_SCHEMA);
+  const fields = header ?? ENTRY_COLUMNS;
+  const byTerm = new Map();
+  const drafts = [];
+  let skipped = 0;
+
+  for (const row of rows.slice(header ? 1 : 0)) {
+    const cell = cellReader(row, fields);
+    const term = cell("term");
+    if (!term) { skipped++; continue; }
+    // Content past the last known column (or under a blank header) means the
+    // row has more fields than the format defines — don't guess at it.
+    if (row.some((value, i) => !fields[i] && value.trim() !== "")) { skipped++; continue; }
+    const definitions = definitionsFrom(cell("definitions"));
+    if (!definitions.length) { skipped++; continue; }
+    const notes = cell("notes");
+
+    const existing = byTerm.get(term.toLowerCase());
+    if (existing) {
+      // The same term again is another thing it means, not another entry.
+      for (const definition of definitions) {
+        if (!existing.definitions.includes(definition)) existing.definitions.push(definition);
+      }
+      if (!existing.notes) existing.notes = notes;
+      continue;
+    }
+    const draft = { term, definitions, notes };
+    byTerm.set(term.toLowerCase(), draft);
+    drafts.push(draft);
+  }
+  return { entries: drafts.map((draft) => newEntry(draft)), skipped };
 }

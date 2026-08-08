@@ -14,7 +14,8 @@ defineGlobal("document", { documentElement: { lang: "en" } });
 defineGlobal("window", { dispatchEvent: () => {} });
 defineGlobal("CustomEvent", class CustomEvent {});
 
-const { csvEscape, parseCsv, wordsFromCsv } = await import("../js/csv.js");
+const { csvEscape, parseCsv, wordsFromCsv, entriesFromCsv, DEFINITION_SEPARATOR } = await import("../js/csv.js");
+const G = await import("../js/glossary.js");
 
 test("parseCsv handles quotes, embedded separators, CRLF, and a BOM", () => {
   const text = '﻿一,"a, b","say ""hi"""\r\nmulti,"line\nbreak",\r\n';
@@ -108,4 +109,64 @@ test("a data row is never mistaken for a header", () => {
 test("empty and blank-only files yield no words", () => {
   assert.deepEqual(wordsFromCsv(""), { words: [], skipped: 0 });
   assert.deepEqual(wordsFromCsv("\n,,\r\n"), { words: [], skipped: 0 });
+});
+
+// MARK: - Glossary entries
+
+test("headerless glossary rows are read as term, definitions, notes", () => {
+  const { entries, skipped } = entriesFromCsv("bank,a financial institution; the side of a river,where money sleeps\ntort,a civil wrong,\n");
+  assert.equal(skipped, 0);
+  assert.deepEqual(entries.map((e) => e.term), ["bank", "tort"]);
+  // Several meanings in one cell become several definitions, each with its own
+  // review schedule.
+  assert.deepEqual(G.definitionTexts(entries[0]), ["a financial institution", "the side of a river"]);
+  assert.equal(entries[0].notes, "where money sleeps");
+  assert.deepEqual(G.dueDefinitionIndexes(entries[0]), [0, 1]);
+  assert.deepEqual(G.definitionTexts(entries[1]), ["a civil wrong"]);
+});
+
+test("a repeated term is another meaning of it, not another entry", () => {
+  const { entries, skipped } = entriesFromCsv(
+    "bank,a financial institution,where money sleeps\nBank,the side of a river\nbank,a financial institution\n");
+  assert.equal(skipped, 0);
+  assert.equal(entries.length, 1);
+  // Matched without regard to case, and an identical definition isn't repeated.
+  assert.deepEqual(G.definitionTexts(entries[0]), ["a financial institution", "the side of a river"]);
+  assert.equal(entries[0].notes, "where money sleeps");
+});
+
+test("a glossary header row maps columns by name, in any order", () => {
+  const { entries } = entriesFromCsv("Notes,Definition,Term\na pet,a small cat|a big cat,猫\n");
+  assert.equal(entries[0].term, "猫");
+  // Pipes separate meanings too, and the singular "Definition" header still reads.
+  assert.deepEqual(G.definitionTexts(entries[0]), ["a small cat", "a big cat"]);
+  assert.equal(entries[0].notes, "a pet");
+});
+
+test("a glossary file exported by the app imports back", () => {
+  // What downloadGlossaryCSV writes: localized headers, a BOM, and the
+  // definitions joined into one cell.
+  const exported = '﻿用語,定義,メモ\r\n猫,"a small cat; a pet",fluffy\r\n';
+  const { entries, skipped } = entriesFromCsv(exported);
+  assert.equal(skipped, 0);
+  assert.equal(entries[0].term, "猫");
+  assert.deepEqual(G.definitionTexts(entries[0]), ["a small cat", "a pet"]);
+  assert.equal(entries[0].notes, "fluffy");
+  // The separator the export joins with is the one the import splits on.
+  assert.equal(["a", "b"].join(DEFINITION_SEPARATOR), "a; b");
+});
+
+test("glossary rows that don't match the format are skipped", () => {
+  // No term, and no definition: nothing to practise either way.
+  const { entries, skipped } = entriesFromCsv(",a civil wrong\ntort,\nlaches,unreasonable delay\n");
+  assert.equal(skipped, 2);
+  assert.deepEqual(entries.map((e) => e.term), ["laches"]);
+
+  // Data past the last column the file names has nowhere to go.
+  assert.equal(entriesFromCsv("tort,a civil wrong,a note,extra\n").skipped, 1);
+  // Trailing empty fields are not "extra" data.
+  assert.equal(entriesFromCsv("tort,a civil wrong,a note,\n").skipped, 0);
+
+  assert.deepEqual(entriesFromCsv(""), { entries: [], skipped: 0 });
+  assert.deepEqual(entriesFromCsv("\n,,\r\n"), { entries: [], skipped: 0 });
 });

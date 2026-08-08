@@ -245,17 +245,17 @@ export async function addWord(uid, listId, word, audioBlob = null) {
   return ref.id;
 }
 
-/** The most words one batch writes. A batch takes 500 operations, and each one
- *  here spends its last on the list's word count. */
-const WORD_BATCH_LIMIT = 499;
+/** The most documents one batch writes. A batch takes 500 operations, and each
+ *  one here spends its last on the parent's count of them. */
+const BATCH_LIMIT = 499;
 
 /** Writes many words at once, for the import flows. Storing them in batches
  *  costs one round trip per 499 words instead of two per word, and each batch
  *  either lands whole or not at all. Imported words never carry audio, so
  *  there's nothing to upload alongside them. */
 export async function addWords(uid, listId, words) {
-  for (let i = 0; i < words.length; i += WORD_BATCH_LIMIT) {
-    const chunk = words.slice(i, i + WORD_BATCH_LIMIT);
+  for (let i = 0; i < words.length; i += BATCH_LIMIT) {
+    const chunk = words.slice(i, i + BATCH_LIMIT);
     const batch = writeBatch(db);
     for (const word of chunk) batch.set(doc(wordsRef(uid, listId)), toFirestore(word));
     batch.update(doc(listsRef(uid), listId), { wordCount: increment(chunk.length) });
@@ -363,6 +363,18 @@ export async function addEntry(uid, glossaryId, entry) {
   const ref = await addDoc(entriesRef(uid, glossaryId), toFirestore(entry));
   await updateDoc(doc(glossariesRef(uid), glossaryId), { entryCount: increment(1) });
   return ref.id;
+}
+
+/** Writes many entries at once, for the CSV import — one round trip per 499
+ *  terms instead of two per term, each batch landing whole or not at all. */
+export async function addEntries(uid, glossaryId, entries) {
+  for (let i = 0; i < entries.length; i += BATCH_LIMIT) {
+    const chunk = entries.slice(i, i + BATCH_LIMIT);
+    const batch = writeBatch(db);
+    for (const entry of chunk) batch.set(doc(entriesRef(uid, glossaryId)), toFirestore(entry));
+    batch.update(doc(glossariesRef(uid), glossaryId), { entryCount: increment(chunk.length) });
+    await batch.commit();
+  }
 }
 
 export async function updateEntry(uid, glossaryId, entry) {

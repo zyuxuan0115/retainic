@@ -45,6 +45,17 @@ export function clear(node) {
   return node;
 }
 
+/** Saves a blob to the user's downloads as `filename`. Shared by the list and
+ *  glossary CSV exports. */
+export function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** Namespaced element creation for inline SVG charts. */
 export function svgEl(tag, attrs = {}, ...children) {
   const node = document.createElementNS("http://www.w3.org/2000/svg", tag);

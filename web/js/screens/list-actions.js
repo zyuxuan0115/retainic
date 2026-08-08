@@ -3,7 +3,7 @@
 //  Retainic Web
 //
 
-import { el, toast } from "../dom.js";
+import { el, toast, triggerDownload } from "../dom.js";
 import { t, preferredLanguage } from "../i18n.js";
 import { csvEscape } from "../csv.js";
 import * as Repo from "../repository.js";
@@ -71,14 +71,4 @@ export async function shareListId(list) {
   toast(ok
     ? t("Unique ID copied to clipboard. Share it with others so they can create the exact same wordlist.")
     : `${t("Couldn't copy automatically. Your list's unique ID is:")} ${id}`);
-}
-
-/** Downloads a Blob under the given filename via a temporary anchor. */
-function triggerDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = el("a", { href: url, download: filename });
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

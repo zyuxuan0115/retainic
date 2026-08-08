@@ -12,6 +12,7 @@ import { authState } from "../auth.js";
 import { navBar, iconButton, spinner, emptyState, confirmDialog, formSection, pickerRow, icon, errorState } from "../ui.js";
 import { glossaryGlyph } from "./glossaries-screen.js";
 import { presentEntrySheet } from "./entry-sheet.js";
+import { downloadGlossaryCSV } from "./glossary-actions.js";
 
 export async function GlossaryDetailScreen(content, glossary, { onBack, onPracticeChange }) {
   let entries = [];
@@ -157,6 +158,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
       name: glossaryName,
       filter,
       onFilter: (f) => { filter = f; renderAll(); },
+      onDownload: () => downloadGlossaryCSV({ ...glossary, name: glossaryName }),
       onRename: async (newName) => {
         const trimmed = newName.trim();
         if (!trimmed) return;
@@ -184,7 +186,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   }
 }
 
-function presentGlossarySettingsSheet({ name, filter, onFilter, onRename, onReset, onTrash }) {
+function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onRename, onReset, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -217,6 +219,13 @@ function presentGlossarySettingsSheet({ name, filter, onFilter, onRename, onRese
       el(".form", {},
         formSection(t("Glossary name"), el(".form-card", {}, nameInput)),
         formSection(t("Show terms"), el(".form-card", {}, pickerRow(t("Show terms"), filterSel))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action", {
+              onclick: () => { onDownload(); api.close(); },
+            }, icon("download", 20), t("Download CSV")),
+          ),
+          el(".form-note", {}, t("Save this glossary's terms as a .csv file."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action.danger", {
