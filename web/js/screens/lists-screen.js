@@ -77,6 +77,8 @@ function presentNewListSheet(onCreated) {
     let csvFileName = "";
     let csvWords = [];
     const csvStatus = el(".form-note");
+    // Names the chosen file in place of the "Choose file…" prompt.
+    const fileLabel = el("span.file-name", {}, t("Choose file…"));
     const csvFooter = el(".form-footer-error");
     const fileInput = el("input", {
       type: "file", accept: ".csv,text/csv", style: "display:none", onchange: readChosenFile,
@@ -85,7 +87,7 @@ function presentNewListSheet(onCreated) {
       formSection(t("Words file"),
         el(".form-card", {},
           el("button.form-action", { onclick: () => fileInput.click() },
-            icon("upload_file", 22), el("span", {}, t("Choose file…"))),
+            icon("upload_file", 22), fileLabel),
         ),
         el(".form-note", {}, t("Columns, in order: word, translation, notes, part of speech, hiragana, pinyin. A header row is optional, and files exported from Retainic work as-is.")),
         csvStatus, csvFooter),
@@ -98,6 +100,7 @@ function presentNewListSheet(onCreated) {
       if (!file) return;
       csvText = null;
       csvFileName = file.name;
+      fileLabel.textContent = file.name;
       suggestName(file.name);
       try { csvText = await file.text(); }
       catch { csvWords = []; csvStatus.textContent = ""; csvFooter.textContent = t("Couldn't read that file."); validate(); return; }

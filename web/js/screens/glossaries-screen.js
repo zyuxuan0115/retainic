@@ -81,6 +81,8 @@ function presentNewGlossarySheet(onCreated) {
     let csvFileName = "";
     let csvEntries = [];
     const csvStatus = el(".form-note");
+    // Names the chosen file in place of the "Choose file…" prompt.
+    const fileLabel = el("span.file-name", {}, t("Choose file…"));
     const csvFooter = el(".form-footer-error");
     const fileInput = el("input", {
       type: "file", accept: ".csv,text/csv", style: "display:none", onchange: readChosenFile,
@@ -89,7 +91,7 @@ function presentNewGlossarySheet(onCreated) {
       formSection(t("Terms file"),
         el(".form-card", {},
           el("button.form-action", { onclick: () => fileInput.click() },
-            icon("upload_file", 22), el("span", {}, t("Choose file…"))),
+            icon("upload_file", 22), fileLabel),
         ),
         el(".form-note", {}, t("Columns, in order: term, definitions, notes. Separate several definitions with a semicolon, or repeat the term on another row. A header row is optional, and files exported from Retainic work as-is.")),
         csvStatus, csvFooter),
@@ -102,6 +104,7 @@ function presentNewGlossarySheet(onCreated) {
       if (!file) return;
       csvText = null;
       csvFileName = file.name;
+      fileLabel.textContent = file.name;
       suggestName(file.name);
       try { csvText = await file.text(); }
       catch { csvEntries = []; csvStatus.textContent = ""; csvFooter.textContent = t("Couldn't read that file."); validate(); return; }

@@ -240,6 +240,8 @@ textarea.field-input { resize: vertical; }
 .definition-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; border-bottom: 0.5px solid var(--separator); }
 .definition-row:last-child { border-bottom: none; }
 .definition-row > textarea { flex: 1; min-width: 0; border: none; background: transparent; color: var(--label); padding: 12px 14px; outline: none; resize: vertical; }
+/* The chosen file's name, in place of the "Choose file…" label. */
+.file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .form-footer-error, .danger-text { color: var(--danger); font-size: 13px; padding: 0 4px; }
 .form-action { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: none; background: transparent; color: var(--tint); padding: 12px 14px; font-size: 16px; border-bottom: 0.5px solid var(--separator); }
 .form-action.danger { color: var(--danger); }
