@@ -50,6 +50,13 @@ export function parseCsv(text) {
   return rows;
 }
 
+/** A name to suggest for what a chosen file imports into: the file's name
+ *  without its .csv extension, or "" when nothing usable is left. Both import
+ *  sheets offer this so the name field is filled in after picking a file. */
+export function nameFromFile(fileName) {
+  return String(fileName ?? "").trim().replace(/\.csv$/i, "").trim();
+}
+
 // MARK: - CSV → words
 
 /** The column order assumed for a file with no header row. */

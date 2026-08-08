@@ -14,7 +14,7 @@ defineGlobal("document", { documentElement: { lang: "en" } });
 defineGlobal("window", { dispatchEvent: () => {} });
 defineGlobal("CustomEvent", class CustomEvent {});
 
-const { csvEscape, parseCsv, wordsFromCsv, entriesFromCsv, DEFINITION_SEPARATOR } = await import("../js/csv.js");
+const { csvEscape, parseCsv, wordsFromCsv, entriesFromCsv, nameFromFile, DEFINITION_SEPARATOR } = await import("../js/csv.js");
 const G = await import("../js/glossary.js");
 
 test("parseCsv handles quotes, embedded separators, CRLF, and a BOM", () => {
@@ -169,4 +169,18 @@ test("glossary rows that don't match the format are skipped", () => {
 
   assert.deepEqual(entriesFromCsv(""), { entries: [], skipped: 0 });
   assert.deepEqual(entriesFromCsv("\n,,\r\n"), { entries: [], skipped: 0 });
+});
+
+test("a chosen file suggests the name to import it under", () => {
+  // Both import sheets fill their name field with this after picking a file.
+  assert.equal(nameFromFile("Kitchen vocabulary.csv"), "Kitchen vocabulary");
+  assert.equal(nameFromFile("Legal terms.CSV"), "Legal terms");
+  // Only the extension goes: dots in the name itself stay.
+  assert.equal(nameFromFile("verbs.v2.csv"), "verbs.v2");
+  assert.equal(nameFromFile("no-extension"), "no-extension");
+  assert.equal(nameFromFile("  spaced.csv  "), "spaced");
+  // Nothing usable left, so the field is left alone.
+  assert.equal(nameFromFile(".csv"), "");
+  assert.equal(nameFromFile(""), "");
+  assert.equal(nameFromFile(undefined), "");
 });

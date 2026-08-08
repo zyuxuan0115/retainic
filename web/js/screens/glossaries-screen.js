@@ -9,7 +9,7 @@
 
 import { el, clear, presentSheet, toast } from "../dom.js";
 import { t, tn, tf, displayNameIn } from "../i18n.js";
-import { entriesFromCsv } from "../csv.js";
+import { entriesFromCsv, nameFromFile } from "../csv.js";
 import * as Repo from "../repository.js";
 import * as Auth from "../auth.js";
 import { authState } from "../auth.js";
@@ -102,10 +102,22 @@ function presentNewGlossarySheet(onCreated) {
       if (!file) return;
       csvText = null;
       csvFileName = file.name;
+      suggestName(file.name);
       try { csvText = await file.text(); }
       catch { csvEntries = []; csvStatus.textContent = ""; csvFooter.textContent = t("Couldn't read that file."); validate(); return; }
       refreshCsv();
       validate();
+    }
+
+    // The name the file suggested, so picking another file replaces it — but a
+    // name the user typed themselves is never overwritten.
+    let suggestedName = null;
+    function suggestName(fileName) {
+      const suggestion = nameFromFile(fileName);
+      if (!suggestion) return;
+      if (name.value.trim() && name.value !== suggestedName) return;
+      name.value = suggestion;
+      suggestedName = suggestion;
     }
 
     /** Re-parses the chosen file and reports what it found. */

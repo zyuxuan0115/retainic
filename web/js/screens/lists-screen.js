@@ -5,7 +5,7 @@
 
 import { el, clear, presentSheet, toast } from "../dom.js";
 import { t, tn, tf, preferredLanguage } from "../i18n.js";
-import { wordsFromCsv } from "../csv.js";
+import { wordsFromCsv, nameFromFile } from "../csv.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
 import * as Auth from "../auth.js";
@@ -98,10 +98,22 @@ function presentNewListSheet(onCreated) {
       if (!file) return;
       csvText = null;
       csvFileName = file.name;
+      suggestName(file.name);
       try { csvText = await file.text(); }
       catch { csvWords = []; csvStatus.textContent = ""; csvFooter.textContent = t("Couldn't read that file."); validate(); return; }
       refreshCsv();
       validate();
+    }
+
+    // The name the file suggested, so picking another file replaces it — but a
+    // name the user typed themselves is never overwritten.
+    let suggestedName = null;
+    function suggestName(fileName) {
+      const suggestion = nameFromFile(fileName);
+      if (!suggestion) return;
+      if (name.value.trim() && name.value !== suggestedName) return;
+      name.value = suggestion;
+      suggestedName = suggestion;
     }
 
     /** Re-parses the chosen file and reports what it found. */
