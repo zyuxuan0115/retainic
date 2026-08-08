@@ -5,7 +5,7 @@
 
 import { el, clear, svgEl } from "../dom.js";
 import * as i18n from "../i18n.js";
-import { t, tf } from "../i18n.js";
+import { t, tn, tf } from "../i18n.js";
 import * as Repo from "../repository.js";
 import * as M from "../models.js";
 import * as G from "../glossary.js";
@@ -88,6 +88,15 @@ export async function StatsScreen(content) {
     else glossaryProgress.untouched += 1;
   }
 
+  // The glossary curve reads the fields glossary practice tallies for itself.
+  const glossaryKeys = ["glossaryTerm", "glossaryDefinition"];
+  const glossaryLabel = (k) => (k === "glossaryTerm" ? t("Term") : t("Definition"));
+  const glossaryColors = { glossaryTerm: "#2f6bff", glossaryDefinition: "#1fb56a" };
+  const glossaryWeekToday = {
+    glossaryTerm: glossaryToday.term,
+    glossaryDefinition: glossaryToday.definition,
+  };
+
   const aspectKeys = ["word", "translation", "pronunciation"];
   const aspectLabel = (k) => k === "word" ? t("Word") : k === "translation" ? t("Translation") : t("Pronunciation");
   const colors = { word: "#2f6bff", translation: "#1fb56a", pronunciation: "#ff8a1f" };
@@ -101,11 +110,11 @@ export async function StatsScreen(content) {
       el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
     ),
     el(".stat-block", {},
-      el("h3", {}, t("Remembered today")),
+      el("h3", {}, t("Words today")),
       barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
     ),
     el(".stat-block", {},
-      el("h3", {}, t("This week")),
+      el("h3", {}, t("Words this week")),
       weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
     ),
     // Glossaries get their own two charts: how far the terms have come, and
@@ -125,6 +134,14 @@ export async function StatsScreen(content) {
         { label: t("Term"), value: glossaryToday.term, color: colors.word },
         { label: t("Definition"), value: glossaryToday.definition, color: colors.translation },
       ]),
+      el("p.caption.center", {}, tn("%lld cards practised", glossaryToday.term + glossaryToday.definition)),
+    ) : null,
+    // The glossary week is drawn from tallies glossary practice writes for
+    // itself, so it only fills in from the day that started — today always
+    // comes from the terms themselves, as it does in the combined chart.
+    entries.length ? el(".stat-block", {},
+      el("h3", {}, t("Glossary this week")),
+      weekChart(dailyStats, glossaryWeekToday, glossaryKeys, glossaryLabel, glossaryColors),
     ) : null,
     el(".stat-block", {},
       el("h3", {}, t("Average pace")),

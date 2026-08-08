@@ -86,6 +86,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
     var today by remember { mutableStateOf(mapOf("word" to 0, "translation" to 0, "pronunciation" to 0)) }
     var week by remember { mutableStateOf<List<Triple<Date, String, Int>>>(emptyList()) }
     var glossary by remember { mutableStateOf(GlossaryStats()) }
+    var glossaryWeek by remember { mutableStateOf<List<Triple<Date, String, Int>>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -110,6 +111,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
             glossary = glossaryStats(allEntries)
             val daily = runCatching { VocabRepository.fetchDailyStats(uid, 7) }.getOrDefault(emptyList())
             week = buildWeekPoints(daily, today)
+            glossaryWeek = buildGlossaryWeekPoints(daily, glossary)
         } catch (e: Exception) {
             error = e.localizedMessage
         } finally {
@@ -130,7 +132,7 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
                     title = stringResource(R.string.no_stats_yet),
                     description = stringResource(R.string.no_stats_desc),
                 )
-                else -> StatsContent(s, today, week, glossary)
+                else -> StatsContent(s, today, week, glossary, glossaryWeek)
             }
         }
     }
@@ -144,6 +146,7 @@ private fun StatsContent(
     today: Map<String, Int>,
     week: List<Triple<Date, String, Int>>,
     glossary: GlossaryStats,
+    glossaryWeek: List<Triple<Date, String, Int>>,
 ) {
     val aspectKeys = listOf("word", "translation", "pronunciation")
     val aspectLabels = listOf(stringResource(R.string.word), stringResource(R.string.translation), stringResource(R.string.pronunciation))
@@ -169,12 +172,12 @@ private fun StatsContent(
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // Remembered today (bar chart)
-        Text(stringResource(R.string.remembered_today), style = MaterialTheme.typography.titleMedium)
+        // Words today (bar chart)
+        Text(stringResource(R.string.words_today), style = MaterialTheme.typography.titleMedium)
         BarChart(aspectKeys.mapIndexed { i, k -> Triple(aspectLabels[i], today[k] ?: 0, AspectColors[i]) })
 
-        // This week (line chart)
-        Text(stringResource(R.string.this_week), style = MaterialTheme.typography.titleMedium)
+        // Words this week (line chart)
+        Text(stringResource(R.string.words_this_week), style = MaterialTheme.typography.titleMedium)
         WeekLineChart(week, aspectKeys, aspectLabels, AspectColors)
 
         // Glossaries get their own two charts: how far the terms have come, and
@@ -195,6 +198,19 @@ private fun StatsContent(
                 Triple(stringResource(R.string.term), glossary.termsToday, AspectColors[0]),
                 Triple(stringResource(R.string.definition), glossary.definitionsToday, AspectColors[1]),
             ))
+            Text(stringResource(R.string.n_cards_practised, glossary.termsToday + glossary.definitionsToday),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+
+            // The glossary week is drawn from tallies glossary practice writes
+            // for itself, so it only fills in from the day that started.
+            Text(stringResource(R.string.glossary_this_week), style = MaterialTheme.typography.titleMedium)
+            WeekLineChart(
+                glossaryWeek,
+                listOf("glossaryTerm", "glossaryDefinition"),
+                listOf(stringResource(R.string.term), stringResource(R.string.definition)),
+                AspectColors,
+            )
         }
 
         // Average pace
@@ -229,11 +245,14 @@ private fun PaceCard(title: String, value: Double, modifier: Modifier) {
     }
 }
 
+/** Every chart is drawn in a box this tall, so the dashboard lines up. */
+private val ChartHeight = 220.dp
+
 @Composable
 private fun BarChart(bars: List<Triple<String, Int, Color>>) {
     val max = (bars.maxOfOrNull { it.second } ?: 0).coerceAtLeast(1)
     Row(
-        Modifier.fillMaxWidth().height(200.dp).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().height(ChartHeight).padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Bottom,
     ) {
@@ -266,7 +285,7 @@ private fun WeekLineChart(
     val weekdayFmt = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
 
     Column(Modifier.fillMaxWidth()) {
-        Canvas(Modifier.fillMaxWidth().height(200.dp).padding(vertical = 8.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(ChartHeight).padding(vertical = 8.dp)) {
             val n = days.size
             if (n < 2) return@Canvas
             val stepX = size.width / (n - 1)
@@ -366,6 +385,32 @@ private fun countTodayRemembered(
         translation += e.definitionList.count { isToday(it.lastRemembered) }
     }
     return mapOf("word" to word, "translation" to translation, "pronunciation" to pronunciation)
+}
+
+/**
+ * Builds 7 days of (date, glossary aspect key, count) from the tallies glossary
+ * practice writes for itself. Today comes from the terms, as it does in the
+ * combined chart.
+ */
+private fun buildGlossaryWeekPoints(
+    daily: List<com.retainic.app.data.DailyStat>,
+    glossary: GlossaryStats,
+): List<Triple<Date, String, Int>> {
+    val cal = Calendar.getInstance()
+    val todayStart = VocabWord.startOfDay(Date())
+    val byKey = daily.associateBy { it.date }
+    val result = mutableListOf<Triple<Date, String, Int>>()
+    for (offset in 6 downTo 0) {
+        cal.time = todayStart
+        cal.add(Calendar.DAY_OF_YEAR, -offset)
+        val day = cal.time
+        val stat = byKey[VocabRepository.dayKey(day)]
+        result.add(Triple(day, "glossaryTerm",
+            if (offset == 0) glossary.termsToday else stat?.glossaryTerm ?: 0))
+        result.add(Triple(day, "glossaryDefinition",
+            if (offset == 0) glossary.definitionsToday else stat?.glossaryDefinition ?: 0))
+    }
+    return result
 }
 
 /** Builds 7 days of (date, aspectKey, count): today from the words, earlier from the log. */

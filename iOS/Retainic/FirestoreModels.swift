@@ -99,6 +99,10 @@ struct DailyStat: Codable, Identifiable {
     var word: Int?
     var translation: Int?
     var pronunciation: Int?
+    /// Glossary practice tallies its recalls here as well as under the shared
+    /// fields above, so the glossary charts have a history of their own.
+    var glossaryTerm: Int?
+    var glossaryDefinition: Int?
 }
 
 /// A single vocabulary entry inside a list.

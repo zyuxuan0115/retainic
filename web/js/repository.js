@@ -75,12 +75,22 @@ export function dayKey(date) {
 
 const DAILY_FIELD = { spelling: "word", translation: "translation", pronunciation: "pronunciation" };
 
-/** Increments today's remembered count for the given aspect. */
-export async function recordRemembered(uid, aspect, date = new Date()) {
+/** The daily fields glossary practice writes on top of the shared ones, so the
+ *  glossary charts have a history of their own without disturbing the combined
+ *  totals every other chart is drawn from. */
+const GLOSSARY_DAILY_FIELD = { term: "glossaryTerm", definition: "glossaryDefinition" };
+
+/** Increments today's remembered count for the given aspect. Glossary practice
+ *  passes `glossaryAspect` as well, tallying the same recall under both the
+ *  shared field and its own in one write. */
+export async function recordRemembered(uid, aspect, { glossaryAspect = null, date = new Date() } = {}) {
+  const update = { date: dayKey(date) };
   const field = DAILY_FIELD[aspect];
-  if (!field) return;
-  const key = dayKey(date);
-  await setDoc(doc(dailyStatsRef(uid), key), { date: key, [field]: increment(1) }, { merge: true });
+  if (field) update[field] = increment(1);
+  const glossaryField = GLOSSARY_DAILY_FIELD[glossaryAspect];
+  if (glossaryField) update[glossaryField] = increment(1);
+  if (Object.keys(update).length === 1) return;
+  await setDoc(doc(dailyStatsRef(uid), update.date), update, { merge: true });
 }
 
 /** Most recent `days` daily-stat documents (chronological order). */

@@ -13,6 +13,8 @@
   --warn: #ff8a1f;
   --danger: #ff3b30;
   --radius: 14px;
+  /* Every Statistics chart is drawn in a box this tall. */
+  --chart-h: 240px;
   --maxw: 640px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -410,12 +412,16 @@ textarea.field-input { resize: vertical; }
 .stat-subcaption { font-size: 14px; color: var(--secondary-label); }
 .stat-block { display: flex; flex-direction: column; gap: 10px; }
 .stat-block h3 { font-size: 17px; }
-.chart { width: 100%; height: auto; background: var(--bg-elevated); border-radius: var(--radius); padding: 8px; }
+/* Every chart is the same box, so the dashboard lines up however its columns
+   fall: a fixed height rather than one that scales with the column's width, and
+   a width that always fills the column. The drawing scales to fit inside. */
+.chart { width: 100%; height: var(--chart-h); background: var(--bg-elevated); border-radius: var(--radius); padding: 8px; }
 .chart-val { font-size: 11px; fill: var(--secondary-label); }
 .chart-lbl { font-size: 10px; fill: var(--secondary-label); }
-.chart-wrap { background: var(--bg-elevated); border-radius: var(--radius); padding: 8px; }
-.chart-wrap .chart { background: transparent; padding: 0; }
-.chart-legend { display: flex; gap: 16px; justify-content: center; padding: 8px 0 4px; font-size: 12px; color: var(--secondary-label); }
+/* A chart with a legend under it: the same box, split between the two. */
+.chart-wrap { background: var(--bg-elevated); border-radius: var(--radius); padding: 8px; height: var(--chart-h); display: flex; flex-direction: column; }
+.chart-wrap .chart { background: transparent; padding: 0; flex: 1; min-height: 0; height: auto; }
+.chart-legend { flex: none; display: flex; gap: 16px; justify-content: center; padding: 8px 0 4px; font-size: 12px; color: var(--secondary-label); }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 .pace-row { display: flex; gap: 12px; }
@@ -543,7 +549,3 @@ a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: e
   .toast { bottom: 28px; }
 }
 
-/* Extra room on large desktops: three list columns feel natural. */
-@media (min-width: 1180px) {
-  .stats { grid-template-columns: 1.2fr 1fr; }
-}

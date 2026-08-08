@@ -321,7 +321,10 @@ struct GlossaryFlashcardView: View {
     /// Statistics charts count both.
     private func recordDailyStat(aspect: GlossaryAspect) {
         guard let uid = auth.uid else { return }
-        Task { try? await VocabRepository.recordRemembered(uid: uid, aspect: aspect.dailyAspect) }
+        Task {
+            try? await VocabRepository.recordRemembered(
+                uid: uid, aspect: aspect.dailyAspect, glossaryAspect: aspect.rawValue)
+        }
     }
 
     private func advance() {

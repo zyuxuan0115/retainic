@@ -66,12 +66,12 @@ export default {
   "Remembered": {
     "en": "Remembered",
   },
-  "Remembered today": {
-    "en": "Remembered today",
-    "es": "Recordadas hoy",
-    "zh": "今天记住的",
-    "ja": "今日覚えた数",
-    "ko": "오늘 기억한 수",
+  "Words today": {
+    "en": "Words today",
+    "es": "Palabras de hoy",
+    "zh": "今日单词",
+    "ja": "今日の単語",
+    "ko": "오늘의 단어",
   },
   "Retainic": {
     "en": "Retainic",
@@ -287,12 +287,26 @@ export default {
     "ja": "%lld / %lld 件の用語を暗記済み",
     "ko": "용어 %lld / %lld개 암기 완료",
   },
-  "This week": {
-    "en": "This week",
-    "es": "Esta semana",
-    "zh": "本周",
-    "ja": "今週",
-    "ko": "이번 주",
+  "Glossary this week": {
+    "en": "Glossary this week",
+    "es": "Glosario esta semana",
+    "zh": "本周术语表",
+    "ja": "今週の用語集",
+    "ko": "이번 주 용어집",
+  },
+  "%lld cards practised": {
+    "en": "%lld cards practised",
+    "es": "%lld tarjetas practicadas",
+    "zh": "已练习 %lld 张卡片",
+    "ja": "%lld 枚のカードを練習",
+    "ko": "카드 %lld장 연습",
+  },
+  "Words this week": {
+    "en": "Words this week",
+    "es": "Palabras esta semana",
+    "zh": "本周单词",
+    "ja": "今週の単語",
+    "ko": "이번 주 단어",
   },
   "Translated into": {
     "en": "Translated into",

@@ -18,6 +18,9 @@ private struct AspectBar: Identifiable {
     var id: String { key }
 }
 
+/// Every chart is drawn in a box this tall, so the dashboard lines up.
+private let chartHeight: CGFloat = 220
+
 /// One point in the weekly trend chart.
 private struct DayAspectPoint: Identifiable {
     let id = UUID()
@@ -204,6 +207,7 @@ struct StatsView: View {
                 if vm.glossary.total > 0 {
                     glossaryProgressChart
                     glossaryTodayChart
+                    glossaryWeekChart
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -282,7 +286,7 @@ struct StatsView: View {
 
     private var todayChart: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Remembered today")
+            Text("Words today")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             barChart(todayBars, labels: styleDomain)
@@ -291,25 +295,63 @@ struct StatsView: View {
 
     private var weekChart: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This week")
+            Text("Words this week")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Chart(weekPoints) { point in
-                LineMark(
-                    x: .value("Day", point.date, unit: .day),
-                    y: .value("Remembered", point.count)
-                )
-                .foregroundStyle(by: .value("Type", point.aspect))
-                .symbol(by: .value("Type", point.aspect))
+            lineChart(weekPoints, labels: styleDomain)
+        }
+    }
+
+    /// The weekly trend chart, over whichever series it's given.
+    private func lineChart(_ points: [DayAspectPoint], labels: [String]) -> some View {
+        Chart(points) { point in
+            LineMark(
+                x: .value("Day", point.date, unit: .day),
+                y: .value("Remembered", point.count)
+            )
+            .foregroundStyle(by: .value("Type", point.aspect))
+            .symbol(by: .value("Type", point.aspect))
+        }
+        .chartForegroundStyleScale(domain: labels, range: Array(styleRange.prefix(labels.count)))
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                AxisValueLabel(format: .dateTime.weekday(.narrow))
             }
-            .chartForegroundStyleScale(domain: styleDomain, range: styleRange)
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .day)) { _ in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    AxisValueLabel(format: .dateTime.weekday(.narrow))
-                }
+        }
+        .frame(height: chartHeight)
+    }
+
+    /// The glossary's own week, from the tallies glossary practice writes for
+    /// itself. Today comes from the terms, as it does in the combined chart.
+    private var glossaryWeekPoints: [DayAspectPoint] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var byKey: [String: DailyStat] = [:]
+        for stat in vm.dailyStats { byKey[stat.date] = stat }
+        let series = [
+            ("term", "Term".localized(preferredLanguage)),
+            ("definition", "Definition".localized(preferredLanguage)),
+        ]
+        var points: [DayAspectPoint] = []
+        for offset in stride(from: 6, through: 0, by: -1) {
+            guard let day = cal.date(byAdding: .day, value: -offset, to: today) else { continue }
+            let stat = byKey[VocabRepository.dayKey(day)]
+            for (key, label) in series {
+                let logged = key == "term" ? (stat?.glossaryTerm ?? 0) : (stat?.glossaryDefinition ?? 0)
+                let todayCount = key == "term" ? vm.glossary.termsToday : vm.glossary.definitionsToday
+                points.append(DayAspectPoint(date: day, aspect: label, count: offset == 0 ? todayCount : logged))
             }
-            .frame(height: 240)
+        }
+        return points
+    }
+
+    private var glossaryWeekChart: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Glossary this week")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            lineChart(glossaryWeekPoints, labels: glossaryTodayBars.map(\.label))
         }
     }
 
@@ -347,10 +389,14 @@ struct StatsView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             barChart(glossaryTodayBars, labels: glossaryTodayBars.map(\.label))
+            Text("\(vm.glossary.termsToday + vm.glossary.definitionsToday) cards practised")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
         }
     }
 
-    /// The same bar chart the "Remembered today" chart draws, over whichever
+    /// The same bar chart the "Words today" chart draws, over whichever
     /// bars it's given.
     private func barChart(_ bars: [AspectBar], labels: [String]) -> some View {
         Chart(bars) { bar in
@@ -365,7 +411,7 @@ struct StatsView: View {
         }
         .chartForegroundStyleScale(domain: labels, range: Array(styleRange.prefix(labels.count)))
         .chartLegend(.hidden)
-        .frame(height: 200)
+        .frame(height: chartHeight)
     }
 
     private func totalCard(_ stats: LearningStats) -> some View {

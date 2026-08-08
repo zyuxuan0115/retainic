@@ -56,20 +56,31 @@ enum VocabRepository {
         userDoc(uid).collection("dailyStats")
     }
 
-    /// Increments today's remembered count for the given aspect.
-    static func recordRemembered(uid: String, aspect: String, on date: Date = Date()) async throws {
-        let field: String
-        switch aspect {
-        case "spelling": field = "word"
-        case "translation": field = "translation"
-        case "pronunciation": field = "pronunciation"
-        default: return
-        }
+    /// Increments today's remembered count for the given aspect. Glossary
+    /// practice passes `glossaryAspect` as well, tallying the same recall under
+    /// both the shared field and its own in one write — so the glossary charts
+    /// have a history without disturbing the combined totals.
+    static func recordRemembered(
+        uid: String,
+        aspect: String,
+        glossaryAspect: String? = nil,
+        on date: Date = Date()
+    ) async throws {
         let key = dayKey(date)
-        try await dailyStatsRef(uid).document(key).setData([
-            "date": key,
-            field: FieldValue.increment(Int64(1))
-        ], merge: true)
+        var update: [String: Any] = ["date": key]
+        switch aspect {
+        case "spelling": update["word"] = FieldValue.increment(Int64(1))
+        case "translation": update["translation"] = FieldValue.increment(Int64(1))
+        case "pronunciation": update["pronunciation"] = FieldValue.increment(Int64(1))
+        default: break
+        }
+        switch glossaryAspect {
+        case "term": update["glossaryTerm"] = FieldValue.increment(Int64(1))
+        case "definition": update["glossaryDefinition"] = FieldValue.increment(Int64(1))
+        default: break
+        }
+        guard update.count > 1 else { return }
+        try await dailyStatsRef(uid).document(key).setData(update, merge: true)
     }
 
     /// Most recent `days` daily-stat documents (chronological order).

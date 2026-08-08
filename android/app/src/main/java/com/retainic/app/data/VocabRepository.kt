@@ -50,18 +50,32 @@ object VocabRepository {
 
     fun dayKey(date: Date): String = dayKeyFormatter.format(date)
 
-    /** Increments today's remembered count for the given aspect. */
-    suspend fun recordRemembered(uid: String, aspect: String, date: Date = Date()) {
-        val field = when (aspect) {
-            "spelling" -> "word"
-            "translation" -> "translation"
-            "pronunciation" -> "pronunciation"
-            else -> return
-        }
+    /**
+     * Increments today's remembered count for the given aspect. Glossary
+     * practice passes [glossaryAspect] as well, tallying the same recall under
+     * both the shared field and its own in one write — so the glossary charts
+     * have a history without disturbing the combined totals.
+     */
+    suspend fun recordRemembered(
+        uid: String,
+        aspect: String,
+        glossaryAspect: String? = null,
+        date: Date = Date(),
+    ) {
         val key = dayKey(date)
+        val update = mutableMapOf<String, Any>("date" to key)
+        when (aspect) {
+            "spelling" -> update["word"] = FieldValue.increment(1)
+            "translation" -> update["translation"] = FieldValue.increment(1)
+            "pronunciation" -> update["pronunciation"] = FieldValue.increment(1)
+        }
+        when (glossaryAspect) {
+            "term" -> update["glossaryTerm"] = FieldValue.increment(1)
+            "definition" -> update["glossaryDefinition"] = FieldValue.increment(1)
+        }
+        if (update.size == 1) return
         dailyStatsRef(uid).document(key).set(
-            mapOf("date" to key, field to FieldValue.increment(1)),
-            com.google.firebase.firestore.SetOptions.merge()
+            update, com.google.firebase.firestore.SetOptions.merge()
         ).await()
     }
 

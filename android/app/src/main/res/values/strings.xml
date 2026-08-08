@@ -163,8 +163,10 @@
     <string name="no_stats_desc">Add words and practice them. Once you\'ve memorized some, your progress shows up here.</string>
     <string name="words_and_terms_memorized">words and terms memorized</string>
     <string name="out_of_n_total">out of %1$d total</string>
-    <string name="remembered_today">Remembered today</string>
-    <string name="this_week">This week</string>
+    <string name="words_today">Words today</string>
+    <string name="words_this_week">Words this week</string>
+    <string name="glossary_this_week">Glossary this week</string>
+    <string name="n_cards_practised">%1$d cards practised</string>
     <string name="glossary_terms">Glossary terms</string>
     <string name="glossary_practice_today">Glossary practice today</string>
     <string name="memorized">Memorized</string>

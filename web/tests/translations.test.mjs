@@ -4,7 +4,7 @@ import { test } from "node:test";
 import translations from "../js/translations.js";
 
 test("every translation has an English fallback", () => {
-  assert.equal(Object.keys(translations).length, 239);
+  assert.equal(Object.keys(translations).length, 241);
   for (const [key, entry] of Object.entries(translations)) {
     assert.equal(typeof entry.en, "string", key);
   }

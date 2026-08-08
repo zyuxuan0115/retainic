@@ -144,7 +144,12 @@ fun GlossaryFlashcardScreen(
                 // Glossary practice shares the daily tallies with list practice,
                 // so the Statistics charts count both.
                 auth.uid?.let { uid ->
-                    scope.launch { runCatching { VocabRepository.recordRemembered(uid, item.aspect.dailyAspect) } }
+                    scope.launch {
+                        runCatching {
+                            VocabRepository.recordRemembered(
+                                uid, item.aspect.dailyAspect, glossaryAspect = item.aspect.raw)
+                        }
+                    }
                 }
             } else {
                 item.card.entry.markIncorrect(item.aspect)

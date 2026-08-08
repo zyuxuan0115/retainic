@@ -149,8 +149,10 @@
     <string name="no_stats_desc">単語を追加して練習しましょう。いくつか覚えると、ここに進捗が表示されます。</string>
     <string name="words_and_terms_memorized">覚えた単語・用語</string>
     <string name="out_of_n_total">全 %1$d 個中</string>
-    <string name="remembered_today">今日覚えた数</string>
-    <string name="this_week">今週</string>
+    <string name="words_today">今日の単語</string>
+    <string name="words_this_week">今週の単語</string>
+    <string name="glossary_this_week">今週の用語集</string>
+    <string name="n_cards_practised">%1$d 枚のカードを練習</string>
     <string name="glossary_terms">用語集の用語</string>
     <string name="glossary_practice_today">今日の用語集の練習</string>
     <string name="memorized">暗記済み</string>

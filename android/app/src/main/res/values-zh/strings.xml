@@ -149,8 +149,10 @@
     <string name="no_stats_desc">添加单词并练习。当你记住一些后，进度会显示在这里。</string>
     <string name="words_and_terms_memorized">已记住的单词和术语</string>
     <string name="out_of_n_total">共 %1$d 个</string>
-    <string name="remembered_today">今天记住的</string>
-    <string name="this_week">本周</string>
+    <string name="words_today">今日单词</string>
+    <string name="words_this_week">本周单词</string>
+    <string name="glossary_this_week">本周术语表</string>
+    <string name="n_cards_practised">已练习 %1$d 张卡片</string>
     <string name="glossary_terms">术语表术语</string>
     <string name="glossary_practice_today">今日术语表练习</string>
     <string name="memorized">已记住</string>

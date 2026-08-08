@@ -73,6 +73,12 @@ data class DailyStat(
     var word: Int? = null,
     var translation: Int? = null,
     var pronunciation: Int? = null,
+    /**
+     * Glossary practice tallies its recalls here as well as under the shared
+     * fields above, so the glossary charts have a history of their own.
+     */
+    var glossaryTerm: Int? = null,
+    var glossaryDefinition: Int? = null,
 )
 
 /**

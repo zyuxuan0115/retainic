@@ -142,7 +142,7 @@ function glossaryDeck() {
     grade({ card, mode, definitionIndex }, correct) {
       if (correct) G.markCorrect(card.entry, mode.aspect, definitionIndex ?? 0);
       else G.markIncorrect(card.entry, mode.aspect);
-      if (correct) Repo.recordRemembered(authState.uid, mode.dailyAspect).catch(() => {});
+      if (correct) Repo.recordRemembered(authState.uid, mode.dailyAspect, { glossaryAspect: mode.aspect }).catch(() => {});
       Repo.updateEntry(authState.uid, card.glossaryId, card.entry).catch(() => {});
     },
     sameCard(a, b) { return a.entry.id === b.entry.id; },
