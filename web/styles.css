@@ -406,6 +406,9 @@ textarea.field-input { resize: vertical; }
 
 /* Stats */
 .stats { padding: 16px; display: flex; flex-direction: column; gap: 24px; }
+/* One kind's blocks, stacked: a column of the dashboard on a wide screen, just
+   another run of blocks when everything is in one column. */
+.stats-col { display: flex; flex-direction: column; gap: inherit; }
 .stat-total { background: var(--bg-elevated); border-radius: 20px; padding: 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .stat-number { font-size: 56px; font-weight: 800; line-height: 1; }
 .stat-caption { font-weight: 600; color: var(--secondary-label); }
@@ -531,6 +534,9 @@ a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: e
     max-width: 720px; margin: 0 auto;
     display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start;
   }
+  /* With only words or only terms to show, the one column stands alone — kept
+     near a column's usual width so the charts don't stretch across the page. */
+  .stats.one-column { grid-template-columns: 1fr; max-width: 460px; }
   .stat-total { grid-column: 1 / -1; }
   .stats > p.caption { grid-column: 1 / -1; }
 

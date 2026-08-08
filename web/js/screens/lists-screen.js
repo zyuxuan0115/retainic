@@ -15,7 +15,7 @@ import { navBar, iconButton, spinner, emptyState, formSection, pickerRow, langua
 // MARK: - Lists screen
 
 export async function ListsScreen(content, onOpenList) {
-  content.appendChild(navBar(t("My Lists"), {
+  content.appendChild(navBar(t("Lists"), {
     trailing: iconButton(icon("add", 24), () => presentNewListSheet(reload), { label: t("New List") }),
   }));
   const body = el(".scroll");

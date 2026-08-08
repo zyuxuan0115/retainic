@@ -94,7 +94,7 @@ export const DEFAULT_GLOSSARY_ALGORITHM_CODE = `# Retainic glossary review algor
 # every one of its definitions are finished.
 
 def review(e):
-    GAPS = [0, 1, 2, 4, 7]
+    GAPS = [0, 1, 1, 2, 4]
 
     def gap(n):
         return GAPS[n] if n < len(GAPS) else -1

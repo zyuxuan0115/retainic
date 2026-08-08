@@ -89,7 +89,7 @@ final class TrashViewModel: ObservableObject {
 }
 
 /// Lists and glossaries that have been moved to the trash. Each can be restored
-/// (put back into "My Lists" / "My Glossaries") or permanently deleted.
+/// (put back into "Lists" / "Glossaries") or permanently deleted.
 struct TrashView: View {
     @EnvironmentObject private var auth: AuthService
     @Environment(\.dismiss) private var dismiss

@@ -12,12 +12,12 @@ struct MainTabView: View {
         TabView {
             VocabListsView()
                 .tabItem {
-                    Label("My Lists", systemImage: "rectangle.stack")
+                    Label("Lists", systemImage: "rectangle.stack")
                 }
 
             GlossariesView()
                 .tabItem {
-                    Label("My Glossaries", systemImage: "character.book.closed")
+                    Label("Glossaries", systemImage: "character.book.closed")
                 }
 
             StatsView()

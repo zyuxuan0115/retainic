@@ -26,8 +26,6 @@
     <string name="enter_valid_email">유효한 이메일 주소를 입력하세요.</string>
     <string name="incorrect_email_password">이메일 또는 비밀번호가 올바르지 않습니다.</string>
     <string name="network_error">네트워크 오류입니다. 연결을 확인한 후 다시 시도하세요.</string>
-
-    <string name="my_lists">내 목록</string>
     <string name="statistics">통계</string>
     <string name="settings">설정</string>
     <string name="about">정보</string>
@@ -154,7 +152,8 @@
     <string name="glossary_this_week">이번 주 용어집</string>
     <string name="n_cards_practised">카드 %1$d장 연습</string>
     <string name="glossary_practice_today">오늘의 용어집 연습</string>
-    <string name="average_pace">평균 속도</string>
+    <string name="words_average_pace">단어 평균 속도</string>
+    <string name="terms_average_pace">용어 평균 속도</string>
     <string name="per_day">하루 평균</string>
     <string name="per_week">주간 평균</string>
     <string name="per_month">월간 평균</string>
@@ -181,7 +180,6 @@
     <string name="source_code">소스 코드</string>
 
     <!-- Glossaries -->
-    <string name="my_glossaries">내 용어집</string>
     <string name="new_glossary">새 용어집</string>
     <string name="no_glossaries_yet">아직 용어집이 없습니다</string>
     <string name="create_first_glossary">첫 용어집을 만들어 용어와 그 뜻을 모아 보세요.</string>

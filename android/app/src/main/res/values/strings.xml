@@ -32,7 +32,6 @@
     <string name="network_error">Network error. Check your connection and try again.</string>
 
     <!-- Tabs -->
-    <string name="my_lists">My Lists</string>
     <string name="statistics">Statistics</string>
     <string name="settings">Settings</string>
     <string name="about">About</string>
@@ -168,7 +167,8 @@
     <string name="glossary_this_week">Glossary this week</string>
     <string name="n_cards_practised">%1$d cards practised</string>
     <string name="glossary_practice_today">Glossary practice today</string>
-    <string name="average_pace">Average pace</string>
+    <string name="words_average_pace">Words average pace</string>
+    <string name="terms_average_pace">Terms average pace</string>
     <string name="per_day">Per day</string>
     <string name="per_week">Per week</string>
     <string name="per_month">Per month</string>
@@ -198,7 +198,6 @@
     <string name="copyright" translatable="false">© 2026 Retainic</string>
 
     <!-- Glossaries -->
-    <string name="my_glossaries">My Glossaries</string>
     <string name="new_glossary">New Glossary</string>
     <string name="no_glossaries_yet">No Glossaries Yet</string>
     <string name="create_first_glossary">Create your first glossary to collect terms and what they mean.</string>

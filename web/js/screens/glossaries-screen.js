@@ -21,7 +21,7 @@ export function glossaryGlyph(size = 24) {
 }
 
 export async function GlossariesScreen(content, onOpenGlossary) {
-  content.appendChild(navBar(t("My Glossaries"), {
+  content.appendChild(navBar(t("Glossaries"), {
     trailing: iconButton(icon("add", 24), () => presentNewGlossarySheet(reload), { label: t("New Glossary") }),
   }));
   const body = el(".scroll");

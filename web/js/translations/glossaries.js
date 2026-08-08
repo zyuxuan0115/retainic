@@ -1,16 +1,9 @@
-// Glossary strings: the My Glossaries dashboard, entry editing, and glossary
+// Glossary strings: the Glossaries dashboard, entry editing, and glossary
 // practice. Kept in their own chunk so the glossary feature's UI text stays
 // together, the way the other feature chunks are organized.
 
 export default {
   // MARK: - Dashboard
-  "My Glossaries": {
-    "en": "My Glossaries",
-    "es": "Mis glosarios",
-    "zh": "我的术语表",
-    "ja": "マイ用語集",
-    "ko": "내 용어집",
-  },
   "New Glossary": {
     "en": "New Glossary",
     "es": "Nuevo glosario",

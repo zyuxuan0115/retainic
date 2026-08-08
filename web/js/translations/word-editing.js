@@ -175,13 +175,6 @@ export default {
     "ja": "%lld 単語を「%@」に移動しますか？",
     "ko": "%lld개 단어를 “%@”(으)로 이동할까요?",
   },
-  "My Lists": {
-    "en": "My Lists",
-    "es": "Mis listas",
-    "zh": "我的词表",
-    "ja": "マイリスト",
-    "ko": "내 목록",
-  },
   "New List": {
     "en": "New List",
     "es": "Nueva lista",

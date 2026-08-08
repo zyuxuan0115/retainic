@@ -66,7 +66,7 @@ struct GlossariesView: View {
                     glossaryContent
                 }
             }
-            .navigationTitle("My Glossaries".localized(preferredLanguage))
+            .navigationTitle("Glossaries".localized(preferredLanguage))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {

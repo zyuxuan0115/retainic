@@ -245,11 +245,11 @@ data class GlossaryEntry(
         /**
          * The glossary schedule. Glossaries review on their own gaps rather
          * than a word's: the term, and every one of its definitions, is
-         * recalled five times, spaced further apart each time. The value at
-         * index n is how many days to wait after the nth correct recall; past
-         * the end of the table that side is finished and never comes due again.
+         * recalled five times. The value at index n is how many days to wait
+         * after the nth correct recall; past the end of the table that side is
+         * finished and never comes due again.
          */
-        val reviewGaps = intArrayOf(0, 1, 2, 4, 7)
+        val reviewGaps = intArrayOf(0, 1, 1, 2, 4)
 
         /** How many correct recalls finish the term, and each definition. */
         val requiredRecalls: Int get() = reviewGaps.size

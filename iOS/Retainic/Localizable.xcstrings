@@ -831,30 +831,58 @@
         }
       }
     },
-    "Average pace" : {
+    "Terms average pace" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ritmo promedio"
+            "value" : "Ritmo medio de términos"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平均ペース"
+            "value" : "用語の平均ペース"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "평균 속도"
+            "value" : "용어 평균 속도"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平均速度"
+            "value" : "术语平均进度"
+          }
+        }
+      }
+    },
+    "Words average pace" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo medio de palabras"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "単語の平均ペース"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단어 평균 속도"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单词平均进度"
           }
         }
       }
@@ -2903,62 +2931,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移到回收站"
-          }
-        }
-      }
-    },
-    "My Glossaries" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mis glosarios"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マイ用語集"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내 용어집"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我的术语表"
-          }
-        }
-      }
-    },
-    "My Lists" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mis listas"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "マイリスト"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "내 목록"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "我的词表"
           }
         }
       }

@@ -26,8 +26,6 @@
     <string name="enter_valid_email">Introduce una dirección de correo válida.</string>
     <string name="incorrect_email_password">Correo o contraseña incorrectos.</string>
     <string name="network_error">Error de red. Comprueba tu conexión e inténtalo de nuevo.</string>
-
-    <string name="my_lists">Mis listas</string>
     <string name="statistics">Estadísticas</string>
     <string name="settings">Ajustes</string>
     <string name="about">Acerca de</string>
@@ -154,7 +152,8 @@
     <string name="glossary_this_week">Glosario esta semana</string>
     <string name="n_cards_practised">%1$d tarjetas practicadas</string>
     <string name="glossary_practice_today">Práctica de glosario de hoy</string>
-    <string name="average_pace">Ritmo promedio</string>
+    <string name="words_average_pace">Ritmo medio de palabras</string>
+    <string name="terms_average_pace">Ritmo medio de términos</string>
     <string name="per_day">Por día</string>
     <string name="per_week">Por semana</string>
     <string name="per_month">Por mes</string>
@@ -181,7 +180,6 @@
     <string name="source_code">Código fuente</string>
 
     <!-- Glossaries -->
-    <string name="my_glossaries">Mis glosarios</string>
     <string name="new_glossary">Nuevo glosario</string>
     <string name="no_glossaries_yet">Aún no hay glosarios</string>
     <string name="create_first_glossary">Crea tu primer glosario para reunir términos y su significado.</string>

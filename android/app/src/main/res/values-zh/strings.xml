@@ -26,8 +26,6 @@
     <string name="enter_valid_email">请输入有效的电子邮箱地址。</string>
     <string name="incorrect_email_password">邮箱或密码不正确。</string>
     <string name="network_error">网络错误。请检查你的连接后重试。</string>
-
-    <string name="my_lists">我的词表</string>
     <string name="statistics">统计</string>
     <string name="settings">设置</string>
     <string name="about">关于</string>
@@ -154,7 +152,8 @@
     <string name="glossary_this_week">本周术语表</string>
     <string name="n_cards_practised">已练习 %1$d 张卡片</string>
     <string name="glossary_practice_today">今日术语表练习</string>
-    <string name="average_pace">平均速度</string>
+    <string name="words_average_pace">单词平均进度</string>
+    <string name="terms_average_pace">术语平均进度</string>
     <string name="per_day">每天</string>
     <string name="per_week">每周</string>
     <string name="per_month">每月</string>
@@ -181,7 +180,6 @@
     <string name="source_code">源代码</string>
 
     <!-- Glossaries -->
-    <string name="my_glossaries">我的术语表</string>
     <string name="new_glossary">新建术语表</string>
     <string name="no_glossaries_yet">还没有术语表</string>
     <string name="create_first_glossary">创建你的第一个术语表，收集术语及其含义。</string>

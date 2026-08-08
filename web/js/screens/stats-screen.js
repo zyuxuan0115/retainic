@@ -86,14 +86,10 @@ export async function StatsScreen(content) {
   const aspectLabel = (k) => k === "word" ? t("Word") : k === "translation" ? t("Translation") : t("Pronunciation");
   const colors = { word: "#2f6bff", translation: "#1fb56a", pronunciation: "#ff8a1f" };
 
-  body.appendChild(el(".stats", {},
-    // total card
-    el(".stat-total", {},
-      el(".big-icon", {}, icon("psychology", 44)),
-      el(".stat-number", {}, `${totalMemorized}`),
-      el(".stat-caption", {}, t("words and terms memorized")),
-      el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
-    ),
+  // The dashboard is a column per kind — words on the left, glossary terms on
+  // the right — so a column reads top to bottom as one subject. A user with
+  // only one of the two gets a single full-width column instead of a gap.
+  const wordColumn = words.length ? el(".stats-col", {},
     el(".stat-block", {},
       el("h3", {}, t("Words practice today")),
       barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
@@ -102,25 +98,39 @@ export async function StatsScreen(content) {
       el("h3", {}, t("Words this week")),
       weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
     ),
-    // Glossaries get their own charts: what was practised today, and the week
-    // behind it. Only shown once there are terms to chart.
-    entries.length ? el(".stat-block", {},
+    paceBlock(t("Words average pace"), wordPace),
+  ) : null;
+
+  const termColumn = entries.length ? el(".stats-col", {},
+    el(".stat-block", {},
       el("h3", {}, t("Glossary practice today")),
       barChart([
         { label: t("Term"), value: glossaryToday.term, color: colors.word },
         { label: t("Definition"), value: glossaryToday.definition, color: colors.translation },
       ]),
       el("p.caption.center", {}, tn("%lld cards practised", glossaryToday.term + glossaryToday.definition)),
-    ) : null,
+    ),
     // The glossary week is drawn from tallies glossary practice writes for
     // itself, so it only fills in from the day that started — today always
     // comes from the terms themselves, as it does in the combined chart.
-    entries.length ? el(".stat-block", {},
+    el(".stat-block", {},
       el("h3", {}, t("Glossary this week")),
       weekChart(dailyStats, glossaryWeekToday, glossaryKeys, glossaryLabel, glossaryColors),
-    ) : null,
-    words.length ? paceBlock(t("Words average pace"), wordPace) : null,
-    entries.length ? paceBlock(t("Terms average pace"), termPace) : null,
+    ),
+    paceBlock(t("Terms average pace"), termPace),
+  ) : null;
+
+  const columns = [wordColumn, termColumn].filter(Boolean);
+
+  body.appendChild(el(".stats" + (columns.length === 1 ? ".one-column" : ""), {},
+    // total card
+    el(".stat-total", {},
+      el(".big-icon", {}, icon("psychology", 44)),
+      el(".stat-number", {}, `${totalMemorized}`),
+      el(".stat-caption", {}, t("words and terms memorized")),
+      el(".stat-subcaption", {}, tf("out of %lld total", totalWords)),
+    ),
+    ...columns,
   ));
 
   /** One kind's pace, with the stretch of learning it was measured over. */

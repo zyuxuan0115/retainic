@@ -21,7 +21,7 @@ import { icon, bookIcon, listsGlyph, chartGlyph, gearGlyph } from "./ui.js";
 
 const root = document.getElementById("app");
 
-// Navigation state. The My Lists and My Glossaries tabs each own a navigation
+// Navigation state. The Lists and Glossaries tabs each own a navigation
 // stack; the other tabs are single screens.
 const state = {
   tab: "lists",
@@ -48,8 +48,8 @@ function Shell() {
     content,
     el(".tabbar", {},
       el(".tabbar-brand", {}, bookIcon(24), el("span", {}, "Retainic")),
-      tabItem("lists", listsGlyph(), t("My Lists")),
-      tabItem("glossaries", glossaryGlyph(), t("My Glossaries")),
+      tabItem("lists", listsGlyph(), t("Lists")),
+      tabItem("glossaries", glossaryGlyph(), t("Glossaries")),
       practiceItem(),
       tabItem("trash", icon("delete", 24), t("Trash")),
       tabItem("stats", chartGlyph(), t("Statistics")),

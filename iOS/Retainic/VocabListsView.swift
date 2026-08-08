@@ -28,7 +28,7 @@ struct VocabListsView: View {
                     listContent
                 }
             }
-            .navigationTitle("My Lists".localized(preferredLanguage))
+            .navigationTitle("Lists".localized(preferredLanguage))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {

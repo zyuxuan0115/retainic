@@ -97,12 +97,12 @@ test("mastery waits for every definition", () => {
   assert.deepEqual(G.dueDefinitionIndexes(entry), []);
 });
 
-test("the five showings of a side are spaced further apart each time", () => {
+test("the five showings of a side follow the schedule's gaps", () => {
   const entry = G.newEntry({ term: "laches", definitions: ["unreasonable delay"] });
   const day = 86400000;
-  // Nothing is due again until that side's gap has passed: 0, 1, 2, 4, then 7
+  // Nothing is due again until that side's gap has passed: 0, 1, 1, 2, then 4
   // days. A recall on the day it comes due keeps the schedule moving.
-  const gaps = [0, 1, 2, 4, 7];
+  const gaps = [0, 1, 1, 2, 4];
   let at = Date.now();
   for (const wait of gaps) {
     at += wait * day;

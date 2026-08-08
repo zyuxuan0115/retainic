@@ -26,8 +26,6 @@
     <string name="enter_valid_email">有効なメールアドレスを入力してください。</string>
     <string name="incorrect_email_password">メールアドレスまたはパスワードが正しくありません。</string>
     <string name="network_error">ネットワークエラー。接続を確認してもう一度お試しください。</string>
-
-    <string name="my_lists">マイリスト</string>
     <string name="statistics">統計</string>
     <string name="settings">設定</string>
     <string name="about">アプリについて</string>
@@ -154,7 +152,8 @@
     <string name="glossary_this_week">今週の用語集</string>
     <string name="n_cards_practised">%1$d 枚のカードを練習</string>
     <string name="glossary_practice_today">今日の用語集の練習</string>
-    <string name="average_pace">平均ペース</string>
+    <string name="words_average_pace">単語の平均ペース</string>
+    <string name="terms_average_pace">用語の平均ペース</string>
     <string name="per_day">1日あたり</string>
     <string name="per_week">1週間あたり</string>
     <string name="per_month">1か月あたり</string>
@@ -181,7 +180,6 @@
     <string name="source_code">ソースコード</string>
 
     <!-- Glossaries -->
-    <string name="my_glossaries">マイ用語集</string>
     <string name="new_glossary">新しい用語集</string>
     <string name="no_glossaries_yet">用語集がまだありません</string>
     <string name="create_first_glossary">最初の用語集を作成して、用語とその意味を集めましょう。</string>

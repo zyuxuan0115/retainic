@@ -58,25 +58,29 @@ private val AspectColors = listOf(Color(0xFF3B82F6), Color(0xFF22C55E), Color(0x
  * Glossary practice records the same daily tallies as list practice, so the
  * totals cover both a user's words and their glossary terms.
  */
-private class LearningStats(words: List<VocabWord>, entries: List<GlossaryEntry> = emptyList()) {
-    val totalWords = words.size + entries.size
-    val totalMemorized = words.count { it.isRemembered } + entries.count { it.isRemembered }
-    val startDate: Date? = (words.mapNotNull { it.createdAt } + entries.mapNotNull { it.createdAt })
-        .minByOrNull { it.time }
-    val activeDays: Int
-    val perDay: Double
-    val perWeek: Double
-    val perMonth: Double
+/**
+ * How fast one kind of item is being memorized: how many of them are done, over
+ * the days since the first one was added.
+ */
+private class Pace(val count: Int, val memorized: Int, createdDates: List<Date>) {
+    val startDate: Date? = createdDates.minByOrNull { it.time }
+    val activeDays: Int = if (startDate != null) {
+        maxOf(1, VocabWord.daysBetween(VocabWord.startOfDay(startDate), VocabWord.startOfDay(Date())) + 1)
+    } else 1
+    val perDay: Double = memorized.toDouble() / activeDays
+    val perWeek: Double = perDay * 7
+    val perMonth: Double = perDay * (365.25 / 12)
+}
 
-    init {
-        val now = Date()
-        activeDays = if (startDate != null) {
-            maxOf(1, VocabWord.daysBetween(VocabWord.startOfDay(startDate), VocabWord.startOfDay(now)) + 1)
-        } else 1
-        perDay = totalMemorized.toDouble() / activeDays
-        perWeek = perDay * 7
-        perMonth = perDay * (365.25 / 12)
-    }
+private class LearningStats(allWords: List<VocabWord>, allEntries: List<GlossaryEntry> = emptyList()) {
+    val totalWords = allWords.size + allEntries.size
+    val totalMemorized = allWords.count { it.isRemembered } + allEntries.count { it.isRemembered }
+
+    // Words and terms are paced separately: each counts from the day its own
+    // first one was added, so a glossary started last week isn't judged against
+    // months of vocabulary.
+    val words = Pace(allWords.size, allWords.count { it.isRemembered }, allWords.mapNotNull { it.createdAt })
+    val terms = Pace(allEntries.size, allEntries.count { it.isRemembered }, allEntries.mapNotNull { it.createdAt })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -203,20 +207,26 @@ private fun StatsContent(
             )
         }
 
-        // Average pace
-        Text(stringResource(R.string.average_pace), style = MaterialTheme.typography.titleMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PaceCard(stringResource(R.string.per_day), stats.perDay, Modifier.weight(1f))
-            PaceCard(stringResource(R.string.per_week), stats.perWeek, Modifier.weight(1f))
-            PaceCard(stringResource(R.string.per_month), stats.perMonth, Modifier.weight(1f))
-        }
+        // Average pace, words and terms apart
+        if (stats.words.count > 0) PaceSection(stringResource(R.string.words_average_pace), stats.words)
+        if (stats.terms.count > 0) PaceSection(stringResource(R.string.terms_average_pace), stats.terms)
+    }
+}
 
-        stats.startDate?.let { start ->
-            val since = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault()).format(start)
-            Text(stringResource(R.string.based_on_days, stats.activeDays, since),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        }
+/** One kind's pace, with the stretch of learning it was measured over. */
+@Composable
+private fun PaceSection(title: String, pace: Pace) {
+    Text(title, style = MaterialTheme.typography.titleMedium)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PaceCard(stringResource(R.string.per_day), pace.perDay, Modifier.weight(1f))
+        PaceCard(stringResource(R.string.per_week), pace.perWeek, Modifier.weight(1f))
+        PaceCard(stringResource(R.string.per_month), pace.perMonth, Modifier.weight(1f))
+    }
+    pace.startDate?.let { start ->
+        val since = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault()).format(start)
+        Text(stringResource(R.string.based_on_days, pace.activeDays, since),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 

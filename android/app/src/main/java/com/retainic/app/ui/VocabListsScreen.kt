@@ -95,7 +95,7 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.my_lists)) },
+                title = { Text(stringResource(R.string.lists)) },
                 navigationIcon = {
                     IconButton(onClick = { nav.push(ListsRoute.Trash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.trash))

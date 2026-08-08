@@ -91,8 +91,8 @@ fun MainScaffold(auth: AuthService) {
     }
 
     val tabs = listOf(
-        Tab(R.string.my_lists, Icons.AutoMirrored.Filled.List),
-        Tab(R.string.my_glossaries, Icons.AutoMirrored.Filled.MenuBook),
+        Tab(R.string.lists, Icons.AutoMirrored.Filled.List),
+        Tab(R.string.glossaries, Icons.AutoMirrored.Filled.MenuBook),
         Tab(R.string.statistics, Icons.Filled.BarChart),
         Tab(R.string.settings, Icons.Filled.Settings),
         Tab(R.string.about, Icons.Filled.Info),

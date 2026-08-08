@@ -84,10 +84,9 @@ function syncLegacyFields(entry) {
 // and for the definition, how many days to wait before showing it again — or -1
 // once that side is finished and never comes due again. A glossary can override
 // it with its own Python (compiled in algorithm.js); with no override the
-// built-in schedule below runs: five recalls of each side, spaced further apart
-// each time.
+// built-in schedule below runs: five recalls of each side, at the gaps below.
 
-const REVIEW_GAPS = [0, 1, 2, 4, 7];
+const REVIEW_GAPS = [0, 1, 1, 2, 4];
 
 /** How many correct recalls the built-in schedule needs to finish a side. */
 export const REQUIRED_RECALLS = REVIEW_GAPS.length;

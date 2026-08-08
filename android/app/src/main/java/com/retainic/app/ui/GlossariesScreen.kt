@@ -80,7 +80,7 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.my_glossaries)) },
+                title = { Text(stringResource(R.string.glossaries)) },
                 navigationIcon = {
                     IconButton(onClick = { nav.push(GlossariesRoute.Trash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.trash))

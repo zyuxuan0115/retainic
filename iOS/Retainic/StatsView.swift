@@ -29,48 +29,66 @@ private struct DayAspectPoint: Identifiable {
     let count: Int
 }
 
-/// Aggregate learning statistics computed from every word the user has.
-struct LearningStats {
-    let totalWords: Int
-    let totalMemorized: Int
-    let activeDays: Int
-    let startDate: Date?
-    let perDay: Double
-    let perWeek: Double
-    let perMonth: Double
+/// How fast one kind of item is being memorized: how many of them are done,
+/// over the days since the first one was added.
+struct Pace {
+    var count = 0
+    var memorized = 0
+    var activeDays = 1
+    var startDate: Date?
+    var perDay: Double = 0
+    var perWeek: Double = 0
+    var perMonth: Double = 0
 
-    /// Glossary practice records the same daily tallies as list practice, so the
-    /// totals cover both a user's words and their glossary terms.
-    init(words: [VocabWord], entries: [GlossaryEntry] = []) {
-        totalWords = words.count + entries.count
-        // Fully memorized = recalled enough times in every aspect (remember_final:
-        // 8× word, 10× translation, 7× pronunciation; for a term, 5× the term
-        // and 5× each of its definitions).
-        totalMemorized = words.filter { $0.isRemembered }.count
-            + entries.filter { $0.isRemembered }.count
+    init() {}
 
-        let now = Date()
-        let cal = Calendar.current
-        let start = (words.map(\.createdAt) + entries.map(\.createdAt)).min()
+    init(count: Int, memorized: Int, createdDates: [Date]) {
+        self.count = count
+        self.memorized = memorized
+        let start = createdDates.min()
         startDate = start
-
-        // Days the user has been learning, counting the first day.
+        // Days the user has been learning this kind, counting the first day.
         if let start {
+            let cal = Calendar.current
             let dayCount = cal.dateComponents(
                 [.day],
                 from: cal.startOfDay(for: start),
-                to: cal.startOfDay(for: now)
+                to: cal.startOfDay(for: Date())
             ).day ?? 0
             activeDays = max(1, dayCount + 1)
-        } else {
-            activeDays = 1
         }
-
-        let total = Double(totalMemorized)
-        let days = Double(activeDays)
-        perDay = total / days
+        perDay = Double(memorized) / Double(activeDays)
         perWeek = perDay * 7
         perMonth = perDay * (365.25 / 12)
+    }
+}
+
+/// Aggregate learning statistics computed from every word and term the user has.
+struct LearningStats {
+    let totalWords: Int
+    let totalMemorized: Int
+    /// Words and terms are paced separately: each counts from the day its own
+    /// first one was added, so a glossary started last week isn't judged
+    /// against months of vocabulary.
+    let words: Pace
+    let terms: Pace
+
+    /// Glossary practice records the same daily tallies as list practice, so the
+    /// totals cover both a user's words and their glossary terms.
+    init(words allWords: [VocabWord], entries: [GlossaryEntry] = []) {
+        totalWords = allWords.count + entries.count
+        // Fully memorized = recalled enough times in every aspect (remember_final:
+        // 8× word, 10× translation, 7× pronunciation; for a term, 5× the term
+        // and 5× each of its definitions).
+        totalMemorized = allWords.filter { $0.isRemembered }.count
+            + entries.filter { $0.isRemembered }.count
+
+        words = Pace(count: allWords.count,
+                     memorized: allWords.filter { $0.isRemembered }.count,
+                     createdDates: allWords.map(\.createdAt))
+        terms = Pace(count: entries.count,
+                     memorized: entries.filter { $0.isRemembered }.count,
+                     createdDates: entries.map(\.createdAt))
     }
 }
 
@@ -200,27 +218,8 @@ struct StatsView: View {
                     glossaryWeekChart
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Average pace")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    HStack(spacing: 12) {
-                        averageCard(title: "Per day", value: stats.perDay)
-                        averageCard(title: "Per week", value: stats.perWeek)
-                        averageCard(title: "Per month", value: stats.perMonth)
-                    }
-                    // titles above are LocalizedStringKey literals
-                }
-
-                if let start = stats.startDate {
-                    let since = start.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(locale))
-                    Text("Based on \(stats.activeDays) days of learning since \(since).")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                }
+                if stats.words.count > 0 { paceSection("Words average pace", stats.words) }
+                if stats.terms.count > 0 { paceSection("Terms average pace", stats.terms) }
             }
             .padding()
         }
@@ -381,6 +380,30 @@ struct StatsView: View {
         .chartForegroundStyleScale(domain: labels, range: Array(styleRange.prefix(labels.count)))
         .chartLegend(.hidden)
         .frame(height: chartHeight)
+    }
+
+    /// One kind's pace, with the stretch of learning it was measured over.
+    private func paceSection(_ title: LocalizedStringKey, _ pace: Pace) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 12) {
+                averageCard(title: "Per day", value: pace.perDay)
+                averageCard(title: "Per week", value: pace.perWeek)
+                averageCard(title: "Per month", value: pace.perMonth)
+            }
+
+            if let start = pace.startDate {
+                let since = start.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(locale))
+                Text("Based on \(pace.activeDays) days of learning since \(since).")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+        }
     }
 
     private func totalCard(_ stats: LearningStats) -> some View {
