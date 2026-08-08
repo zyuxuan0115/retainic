@@ -44,17 +44,11 @@ export async function StatsScreen(content) {
   // five recalls.
   const totalWords = words.length + entries.length;
   const totalMemorized = words.filter(M.isRemembered).length + entries.filter(G.isRemembered).length;
-  const dates = [...words, ...entries].map((w) => w.createdAt).filter(Boolean);
-  const start = dates.length ? new Date(Math.min(...dates.map((d) => +d))) : null;
-  let activeDays = 1;
-  if (start) {
-    const s = new Date(start); s.setHours(0, 0, 0, 0);
-    const n = new Date(); n.setHours(0, 0, 0, 0);
-    activeDays = Math.max(1, Math.round((n - s) / 86400000) + 1);
-  }
-  const perDay = totalMemorized / activeDays;
-  const perWeek = perDay * 7;
-  const perMonth = perDay * (365.25 / 12);
+  // Words and terms are paced separately: each counts from the day its own
+  // first one was added, so a glossary started last week isn't judged against
+  // months of vocabulary.
+  const wordPace = paceOf(words, M.isRemembered);
+  const termPace = paceOf(entries, G.isRemembered);
 
   // Today remembered (derived from words and glossary terms). A term's two
   // methods line up with a word's first two: recalling the term itself, and
@@ -125,22 +119,44 @@ export async function StatsScreen(content) {
       el("h3", {}, t("Glossary this week")),
       weekChart(dailyStats, glossaryWeekToday, glossaryKeys, glossaryLabel, glossaryColors),
     ) : null,
-    el(".stat-block", {},
-      el("h3", {}, t("Average pace")),
-      el(".pace-row", {},
-        paceCard(t("Per day"), perDay),
-        paceCard(t("Per week"), perWeek),
-        paceCard(t("Per month"), perMonth),
-      ),
-    ),
-    start ? el("p.caption.center", {},
-      tf("Based on %lld days of learning since %@.", activeDays, start.toLocaleDateString(i18n.preferredLanguage()))) : null,
+    words.length ? paceBlock(t("Words average pace"), wordPace) : null,
+    entries.length ? paceBlock(t("Terms average pace"), termPace) : null,
   ));
+
+  /** One kind's pace, with the stretch of learning it was measured over. */
+  function paceBlock(title, pace) {
+    return el(".stat-block", {},
+      el("h3", {}, title),
+      el(".pace-row", {},
+        paceCard(t("Per day"), pace.perDay),
+        paceCard(t("Per week"), pace.perWeek),
+        paceCard(t("Per month"), pace.perMonth),
+      ),
+      pace.start ? el("p.caption.center", {}, tf("Based on %lld days of learning since %@.",
+        pace.activeDays, pace.start.toLocaleDateString(i18n.preferredLanguage()))) : null,
+    );
+  }
 
   function paceCard(title, value) {
     const text = value < 10 ? value.toFixed(1) : `${Math.round(value)}`;
     return el(".pace-card", {}, el(".pace-value", {}, text), el(".pace-title", {}, title));
   }
+}
+
+/** How fast one kind of item is being memorized: how many of them are done,
+ *  over the days since the first one was added. */
+function paceOf(items, isRemembered) {
+  const memorized = items.filter(isRemembered).length;
+  const dates = items.map((i) => i.createdAt).filter(Boolean).map((d) => +d);
+  const start = dates.length ? new Date(Math.min(...dates)) : null;
+  let activeDays = 1;
+  if (start) {
+    const s = new Date(start); s.setHours(0, 0, 0, 0);
+    const n = new Date(); n.setHours(0, 0, 0, 0);
+    activeDays = Math.max(1, Math.round((n - s) / 86400000) + 1);
+  }
+  const perDay = memorized / activeDays;
+  return { memorized, start, activeDays, perDay, perWeek: perDay * 7, perMonth: perDay * (365.25 / 12) };
 }
 
 function barChart(bars) {

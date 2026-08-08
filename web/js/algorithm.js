@@ -2,14 +2,19 @@
 //  algorithm.js
 //  Retainic Web
 //
-//  Pluggable review algorithm. A list may override the spaced-repetition
-//  schedule with its own Python, executed in the browser via Pyodide (real
-//  CPython compiled to WebAssembly, loaded on demand from a CDN). Compiling a
-//  snippet installs it as the active algorithm in models.js; with no override
-//  the built-in JS default runs and Pyodide is never loaded.
+//  Pluggable review algorithm. A list — or a glossary — may override the
+//  spaced-repetition schedule with its own Python, executed in the browser via
+//  Pyodide (real CPython compiled to WebAssembly, loaded on demand from a CDN).
+//  Compiling a snippet installs it as the active algorithm in models.js (words)
+//  or glossary.js (terms); with no override the built-in JS default runs and
+//  Pyodide is never loaded.
+//
+//  The two kinds have their own contract, because a word has three methods and
+//  one meaning while a term has two methods and any number of meanings.
 //
 
 import { setActiveAlgorithm } from "./models.js";
+import { setActiveGlossaryAlgorithm } from "./glossary.js";
 
 const PYODIDE_VERSION = "0.26.4";
 const PYODIDE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/pyodide.mjs`;
@@ -66,9 +71,58 @@ class _Word:
         self.times_pronunciation = tp
         self.has_audio = ha
 
-def _run(tw, tt, tp, ha):
-    r = review(_Word(tw, tt, tp, bool(ha)))
-    return [float(r.word), float(r.translation), float(r.pronunciation), float(r.mastered_total)]
+def _make_runner(fn):
+    def run(tw, tt, tp, ha):
+        r = fn(_Word(tw, tt, tp, bool(ha)))
+        return [float(r.word), float(r.translation), float(r.pronunciation), float(r.mastered_total)]
+    return run
+`;
+
+/** The default glossary algorithm, shown pre-filled in the editor. Mirrors the
+ *  built-in schedule exactly, so saving it unchanged behaves like no override. */
+export const DEFAULT_GLOSSARY_ALGORITHM_CODE = `# Retainic glossary review algorithm.
+#
+# 'e' is the progress of the side being scheduled:
+#   e.times_term        correct recalls of the term so far
+#   e.times_definition  correct recalls of this definition so far
+#
+# A term is shown one card per meaning: each definition is scheduled on its own,
+# and 'e.times_definition' is the count for whichever one is being scheduled.
+#
+# Return a GlossaryReview giving the number of days until each side is due again
+# (-1 means that side is finished). A term is memorized once the term side and
+# every one of its definitions are finished.
+
+def review(e):
+    GAPS = [0, 1, 2, 4, 7]
+
+    def gap(n):
+        return GAPS[n] if n < len(GAPS) else -1
+
+    return GlossaryReview(
+        term       = gap(e.times_term),
+        definition = gap(e.times_definition),
+    )
+`;
+
+// The glossary counterpart of PREAMBLE: two sides instead of three methods, and
+// no mastery total — a side is finished when its own schedule runs out.
+const GLOSSARY_PREAMBLE = `
+class GlossaryReview:
+    def __init__(self, term=-1, definition=-1):
+        self.term = term
+        self.definition = definition
+
+class _Entry:
+    def __init__(self, tt, td):
+        self.times_term = tt
+        self.times_definition = td
+
+def _make_glossary_runner(fn):
+    def run(tt, td):
+        r = fn(_Entry(tt, td))
+        return [float(r.term), float(r.definition)]
+    return run
 `;
 
 // Runs once, right after Pyodide loads, before any user code. It severs
@@ -95,6 +149,17 @@ _retainic_lock()
 del _retainic_lock
 `;
 
+/** First-layer guard with a clear message: a review algorithm is pure
+ *  arithmetic, so reject any attempt to reach the JavaScript bridge or dynamic
+ *  imports up front. The runtime lockdown in `pyodide()` is the actual
+ *  enforcement (this denylist alone could be evaded), but this turns the common
+ *  case into a friendly error instead of a raw Python ImportError. */
+function guardSource(code) {
+  if (/\b(?:import\s+js\b|from\s+js\b|pyodide|run_js|__import__|importlib|eval\s*\(|exec\s*\()/.test(code)) {
+    throw new Error("For security, review algorithms may only use plain Python arithmetic — no 'js'/'pyodide' access, imports, or eval/exec.");
+  }
+}
+
 let pyodidePromise = null;
 
 /** Loads Pyodide once (idempotent), then locks it down before any user code. */
@@ -111,18 +176,13 @@ function pyodide() {
  *    state -> { word, translation, pronunciation, masteredTotal }
  *  Rejects if the code can't be loaded or doesn't define a usable `review`. */
 export async function compileAlgorithm(code) {
-  // First-layer guard with a clear message: a review algorithm is pure
-  // arithmetic, so reject any attempt to reach the JavaScript bridge or dynamic
-  // imports up front. The runtime lockdown in `pyodide()` is the actual
-  // enforcement (this denylist alone could be evaded), but this turns the common
-  // case into a friendly error instead of a raw Python ImportError.
-  if (/\b(?:import\s+js\b|from\s+js\b|pyodide|run_js|__import__|importlib|eval\s*\(|exec\s*\()/.test(code)) {
-    throw new Error("For security, review algorithms may only use plain Python arithmetic — no 'js'/'pyodide' access, imports, or eval/exec.");
-  }
+  guardSource(code);
   const py = await pyodide();
   py.runPython(PREAMBLE);
   py.runPython(code);
-  const runner = py.runPython("_run");
+  // Capture the function this snippet just defined. A later compile rebinds the
+  // global `review`, so the runner has to close over the one it was made with.
+  const runner = py.runPython("_make_runner(review)");
 
   // Actually run review() across a spread of word states — low and high counts,
   // with and without audio — so a runtime error (e.g. an index out of range for
@@ -158,9 +218,52 @@ export async function compileAlgorithm(code) {
   };
 }
 
+/** Compiles Python source into a synchronous glossary review function
+ *    state -> { term, definition }
+ *  Rejects if the code can't be loaded or doesn't define a usable `review`. */
+export async function compileGlossaryAlgorithm(code) {
+  guardSource(code);
+  const py = await pyodide();
+  py.runPython(GLOSSARY_PREAMBLE);
+  py.runPython(code);
+  const runner = py.runPython("_make_glossary_runner(review)");
+
+  // Run review() across a spread of states — a fresh term, a well-practised
+  // one, a term whose definitions are far apart — so a runtime error or a bad
+  // return value surfaces now rather than mid-practice.
+  const probes = [[0, 0], [1, 0], [0, 1], [2, 2], [5, 5], [20, 3], [3, 20], [100, 100]];
+  for (const [tt, td] of probes) {
+    let proxy;
+    try {
+      proxy = runner(tt, td);
+      const arr = proxy.toJs();
+      if (!Array.isArray(arr) || arr.length !== 2 || arr.some((v) => typeof v !== "number" || !Number.isFinite(v))) {
+        throw new Error("review() must return GlossaryReview(term, definition) with numeric values.");
+      }
+    } finally {
+      if (proxy) proxy.destroy();
+    }
+  }
+
+  const cache = new Map();
+  return (state) => {
+    const key = `${state.times_term}|${state.times_definition}`;
+    const hit = cache.get(key);
+    if (hit) return hit;
+    const proxy = runner(state.times_term, state.times_definition);
+    const arr = proxy.toJs();
+    proxy.destroy();
+    const out = { term: arr[0], definition: arr[1] };
+    cache.set(key, out);
+    return out;
+  };
+}
+
 // The code string currently installed, so switching between lists doesn't
-// recompile the same algorithm.
+// recompile the same algorithm. Words and glossaries schedule independently, so
+// each remembers its own.
 let installedCode = null;
+let installedGlossaryCode = null;
 
 /** Installs `code` as the active algorithm. Empty/blank installs the built-in
  *  default (no Pyodide load). Rejects — after falling back to the default — if
@@ -179,8 +282,31 @@ export async function useAlgorithm(code) {
   }
 }
 
-/** Resets scheduling to the built-in default. */
+/** Resets word scheduling to the built-in default. */
 export function useDefaultAlgorithm() {
   installedCode = null;
   setActiveAlgorithm(null);
+}
+
+/** Installs `code` as the active glossary algorithm. Empty/blank installs the
+ *  built-in default (no Pyodide load). Rejects — after falling back to the
+ *  default — if the code fails to compile, so the caller can surface the error. */
+export async function useGlossaryAlgorithm(code) {
+  const trimmed = (code || "").trim();
+  if (!trimmed) { useDefaultGlossaryAlgorithm(); return; }
+  if (trimmed === installedGlossaryCode) return;
+  try {
+    const fn = await compileGlossaryAlgorithm(trimmed);
+    installedGlossaryCode = trimmed;
+    setActiveGlossaryAlgorithm(fn);
+  } catch (e) {
+    useDefaultGlossaryAlgorithm();
+    throw e;
+  }
+}
+
+/** Resets glossary scheduling to the built-in default. */
+export function useDefaultGlossaryAlgorithm() {
+  installedGlossaryCode = null;
+  setActiveGlossaryAlgorithm(null);
 }

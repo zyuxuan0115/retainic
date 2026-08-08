@@ -13,6 +13,8 @@ import { navBar, iconButton, spinner, emptyState, confirmDialog, formSection, pi
 import { glossaryGlyph } from "./glossaries-screen.js";
 import { presentEntrySheet } from "./entry-sheet.js";
 import { downloadGlossaryCSV } from "./glossary-actions.js";
+import { presentAlgorithmSheet } from "./algorithm-sheet.js";
+import { useGlossaryAlgorithm } from "../algorithm.js";
 
 export async function GlossaryDetailScreen(content, glossary, { onBack, onPracticeChange }) {
   let entries = [];
@@ -27,6 +29,10 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   content.appendChild(header);
   content.appendChild(body);
 
+  // Scheduling on this screen — what's due, what counts as remembered — runs on
+  // whatever algorithm the glossary carries, the same one practice will use.
+  useGlossaryAlgorithm(glossary.algorithmCode).catch(() => {});
+
   body.appendChild(spinner(t("Loading…")));
   try { entries = await Repo.fetchEntries(authState.uid, glossary.id); }
   catch (e) { clear(body); body.appendChild(errorState(e)); return; }
@@ -35,7 +41,12 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   // Keep the sidebar Practice action in sync with this glossary's entries.
   function syncPractice() {
     onPracticeChange(entries.length
-      ? { kind: "glossary", cards: entries.map((e) => ({ entry: e, glossaryId: glossary.id })), language: glossary.language || "" }
+      ? {
+          kind: "glossary",
+          cards: entries.map((e) => ({ entry: e, glossaryId: glossary.id })),
+          language: glossary.language || "",
+          algorithmCode: glossary.algorithmCode || null,
+        }
       : null);
   }
 
@@ -159,6 +170,21 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
       filter,
       onFilter: (f) => { filter = f; renderAll(); },
       onDownload: () => downloadGlossaryCSV({ ...glossary, name: glossaryName }),
+      onEditAlgorithm: () => {
+        presentAlgorithmSheet({
+          code: glossary.algorithmCode,
+          kind: "glossary",
+          onSave: async (newCode) => {
+            // Saving the default unchanged clears the override.
+            const store = newCode && newCode.trim() ? newCode : null;
+            glossary.algorithmCode = store;
+            try { await Repo.setGlossaryAlgorithm(authState.uid, glossary.id, store); }
+            catch (e) { toast(Auth.friendlyMessage(e)); }
+            useGlossaryAlgorithm(store).catch(() => {});
+            renderAll();
+          },
+        });
+      },
       onRename: async (newName) => {
         const trimmed = newName.trim();
         if (!trimmed) return;
@@ -186,7 +212,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   }
 }
 
-function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onRename, onReset, onTrash }) {
+function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onEditAlgorithm, onRename, onReset, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
@@ -219,6 +245,13 @@ function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onRe
       el(".form", {},
         formSection(t("Glossary name"), el(".form-card", {}, nameInput)),
         formSection(t("Show terms"), el(".form-card", {}, pickerRow(t("Show terms"), filterSel))),
+        formSection(null,
+          el(".form-card", {},
+            el("button.form-action", {
+              onclick: () => { api.close(); onEditAlgorithm(); },
+            }, icon("code", 20), t("Edit review algorithm")),
+          ),
+          el(".form-note", {}, t("Write your own Python to schedule reviews and decide when a term is memorized."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action", {

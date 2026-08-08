@@ -37,7 +37,10 @@ SDK loaded from a CDN. No build step.
   **New Glossary → Import CSV** fills a new glossary from a file (columns: term,
   definitions, notes — several definitions separated by semicolons, or the same
   term repeated on another row, which merges into one entry), and **Glossary
-  Settings → Download CSV** writes those same columns back out.
+  Settings → Download CSV** writes those same columns back out. That schedule is
+  replaceable: **Glossary Settings → Edit review algorithm** takes your own
+  Python, which returns how many days until the term and the definition are due
+  again (-1 = finished), the same way a list's does for its three methods.
 - **Rich word entries** — term, translation, multiple parts of speech, pinyin
   (Chinese) / hiragana (Japanese) readings, recorded pronunciation, notes.
 - **Bulk editing** — multi-select words to delete or move to a compatible list
@@ -48,7 +51,8 @@ SDK loaded from a CDN. No build step.
 - **Per-aspect spaced repetition** — spelling, translation and pronunciation are
   scheduled independently; the schedules and mastery thresholds match the iOS
   app exactly (see `js/models.js`).
-- **Statistics** — words and glossary terms memorized, *Remembered today* bar chart, *This week*
+- **Statistics** — words and glossary terms memorized, *Words practice today* and
+  *Glossary practice today* bar charts, *Words this week* and *Glossary this week*
   trend lines, and average pace per day / week / month (SVG charts, no library).
 
 ## Running it

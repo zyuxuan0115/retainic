@@ -15,7 +15,7 @@ import * as M from "../models.js";
 import * as G from "../glossary.js";
 import { authState } from "../auth.js";
 import { playback } from "../audio.js";
-import { useAlgorithm, useDefaultAlgorithm } from "../algorithm.js";
+import { useAlgorithm, useDefaultAlgorithm, useGlossaryAlgorithm, useDefaultGlossaryAlgorithm } from "../algorithm.js";
 import { navBar, iconButton, spinner, emptyState, pronunciationButton, icon } from "../ui.js";
 
 const WORD_MODES = [
@@ -98,15 +98,21 @@ function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = n
   };
 }
 
-/** Adapter for a glossary's entries: term and definitions, no audio, always the
- *  built-in schedule. A term that means several things is one card per meaning
- *  when the definition is shown first — each definition has its own schedule —
- *  and a single card the other way round, revealing them all. */
-function glossaryDeck() {
+/** Adapter for a glossary's entries: term and definitions, no audio. A term
+ *  that means several things is one card per meaning when the definition is
+ *  shown first — each definition has its own schedule — and a single card the
+ *  other way round, revealing them all. */
+function glossaryDeck({ algorithmCode = null } = {}) {
   return {
     modes: GLOSSARY_MODES,
     emptyDescription: t("Add some terms to a glossary first, then come back to review them."),
-    prepare() { useDefaultAlgorithm(); return null; },
+    // Like a list's, a glossary's own Python must be compiled before scheduling
+    // can run; without one the built-in schedule is ready immediately.
+    prepare() {
+      if (!(algorithmCode && algorithmCode.trim())) { useDefaultGlossaryAlgorithm(); return null; }
+      return useGlossaryAlgorithm(algorithmCode)
+        .catch(() => { toast(t("Couldn't run your algorithm — using the default.")); });
+    },
     parts(card, modeId, dueOnly) {
       const entry = card.entry;
       if (modeId === "term") {

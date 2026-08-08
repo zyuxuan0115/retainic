@@ -92,11 +92,11 @@ fun AddEntryScreen(
             try {
                 if (existing != null) {
                     val updated = existing.copy(term = term.trim(), notes = notes.trim())
-                    updated.setDefinitions(filledDefinitions)
+                    updated.replaceDefinitions(filledDefinitions)
                     GlossaryRepository.updateEntry(uid, glossaryId, updated)
                 } else {
                     val entry = GlossaryEntry(term = term.trim(), notes = notes.trim(), createdAt = Date())
-                    entry.setDefinitions(filledDefinitions)
+                    entry.replaceDefinitions(filledDefinitions)
                     GlossaryRepository.addEntry(uid, glossaryId, entry)
                 }
                 nav.pop()

@@ -255,6 +255,22 @@ export default {
     "ko": "용어 선택",
   },
 
+  // MARK: - Custom review algorithm (web only)
+  "Write your own Python to schedule reviews and decide when a term is memorized.": {
+    "en": "Write your own Python to schedule reviews and decide when a term is memorized.",
+    "es": "Escribe tu propio Python para programar los repasos y decidir cuándo un término está memorizado.",
+    "zh": "编写你自己的 Python 代码来安排复习，并决定何时算是记住了一个术语。",
+    "ja": "自分の Python で復習の予定を組み、用語を暗記済みとみなす条件を決められます。",
+    "ko": "직접 작성한 Python으로 복습 일정을 정하고 용어를 언제 암기 완료로 볼지 결정하세요.",
+  },
+  "Your function runs in your browser (Python via Pyodide). It's used only for scheduling this glossary; your terms are never changed by it.": {
+    "en": "Your function runs in your browser (Python via Pyodide). It's used only for scheduling this glossary; your terms are never changed by it.",
+    "es": "Tu función se ejecuta en tu navegador (Python mediante Pyodide). Solo se usa para programar este glosario; nunca modifica tus términos.",
+    "zh": "你的函数在浏览器中运行（通过 Pyodide 运行 Python）。它只用于安排此术语表的复习，不会更改你的术语。",
+    "ja": "関数はブラウザ内で実行されます（Pyodide による Python）。この用語集の復習予定にのみ使われ、用語自体は変更されません。",
+    "ko": "함수는 브라우저에서 실행됩니다(Pyodide 기반 Python). 이 용어집의 복습 일정에만 사용되며 용어 자체는 변경되지 않습니다.",
+  },
+
   // MARK: - Glossary settings
   "Glossary Settings": {
     "en": "Glossary Settings",

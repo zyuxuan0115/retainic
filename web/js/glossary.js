@@ -79,31 +79,53 @@ function syncLegacyFields(entry) {
 
 // MARK: - The glossary schedule
 //
-// Glossaries run their own review algorithm rather than borrowing a word's.
-// Each side of an entry — the term, and every one of its definitions — is
-// recalled five times, spaced further apart each time, and that is the whole
-// requirement. The value at index n is how many days to wait after the nth
-// correct recall; past the end of the table that side is finished and never
-// comes due again.
+// Glossaries run their own review algorithm rather than borrowing a word's. It
+// is given the progress of the side being scheduled and returns, for the term
+// and for the definition, how many days to wait before showing it again — or -1
+// once that side is finished and never comes due again. A glossary can override
+// it with its own Python (compiled in algorithm.js); with no override the
+// built-in schedule below runs: five recalls of each side, spaced further apart
+// each time.
 
 const REVIEW_GAPS = [0, 1, 2, 4, 7];
 
-/** How many correct recalls finish the term, and each definition. */
+/** How many correct recalls the built-in schedule needs to finish a side. */
 export const REQUIRED_RECALLS = REVIEW_GAPS.length;
 
-/** Days to wait after `count` correct recalls, or -1 once it's finished. */
-function gapAfter(count) {
-  return count < REVIEW_GAPS.length ? REVIEW_GAPS[count] : -1;
+/** The built-in schedule, as a review function. */
+export function defaultGlossaryReview(state) {
+  const gap = (count) => (count < REVIEW_GAPS.length ? REVIEW_GAPS[count] : -1);
+  return { term: gap(state.times_term), definition: gap(state.times_definition) };
+}
+
+let activeReview = defaultGlossaryReview;
+
+/** Installs a compiled review override, or resets to the default when null. */
+export function setActiveGlossaryAlgorithm(fn) {
+  activeReview = fn || defaultGlossaryReview;
+}
+
+/** The state the review function sees. `definitionIndex` picks which
+ *  definition's progress to pass; without one the entry is described by its
+ *  least-practised definition, so mastery waits for all of them. */
+function entryState(entry, definitionIndex = null) {
+  const counts = definitions(entry).map((d) => d.timesCorrect);
+  return {
+    times_term: entry.timesTermCorrect ?? 0,
+    times_definition: definitionIndex != null
+      ? (counts[definitionIndex] ?? 0)
+      : (counts.length ? Math.min(...counts) : 0),
+  };
 }
 
 export function isTermDue(entry, now = new Date()) {
-  return methodDue(gapAfter(entry.timesTermCorrect ?? 0), entry.lastTermRemembered, now);
+  return methodDue(activeReview(entryState(entry)).term, entry.lastTermRemembered, now);
 }
 
 /** Whether a definition is due. With no `definitionIndex`, whether any is. */
 export function isDefinitionDue(entry, now = new Date(), definitionIndex = null) {
   const defs = definitions(entry);
-  const due = (i) => methodDue(gapAfter(defs[i].timesCorrect), defs[i].lastRemembered, now);
+  const due = (i) => methodDue(activeReview(entryState(entry, i)).definition, defs[i].lastRemembered, now);
   if (definitionIndex != null) return defs[definitionIndex] ? due(definitionIndex) : false;
   return defs.some((_, i) => due(i));
 }
@@ -122,14 +144,15 @@ export function isRemembered(entry) {
   return entry.remember_final === true;
 }
 
-/** An entry is memorized once every side of it is finished: the term recalled
- *  its five times, and each definition its own five. A term that means five
- *  things isn't done until all five meanings are. */
+/** An entry is memorized once every side of it is finished — the algorithm
+ *  says -1 (never again) for the term and for each definition. On the built-in
+ *  schedule that means five recalls apiece, so a term that means five things
+ *  isn't done until all five meanings are. */
 function updateRememberFinal(entry) {
   const defs = definitions(entry);
-  entry.remember_final = (entry.timesTermCorrect ?? 0) >= REQUIRED_RECALLS
+  entry.remember_final = activeReview(entryState(entry)).term < 0
     && defs.length > 0
-    && defs.every((d) => d.timesCorrect >= REQUIRED_RECALLS);
+    && defs.every((_, i) => activeReview(entryState(entry, i)).definition < 0);
 }
 
 function record(entry, aspect, correct, now) {

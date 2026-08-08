@@ -150,3 +150,37 @@ test("editing definitions keeps the progress at each position", () => {
   assert.deepEqual(entry.definitions.map((d) => d.timesCorrect), [0, 0, 0]);
   assert.deepEqual(G.definitionTexts(entry).length, 3);
 });
+
+test("a glossary can schedule on its own algorithm", () => {
+  // What a compiled Python override hands back: days until each side is due
+  // again, -1 once it's finished. This one asks for two recalls a week apart.
+  G.setActiveGlossaryAlgorithm((state) => ({
+    term: state.times_term < 2 ? [0, 7][state.times_term] : -1,
+    definition: state.times_definition < 2 ? [0, 7][state.times_definition] : -1,
+  }));
+  try {
+    const entry = G.newEntry({ term: "bank", definitions: ["money", "river"] });
+    G.markCorrect(entry, "term");
+    // The override's gap, not the built-in one day.
+    assert.equal(G.isTermDue(entry, new Date(Date.now() + 6 * 86400000)), false);
+    assert.equal(G.isTermDue(entry, new Date(Date.now() + 7 * 86400000)), true);
+
+    // Mastery follows the algorithm too: two recalls a side finishes the entry,
+    // where the built-in schedule would have wanted five.
+    G.markCorrect(entry, "term");
+    for (let i = 0; i < 2; i++) { G.markCorrect(entry, "definition", 0); G.markCorrect(entry, "definition", 1); }
+    assert.equal(G.isRemembered(entry), true);
+    assert.deepEqual(G.dueDefinitionIndexes(entry), []);
+  } finally {
+    G.setActiveGlossaryAlgorithm(null);
+  }
+});
+
+test("clearing the override puts the built-in schedule back", () => {
+  G.setActiveGlossaryAlgorithm(() => ({ term: -1, definition: -1 }));
+  G.setActiveGlossaryAlgorithm(null);
+  const entry = G.newEntry({ term: "tort", definitions: ["a civil wrong"] });
+  for (let i = 0; i < G.REQUIRED_RECALLS - 1; i++) G.markCorrect(entry, "term");
+  assert.equal(G.isRemembered(entry), false);
+  assert.deepEqual(G.defaultGlossaryReview({ times_term: 5, times_definition: 0 }), { term: -1, definition: 0 });
+});

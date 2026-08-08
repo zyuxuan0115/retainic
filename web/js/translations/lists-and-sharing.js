@@ -125,12 +125,19 @@ export default {
     "ja": "音声は録音された発音がある単語にのみ使用されます。",
     "ko": "오디오는 발음이 녹음된 단어에만 사용됩니다.",
   },
-  "Average pace": {
-    "en": "Average pace",
-    "es": "Ritmo promedio",
-    "zh": "平均速度",
-    "ja": "平均ペース",
-    "ko": "평균 속도",
+  "Words average pace": {
+    "en": "Words average pace",
+    "es": "Ritmo medio de palabras",
+    "zh": "单词平均进度",
+    "ja": "単語の平均ペース",
+    "ko": "단어 평균 속도",
+  },
+  "Terms average pace": {
+    "en": "Terms average pace",
+    "es": "Ritmo medio de términos",
+    "zh": "术语平均进度",
+    "ja": "用語の平均ペース",
+    "ko": "용어 평균 속도",
   },
   "Based on %lld days of learning since %@.": {
     "en": "Based on %lld days of learning since %@.",

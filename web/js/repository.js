@@ -367,6 +367,12 @@ export async function renameGlossary(uid, glossaryId, name) {
   await updateDoc(doc(glossariesRef(uid), glossaryId), { name });
 }
 
+/** Stores this glossary's custom review-algorithm Python, or clears it (back to
+ *  the built-in default) when `code` is null. */
+export async function setGlossaryAlgorithm(uid, glossaryId, code) {
+  await updateDoc(doc(glossariesRef(uid), glossaryId), { algorithmCode: code == null ? deleteField() : code });
+}
+
 export async function trashGlossary(uid, glossaryId) {
   await updateDoc(doc(glossariesRef(uid), glossaryId), { deletedAt: new Date() });
 }

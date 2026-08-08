@@ -172,8 +172,11 @@ data class GlossaryEntry(
      * progress at each position: editing the wording of a definition leaves its
      * schedule alone, a new one starts unlearned, and a removed one takes its
      * progress with it.
+     *
+     * Not named `setDefinitions` (as it is on the other clients): that is the
+     * JVM signature of the [definitions] property's own setter.
      */
-    fun setDefinitions(texts: List<String>) {
+    fun replaceDefinitions(texts: List<String>) {
         val previous = definitionList
         definitions = texts.mapIndexed { index, text ->
             val old = previous.getOrNull(index)

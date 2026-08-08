@@ -5,7 +5,9 @@
 
 import { el, presentSheet } from "../dom.js";
 import { t } from "../i18n.js";
-import { DEFAULT_ALGORITHM_CODE, compileAlgorithm } from "../algorithm.js";
+import {
+  DEFAULT_ALGORITHM_CODE, DEFAULT_GLOSSARY_ALGORITHM_CODE, compileAlgorithm, compileGlossaryAlgorithm,
+} from "../algorithm.js";
 import { icon } from "../ui.js";
 
 const PY_KEYWORDS = new Set([
@@ -82,12 +84,17 @@ export function codeEditor(initial) {
   return { wrap, textarea, setValue };
 }
 
-/** A full editor for a list's custom review algorithm (Python). Lets the user
- *  paste code, check it compiles (loads Pyodide), reset to the default, and
- *  save. */
-export function presentAlgorithmSheet({ code, onSave }) {
+/** A full editor for a list's — or a glossary's — custom review algorithm
+ *  (Python). Lets the user paste code, check it compiles (loads Pyodide), reset
+ *  to the default, and save. `kind` picks which contract is being written:
+ *  "list" schedules a word's three methods, "glossary" a term and its
+ *  definitions. */
+export function presentAlgorithmSheet({ code, kind = "list", onSave }) {
+  const forGlossary = kind === "glossary";
+  const defaultCode = forGlossary ? DEFAULT_GLOSSARY_ALGORITHM_CODE : DEFAULT_ALGORITHM_CODE;
+  const compile = forGlossary ? compileGlossaryAlgorithm : compileAlgorithm;
   presentSheet((api) => {
-    const initialCode = (code && code.trim()) ? code : DEFAULT_ALGORITHM_CODE;
+    const initialCode = (code && code.trim()) ? code : defaultCode;
     const ed = codeEditor(initialCode);
     const editor = ed.textarea;
     const status = el(".form-note.code-status");
@@ -99,12 +106,12 @@ export function presentAlgorithmSheet({ code, onSave }) {
         if (saveBtn.disabled) return;
         const codeVal = editor.value;
         // The unchanged default is known-good, so skip the Pyodide round-trip.
-        if (codeVal.trim() !== DEFAULT_ALGORITHM_CODE.trim()) {
+        if (codeVal.trim() !== defaultCode.trim()) {
           setSaveEnabled(false);
           status.classList.remove("ok", "err");
           status.textContent = t("Checking your code…");
           try {
-            await compileAlgorithm(codeVal);
+            await compile(codeVal);
           } catch (e) {
             status.textContent = String(e && e.message ? e.message : e);
             status.classList.add("err");
@@ -128,7 +135,7 @@ export function presentAlgorithmSheet({ code, onSave }) {
     syncSave();
 
     const resetBtn = el("button.btn", {
-      onclick: () => { ed.setValue(DEFAULT_ALGORITHM_CODE); status.textContent = ""; status.classList.remove("ok", "err"); syncSave(); },
+      onclick: () => { ed.setValue(defaultCode); status.textContent = ""; status.classList.remove("ok", "err"); syncSave(); },
     }, t("Reset to default"));
 
     return el(".sheet-content", {},
@@ -141,7 +148,9 @@ export function presentAlgorithmSheet({ code, onSave }) {
       ),
       el(".scroll", {},
         el(".form", {},
-          el(".form-note", {}, t("Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.")),
+          el(".form-note", {}, forGlossary
+            ? t("Your function runs in your browser (Python via Pyodide). It's used only for scheduling this glossary; your terms are never changed by it.")
+            : t("Your function runs in your browser (Python via Pyodide). It's used only for scheduling this list; your words are never changed by it.")),
           ed.wrap,
           el(".algo-actions", {}, resetBtn),
           status,
