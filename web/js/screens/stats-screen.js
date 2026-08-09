@@ -24,6 +24,7 @@ export async function StatsScreen(content) {
   let words = [];
   let entries = [];
   let dailyStats = [];
+  const tStart = performance.now();                               // TEMP timing
   try {
     [words, entries, dailyStats] = await Promise.all([
       Repo.fetchAllWords(authState.uid),
@@ -31,6 +32,8 @@ export async function StatsScreen(content) {
       Repo.fetchDailyStats(authState.uid, 7).catch(() => []),
     ]);
   } catch (e) { clear(body); body.appendChild(errorState(e)); return; }
+  const tFetched = performance.now();                             // TEMP timing
+  console.info(`[stats] fetch total ${Math.round(tFetched - tStart)}ms`);  // TEMP timing
 
   clear(body);
   if (words.length + entries.length === 0) {
@@ -127,6 +130,8 @@ export async function StatsScreen(content) {
     ),
     paceBlock(t("Terms average pace"), termPace),
   ) : null;
+
+  console.info(`[stats] build charts ${Math.round(performance.now() - tFetched)}ms`);  // TEMP timing
 
   const columns = [wordColumn, termColumn].filter(Boolean);
 

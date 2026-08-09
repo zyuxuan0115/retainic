@@ -252,9 +252,14 @@ export async function fetchWords(uid, listId) {
  *  one list's words after another's is what made that screen slow, since each
  *  wait is a round trip to Firestore. */
 export async function fetchAllWords(uid) {
+  const t0 = performance.now();                                  // TEMP timing
   const lists = await fetchLists(uid, { backfillIds: false });
+  const t1 = performance.now();                                  // TEMP timing
   const perList = await Promise.all(lists.map((list) => fetchWords(uid, list.id)));
-  return perList.flat();
+  const words = perList.flat();
+  console.info(`[stats] ${lists.length} lists in ${Math.round(t1 - t0)}ms, `
+    + `${words.length} words in ${Math.round(performance.now() - t1)}ms`);  // TEMP timing
+  return words;
 }
 
 export async function addWord(uid, listId, word, audioBlob = null) {
@@ -409,9 +414,14 @@ export async function fetchEntries(uid, glossaryId) {
 /** Every term the user has, across all their glossaries, fetched together the
  *  way `fetchAllWords` fetches words. */
 export async function fetchAllEntries(uid) {
+  const t0 = performance.now();                                  // TEMP timing
   const glossaries = await fetchGlossaries(uid);
+  const t1 = performance.now();                                  // TEMP timing
   const perGlossary = await Promise.all(glossaries.map((glossary) => fetchEntries(uid, glossary.id)));
-  return perGlossary.flat();
+  const entries = perGlossary.flat();
+  console.info(`[stats] ${glossaries.length} glossaries in ${Math.round(t1 - t0)}ms, `
+    + `${entries.length} terms in ${Math.round(performance.now() - t1)}ms`);  // TEMP timing
+  return entries;
 }
 
 export async function addEntry(uid, glossaryId, entry) {
