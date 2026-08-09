@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -22,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.retainic.app.R
 import com.retainic.app.data.AuthService
 import com.retainic.app.data.Glossary
@@ -122,7 +125,22 @@ fun MainScaffold(auth: AuthService) {
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
                             icon = { Icon(tab.icon, contentDescription = null) },
-                            label = { Text(stringResource(tab.label)) },
+                            // One line, always: a label wide enough to wrap —
+                            // "Glossaries" on a narrow screen, or a longer
+                            // translation like "Estadísticas" — made its tab
+                            // taller than the rest and knocked the row out of
+                            // line. The smaller label style buys enough width
+                            // for most of them to fit whole.
+                            label = {
+                                Text(
+                                    stringResource(tab.label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                )
+                            },
                         )
                     }
                 }

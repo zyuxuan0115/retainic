@@ -17,7 +17,7 @@
 import { db, storage } from "./firebase.js";
 import {
   collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, increment, Timestamp, deleteField, writeBatch,
+  query, where, orderBy, limit, increment, Timestamp, deleteField, writeBatch, getCountFromServer,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
@@ -247,19 +247,36 @@ export async function fetchWords(uid, listId) {
   return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
 }
 
-/** Every word the user has, across all their lists — what Statistics is built
- *  from. The lists are read first, then all of their words at once: fetching
- *  one list's words after another's is what made that screen slow, since each
- *  wait is a round trip to Firestore. */
-export async function fetchAllWords(uid) {
-  const t0 = performance.now();                                  // TEMP timing
+/** How many documents in `ref` there are in total, how many are memorized, and
+ *  when the oldest was created — asked of Firestore rather than worked out
+ *  here. `getCountFromServer` returns a number, not the documents, so this
+ *  costs the same whether the collection holds ten words or ten thousand. */
+async function countsIn(ref) {
+  const [total, memorized, oldest] = await Promise.all([
+    getCountFromServer(ref),
+    getCountFromServer(query(ref, where("remember_final", "==", true))),
+    getDocs(query(ref, orderBy("createdAt", "asc"), limit(1))),
+  ]);
+  const first = oldest.docs[0] ? fromFirestore(oldest.docs[0].data()).createdAt : null;
+  return { total: total.data().count, memorized: memorized.data().count, firstCreatedAt: first };
+}
+
+/** Adds up per-collection counts into one total for the whole account. */
+function sumCounts(parts) {
+  const dates = parts.map((p) => p.firstCreatedAt).filter(Boolean).map((d) => +d);
+  return {
+    total: parts.reduce((n, p) => n + p.total, 0),
+    memorized: parts.reduce((n, p) => n + p.memorized, 0),
+    firstCreatedAt: dates.length ? new Date(Math.min(...dates)) : null,
+  };
+}
+
+/** What Statistics needs to know about a user's words: how many there are, how
+ *  many are memorized, and when the first one was added. Counted by Firestore —
+ *  the screen used to download every word to work this out itself. */
+export async function fetchWordTotals(uid) {
   const lists = await fetchLists(uid, { backfillIds: false });
-  const t1 = performance.now();                                  // TEMP timing
-  const perList = await Promise.all(lists.map((list) => fetchWords(uid, list.id)));
-  const words = perList.flat();
-  console.info(`[stats] ${lists.length} lists in ${Math.round(t1 - t0)}ms, `
-    + `${words.length} words in ${Math.round(performance.now() - t1)}ms`);  // TEMP timing
-  return words;
+  return sumCounts(await Promise.all(lists.map((list) => countsIn(wordsRef(uid, list.id)))));
 }
 
 export async function addWord(uid, listId, word, audioBlob = null) {
@@ -411,17 +428,10 @@ export async function fetchEntries(uid, glossaryId) {
   return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
 }
 
-/** Every term the user has, across all their glossaries, fetched together the
- *  way `fetchAllWords` fetches words. */
-export async function fetchAllEntries(uid) {
-  const t0 = performance.now();                                  // TEMP timing
+/** The same totals for a user's glossary terms. */
+export async function fetchTermTotals(uid) {
   const glossaries = await fetchGlossaries(uid);
-  const t1 = performance.now();                                  // TEMP timing
-  const perGlossary = await Promise.all(glossaries.map((glossary) => fetchEntries(uid, glossary.id)));
-  const entries = perGlossary.flat();
-  console.info(`[stats] ${glossaries.length} glossaries in ${Math.round(t1 - t0)}ms, `
-    + `${entries.length} terms in ${Math.round(performance.now() - t1)}ms`);  // TEMP timing
-  return entries;
+  return sumCounts(await Promise.all(glossaries.map((g) => countsIn(entriesRef(uid, g.id)))));
 }
 
 export async function addEntry(uid, glossaryId, entry) {

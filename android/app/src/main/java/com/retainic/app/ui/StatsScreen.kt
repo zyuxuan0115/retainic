@@ -33,11 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.retainic.app.R
@@ -250,25 +253,79 @@ private fun PaceCard(title: String, value: Double, modifier: Modifier) {
 /** Every chart is drawn in a box this tall, so the dashboard lines up. */
 private val ChartHeight = 220.dp
 
+/** The bar area of a bar chart, below the value labels and above the names. */
+private val BarPlotHeight = 150.dp
+
+/**
+ * The values to rule a chart at: the finest round step that keeps it to five
+ * lines or fewer, so the gaps are easy to read off. A chart whose tallest value
+ * is 3 gets lines at 1, 2 and 3; one reaching 50 gets 10, 20, 30, 40, 50.
+ */
+private fun guideValues(max: Int): List<Int> {
+    val step = listOf(1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000)
+        .firstOrNull { (max + it - 1) / it <= 5 } ?: 1000
+    return generateSequence(step) { it + step }.takeWhile { it <= max }.toList()
+}
+
+/**
+ * Dashed guide lines behind a chart, so a bar or a point can be read against a
+ * value instead of eyeballed. [plotHeight] is the height the data is drawn in,
+ * measured up from the bottom of this canvas; null means the whole canvas.
+ */
+@Composable
+private fun GuideLines(max: Int, plotHeight: Dp? = null, modifier: Modifier = Modifier) {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+    Canvas(modifier) {
+        val plot = plotHeight?.toPx() ?: size.height
+        val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
+        for (value in guideValues(max)) {
+            val y = size.height - plot * (value.toFloat() / max)
+            drawLine(color, Offset(0f, y), Offset(size.width, y), strokeWidth = 2f, pathEffect = dash)
+        }
+    }
+}
+
 @Composable
 private fun BarChart(bars: List<Triple<String, Int, Color>>) {
     val max = (bars.maxOfOrNull { it.second } ?: 0).coerceAtLeast(1)
-    Row(
-        Modifier.fillMaxWidth().height(ChartHeight).padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        bars.forEach { (label, count, color) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom) {
-                Text("$count", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(
-                    Modifier.width(48.dp)
-                        .height((150 * count / max).dp.coerceAtLeast(2.dp))
-                        .background(color, RoundedCornerShape(6.dp)),
+    Column(Modifier.fillMaxWidth().height(ChartHeight).padding(vertical = 8.dp)) {
+        // The bars and their names are separate rows, so the bottom of this box
+        // is the line the bars stand on — the one the guide lines measure from.
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            GuideLines(max, BarPlotHeight, Modifier.matchParentSize())
+            // Each bar takes an equal share of the width, and each name below
+            // takes the same share — so they stay centred on each other, and a
+            // long name like "Pronunciation" has the whole share to sit in
+            // rather than a box narrower than the word.
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.Bottom) {
+                bars.forEach { (_, count, color) ->
+                    Column(
+                        Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
+                        Text("$count", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Box(
+                            Modifier.width(48.dp)
+                                .height((BarPlotHeight * (count.toFloat() / max)).coerceAtLeast(2.dp))
+                                .background(color, RoundedCornerShape(6.dp)),
+                        )
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            bars.forEach { (label, _, _) ->
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f).padding(top = 4.dp, start = 2.dp, end = 2.dp),
                 )
-                Text(label, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center,
-                    modifier = Modifier.width(72.dp).padding(top = 4.dp))
             }
         }
     }
@@ -286,12 +343,20 @@ private fun WeekLineChart(
     val max = (points.maxOfOrNull { it.third } ?: 0).coerceAtLeast(1)
     val weekdayFmt = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
 
+    val guideColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+
     Column(Modifier.fillMaxWidth()) {
         Canvas(Modifier.fillMaxWidth().height(ChartHeight).padding(vertical = 8.dp)) {
             val n = days.size
             if (n < 2) return@Canvas
             val stepX = size.width / (n - 1)
             fun y(v: Int) = size.height - (v.toFloat() / max) * size.height
+            // Ruled first, so the week's lines are drawn over the guides.
+            val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
+            for (value in guideValues(max)) {
+                drawLine(guideColor, Offset(0f, y(value)), Offset(size.width, y(value)),
+                    strokeWidth = 2f, pathEffect = dash)
+            }
             aspectKeys.forEachIndexed { ai, key ->
                 val series = days.map { d ->
                     points.firstOrNull { it.first == d && it.second == key }?.third ?: 0

@@ -7,8 +7,6 @@ import { el, clear, svgEl } from "../dom.js";
 import * as i18n from "../i18n.js";
 import { t, tn, tf } from "../i18n.js";
 import * as Repo from "../repository.js";
-import * as M from "../models.js";
-import * as G from "../glossary.js";
 import { authState } from "../auth.js";
 import { navBar, spinner, emptyState, errorState, icon } from "../ui.js";
 
@@ -18,58 +16,48 @@ export async function StatsScreen(content) {
   content.appendChild(body);
   body.appendChild(spinner(t("Loading…")));
 
-  // Everything this screen needs, fetched at once: the words, the glossary
-  // terms and the week's tallies don't depend on each other, so waiting for
-  // each in turn only added up round trips.
-  let words = [];
-  let entries = [];
+  // Nothing here downloads a word or a term. The totals are counted by
+  // Firestore, and every "today" and "this week" number comes out of the daily
+  // tally documents practice already writes — seven small documents, however
+  // large the collections behind them are.
+  let wordTotals = { total: 0, memorized: 0, firstCreatedAt: null };
+  let termTotals = { total: 0, memorized: 0, firstCreatedAt: null };
   let dailyStats = [];
-  const tStart = performance.now();                               // TEMP timing
   try {
-    [words, entries, dailyStats] = await Promise.all([
-      Repo.fetchAllWords(authState.uid),
-      Repo.fetchAllEntries(authState.uid),
+    [wordTotals, termTotals, dailyStats] = await Promise.all([
+      Repo.fetchWordTotals(authState.uid),
+      Repo.fetchTermTotals(authState.uid),
       Repo.fetchDailyStats(authState.uid, 7).catch(() => []),
     ]);
   } catch (e) { clear(body); body.appendChild(errorState(e)); return; }
-  const tFetched = performance.now();                             // TEMP timing
-  console.info(`[stats] fetch total ${Math.round(tFetched - tStart)}ms`);  // TEMP timing
 
   clear(body);
-  if (words.length + entries.length === 0) {
+  if (wordTotals.total + termTotals.total === 0) {
     body.appendChild(emptyState(icon("bar_chart", 46), t("No Stats Yet"),
       t("Add words and practice them. Once you've memorized some, your progress shows up here.")));
     return;
   }
 
-  // Aggregate stats (LearningStats). A word counts as memorized only once it is
-  // fully remembered: 8× word, 10× translation, 7× pronunciation (remember_final);
-  // a glossary term once the term and each of its definitions have had their
-  // five recalls.
-  const totalWords = words.length + entries.length;
-  const totalMemorized = words.filter(M.isRemembered).length + entries.filter(G.isRemembered).length;
+  // A word counts as memorized only once it is fully remembered: 8× word,
+  // 10× translation, 7× pronunciation (remember_final); a glossary term once
+  // the term and each of its definitions have had their five recalls. Firestore
+  // counted both for us.
+  const totalWords = wordTotals.total + termTotals.total;
+  const totalMemorized = wordTotals.memorized + termTotals.memorized;
   // Words and terms are paced separately: each counts from the day its own
   // first one was added, so a glossary started last week isn't judged against
   // months of vocabulary.
-  const wordPace = paceOf(words, M.isRemembered);
-  const termPace = paceOf(entries, G.isRemembered);
+  const wordPace = paceOf(wordTotals);
+  const termPace = paceOf(termTotals);
 
-  // Today's word recalls, derived from the words themselves.
-  const today = { word: 0, translation: 0, pronunciation: 0 };
-  for (const w of words) {
-    if (M.isToday(w.lastWordRemembered)) today.word += 1;
-    if (M.isToday(w.lastTranslationRemembered)) today.translation += 1;
-    if (M.isToday(w.lastPronounciationRemembered)) today.pronunciation += 1;
-  }
-
-  // Today's glossary recalls, counted apart from the words. Every definition is
-  // a card of its own, so each one recalled today counts on its own — the same
-  // way the daily tallies were written during practice.
-  const glossaryToday = { term: 0, definition: 0 };
-  for (const e of entries) {
-    if (M.isToday(e.lastTermRemembered)) glossaryToday.term += 1;
-    glossaryToday.definition += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
-  }
+  // Today's counts come from today's tally document, the same place the rest of
+  // the week comes from — so the last point of each curve is measured the way
+  // the other six are, and a card practised twice counts twice in both.
+  const todayStat = dailyStats.find((s) => s.date === Repo.dayKey(new Date())) || null;
+  const glossaryToday = {
+    term: todayStat?.glossaryTerm || 0,
+    definition: todayStat?.glossaryDefinition || 0,
+  };
 
   // A day's shared tally covers both kinds of practice, so the word series is
   // what's left after the glossary's own tally is taken out. Days logged before
@@ -80,6 +68,12 @@ export async function StatsScreen(content) {
     if (key === "word") return Math.max(0, total - (stat.glossaryTerm || 0));
     if (key === "translation") return Math.max(0, total - (stat.glossaryDefinition || 0));
     return total;
+  };
+
+  const today = {
+    word: wordsOnly(todayStat, "word"),
+    translation: wordsOnly(todayStat, "translation"),
+    pronunciation: wordsOnly(todayStat, "pronunciation"),
   };
 
   // The glossary curve reads the fields glossary practice tallies for itself.
@@ -98,7 +92,7 @@ export async function StatsScreen(content) {
   // The dashboard is a column per kind — words on the left, glossary terms on
   // the right — so a column reads top to bottom as one subject. A user with
   // only one of the two gets a single full-width column instead of a gap.
-  const wordColumn = words.length ? el(".stats-col", {},
+  const wordColumn = wordTotals.total ? el(".stats-col", {},
     el(".stat-block", {},
       el("h3", {}, t("Words practice today")),
       barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
@@ -112,7 +106,7 @@ export async function StatsScreen(content) {
     paceBlock(t("Words average pace"), wordPace),
   ) : null;
 
-  const termColumn = entries.length ? el(".stats-col", {},
+  const termColumn = termTotals.total ? el(".stats-col", {},
     el(".stat-block", {},
       el("h3", {}, t("Glossary practice today")),
       barChart([
@@ -130,8 +124,6 @@ export async function StatsScreen(content) {
     ),
     paceBlock(t("Terms average pace"), termPace),
   ) : null;
-
-  console.info(`[stats] build charts ${Math.round(performance.now() - tFetched)}ms`);  // TEMP timing
 
   const columns = [wordColumn, termColumn].filter(Boolean);
 
@@ -168,10 +160,8 @@ export async function StatsScreen(content) {
 
 /** How fast one kind of item is being memorized: how many of them are done,
  *  over the days since the first one was added. */
-function paceOf(items, isRemembered) {
-  const memorized = items.filter(isRemembered).length;
-  const dates = items.map((i) => i.createdAt).filter(Boolean).map((d) => +d);
-  const start = dates.length ? new Date(Math.min(...dates)) : null;
+function paceOf({ memorized, firstCreatedAt }) {
+  const start = firstCreatedAt || null;
   let activeDays = 1;
   if (start) {
     const s = new Date(start); s.setHours(0, 0, 0, 0);
