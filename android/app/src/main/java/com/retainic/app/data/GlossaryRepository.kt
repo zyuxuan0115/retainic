@@ -4,6 +4,9 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 
@@ -96,6 +99,18 @@ object GlossaryRepository {
     }
 
     // MARK: - Entries
+
+    /**
+     * Every term the user has, across all their glossaries, fetched together
+     * the way [VocabRepository.fetchAllWords] fetches words.
+     */
+    suspend fun fetchAllEntries(uid: String): List<GlossaryEntry> = coroutineScope {
+        val glossaries = fetchGlossaries(uid)
+        glossaries.mapNotNull { it.id }
+            .map { id -> async { fetchEntries(uid, id) } }
+            .awaitAll()
+            .flatten()
+    }
 
     suspend fun fetchEntries(uid: String, glossaryId: String): List<GlossaryEntry> {
         val snapshot = entriesRef(uid, glossaryId)

@@ -18,17 +18,18 @@ export async function StatsScreen(content) {
   content.appendChild(body);
   body.appendChild(spinner(t("Loading…")));
 
+  // Everything this screen needs, fetched at once: the words, the glossary
+  // terms and the week's tallies don't depend on each other, so waiting for
+  // each in turn only added up round trips.
   let words = [];
   let entries = [];
   let dailyStats = [];
   try {
-    const lists = await Repo.fetchLists(authState.uid);
-    for (const l of lists) words = words.concat(await Repo.fetchWords(authState.uid, l.id));
-    // Glossary practice writes the same daily tallies as list practice, so the
-    // totals and today's counts have to include glossary terms as well.
-    const glossaries = await Repo.fetchGlossaries(authState.uid);
-    for (const g of glossaries) entries = entries.concat(await Repo.fetchEntries(authState.uid, g.id));
-    dailyStats = await Repo.fetchDailyStats(authState.uid, 7).catch(() => []);
+    [words, entries, dailyStats] = await Promise.all([
+      Repo.fetchAllWords(authState.uid),
+      Repo.fetchAllEntries(authState.uid),
+      Repo.fetchDailyStats(authState.uid, 7).catch(() => []),
+    ]);
   } catch (e) { clear(body); body.appendChild(errorState(e)); return; }
 
   clear(body);
@@ -50,28 +51,33 @@ export async function StatsScreen(content) {
   const wordPace = paceOf(words, M.isRemembered);
   const termPace = paceOf(entries, G.isRemembered);
 
-  // Today remembered (derived from words and glossary terms). A term's two
-  // methods line up with a word's first two: recalling the term itself, and
-  // recalling what it means.
+  // Today's word recalls, derived from the words themselves.
   const today = { word: 0, translation: 0, pronunciation: 0 };
   for (const w of words) {
     if (M.isToday(w.lastWordRemembered)) today.word += 1;
     if (M.isToday(w.lastTranslationRemembered)) today.translation += 1;
     if (M.isToday(w.lastPronounciationRemembered)) today.pronunciation += 1;
   }
-  for (const e of entries) {
-    if (M.isToday(e.lastTermRemembered)) today.word += 1;
-    // Every definition is a card of its own, so each one recalled today counts
-    // — the same way the daily tallies were written during practice.
-    today.translation += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
-  }
 
-  // Today's glossary recalls, for the charts glossaries get to themselves.
+  // Today's glossary recalls, counted apart from the words. Every definition is
+  // a card of its own, so each one recalled today counts on its own — the same
+  // way the daily tallies were written during practice.
   const glossaryToday = { term: 0, definition: 0 };
   for (const e of entries) {
     if (M.isToday(e.lastTermRemembered)) glossaryToday.term += 1;
     glossaryToday.definition += G.definitions(e).filter((d) => M.isToday(d.lastRemembered)).length;
   }
+
+  // A day's shared tally covers both kinds of practice, so the word series is
+  // what's left after the glossary's own tally is taken out. Days logged before
+  // glossaries tallied separately have nothing to take out, and read as before.
+  const wordsOnly = (stat, key) => {
+    if (!stat) return 0;
+    const total = stat[key] || 0;
+    if (key === "word") return Math.max(0, total - (stat.glossaryTerm || 0));
+    if (key === "translation") return Math.max(0, total - (stat.glossaryDefinition || 0));
+    return total;
+  };
 
   // The glossary curve reads the fields glossary practice tallies for itself.
   const glossaryKeys = ["glossaryTerm", "glossaryDefinition"];
@@ -93,10 +99,12 @@ export async function StatsScreen(content) {
     el(".stat-block", {},
       el("h3", {}, t("Words practice today")),
       barChart(aspectKeys.map((k) => ({ label: aspectLabel(k), value: today[k], color: colors[k] }))),
+      el("p.caption.center", {}, tn("%lld cards practised",
+        today.word + today.translation + today.pronunciation)),
     ),
     el(".stat-block", {},
       el("h3", {}, t("Words this week")),
-      weekChart(dailyStats, today, aspectKeys, aspectLabel, colors),
+      weekChart(dailyStats, today, aspectKeys, aspectLabel, colors, wordsOnly),
     ),
     paceBlock(t("Words average pace"), wordPace),
   ) : null;
@@ -188,7 +196,8 @@ function barChart(bars) {
   return svg;
 }
 
-function weekChart(dailyStats, today, aspectKeys, aspectLabel, colors) {
+function weekChart(dailyStats, today, aspectKeys, aspectLabel, colors,
+                   valueOf = (stat, key) => (stat ? (stat[key] || 0) : 0)) {
   const W = 340, H = 220, padX = 24, padY = 28;
   const byDate = {};
   for (const s of dailyStats) byDate[s.date] = s;
@@ -200,7 +209,7 @@ function weekChart(dailyStats, today, aspectKeys, aspectLabel, colors) {
     const stat = byDate[key];
     const vals = {};
     for (const k of aspectKeys) {
-      vals[k] = off === 0 ? (today[k] || 0) : (stat ? (stat[k] || 0) : 0);
+      vals[k] = off === 0 ? (today[k] || 0) : valueOf(stat, k);
     }
     days.push({ date: d, vals });
   }

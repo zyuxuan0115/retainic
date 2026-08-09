@@ -112,7 +112,7 @@ object VocabRepository {
     }
 
     /** Active (non-trashed) lists, newest first. */
-    suspend fun fetchLists(uid: String): List<VocabularyList> {
+    suspend fun fetchLists(uid: String, backfillIds: Boolean = true): List<VocabularyList> {
         val snapshot = listsRef(uid)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .get().await()
@@ -120,8 +120,24 @@ object VocabRepository {
             .mapNotNull { it.toObject(VocabularyList::class.java) }
             .filter { it.deletedAt == null }
             .toMutableList()
-        backfillPublicIds(uid, lists)
+        // Read-only screens can skip the backfill: it is a write per list that
+        // has no shareable ID yet, and nothing that only reads needs one.
+        if (backfillIds) backfillPublicIds(uid, lists)
         return lists
+    }
+
+    /**
+     * Every word the user has, across all their lists — what Statistics is
+     * built from. The lists are read first, then all of their words at once:
+     * fetching one list's words after another's is what made that screen slow,
+     * since each wait is a round trip to Firestore.
+     */
+    suspend fun fetchAllWords(uid: String): List<VocabWord> = coroutineScope {
+        val lists = fetchLists(uid, backfillIds = false)
+        lists.mapNotNull { it.id }
+            .map { listId -> async { fetchWords(uid, listId) } }
+            .awaitAll()
+            .flatten()
     }
 
     /** Lists currently in the trash, most recently deleted first. */

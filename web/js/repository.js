@@ -151,12 +151,14 @@ async function backfillPublicIds(uid, lists) {
 
 /** Active (non-trashed) lists, newest first. Trashed lists carry a `deletedAt`
  *  timestamp and are filtered out here — see `fetchTrashedLists`. */
-export async function fetchLists(uid) {
+export async function fetchLists(uid, { backfillIds = true } = {}) {
   const snap = await getDocs(query(listsRef(uid), orderBy("createdAt", "desc")));
   const lists = snap.docs
     .map((d) => ({ id: d.id, ...fromFirestore(d.data()) }))
     .filter((list) => !list.deletedAt);
-  await backfillPublicIds(uid, lists);
+  // Read-only screens can skip the backfill: it is a write per list that has no
+  // shareable ID yet, and nothing that only reads a list needs one.
+  if (backfillIds) await backfillPublicIds(uid, lists);
   return lists;
 }
 
@@ -243,6 +245,16 @@ export async function purgeList(uid, listId) {
 export async function fetchWords(uid, listId) {
   const snap = await getDocs(query(wordsRef(uid, listId), orderBy("createdAt", "desc")));
   return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
+}
+
+/** Every word the user has, across all their lists — what Statistics is built
+ *  from. The lists are read first, then all of their words at once: fetching
+ *  one list's words after another's is what made that screen slow, since each
+ *  wait is a round trip to Firestore. */
+export async function fetchAllWords(uid) {
+  const lists = await fetchLists(uid, { backfillIds: false });
+  const perList = await Promise.all(lists.map((list) => fetchWords(uid, list.id)));
+  return perList.flat();
 }
 
 export async function addWord(uid, listId, word, audioBlob = null) {
@@ -392,6 +404,14 @@ export async function purgeGlossary(uid, glossaryId) {
 export async function fetchEntries(uid, glossaryId) {
   const snap = await getDocs(query(entriesRef(uid, glossaryId), orderBy("createdAt", "desc")));
   return snap.docs.map((d) => ({ id: d.id, ...fromFirestore(d.data()) }));
+}
+
+/** Every term the user has, across all their glossaries, fetched together the
+ *  way `fetchAllWords` fetches words. */
+export async function fetchAllEntries(uid) {
+  const glossaries = await fetchGlossaries(uid);
+  const perGlossary = await Promise.all(glossaries.map((glossary) => fetchEntries(uid, glossary.id)));
+  return perGlossary.flat();
 }
 
 export async function addEntry(uid, glossaryId, entry) {

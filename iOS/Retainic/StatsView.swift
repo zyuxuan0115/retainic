@@ -131,31 +131,28 @@ final class StatsViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let lists = try await VocabRepository.fetchLists(uid: uid)
-            var all: [VocabWord] = []
-            for list in lists {
-                guard let listId = list.id else { continue }
-                all += try await VocabRepository.fetchWords(uid: uid, listId: listId)
-            }
-            let glossaries = try await GlossaryRepository.fetchGlossaries(uid: uid)
-            var allEntries: [GlossaryEntry] = []
-            for glossary in glossaries {
-                guard let glossaryId = glossary.id else { continue }
-                allEntries += try await GlossaryRepository.fetchEntries(uid: uid, glossaryId: glossaryId)
-            }
+            // Everything this screen needs, fetched at once: the words, the
+            // glossary terms and the week's tallies don't depend on each other,
+            // so waiting for each in turn only added up round trips.
+            async let wordsTask = VocabRepository.fetchAllWords(uid: uid)
+            async let entriesTask = GlossaryRepository.fetchAllEntries(uid: uid)
+            async let dailyTask = try? VocabRepository.fetchDailyStats(uid: uid, days: 7)
+            let all = try await wordsTask
+            let allEntries = try await entriesTask
+            let daily = await dailyTask ?? []
             stats = LearningStats(words: all, entries: allEntries)
-            todayRemembered = Self.countTodayRemembered(all, entries: allEntries)
+            todayRemembered = Self.countTodayRemembered(all)
             glossary = GlossaryStats(entries: allEntries)
-            dailyStats = (try? await VocabRepository.fetchDailyStats(uid: uid, days: 7)) ?? []
+            dailyStats = daily
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    /// Counts words and glossary terms whose per-aspect last-remembered date is
-    /// today. A term's two methods line up with a word's first two: recalling
-    /// the term itself, and recalling what it means.
-    private static func countTodayRemembered(_ words: [VocabWord], entries: [GlossaryEntry] = []) -> [String: Int] {
+    /// Counts words whose per-aspect last-remembered date is today. Glossary
+    /// terms are counted apart, in `GlossaryStats`, so the two sets of charts
+    /// don't count the same practice twice.
+    private static func countTodayRemembered(_ words: [VocabWord]) -> [String: Int] {
         let cal = Calendar.current
         func isToday(_ date: Date?) -> Bool { date.map(cal.isDateInToday) ?? false }
         var counts = ["word": 0, "translation": 0, "pronunciation": 0]
@@ -163,13 +160,6 @@ final class StatsViewModel: ObservableObject {
             if isToday(word.lastWordRemembered) { counts["word", default: 0] += 1 }
             if isToday(word.lastTranslationRemembered) { counts["translation", default: 0] += 1 }
             if isToday(word.lastPronounciationRemembered) { counts["pronunciation", default: 0] += 1 }
-        }
-        for entry in entries {
-            if isToday(entry.lastTermRemembered) { counts["word", default: 0] += 1 }
-            // Every definition is a card of its own, so each one recalled today
-            // counts — the same way the daily tallies were written in practice.
-            counts["translation", default: 0] += entry.definitionList
-                .filter { isToday($0.lastRemembered) }.count
         }
         return counts
     }
@@ -238,11 +228,15 @@ struct StatsView: View {
         }
     }
 
+    /// A day's word count. The shared tally covers both kinds of practice, so
+    /// the word series is what's left once the glossary's own tally is taken
+    /// out; days logged before glossaries tallied separately have nothing to
+    /// take out, and read as before.
     private func count(_ stat: DailyStat?, _ key: String) -> Int {
         guard let stat else { return 0 }
         switch key {
-        case "word": return stat.word ?? 0
-        case "translation": return stat.translation ?? 0
+        case "word": return max(0, (stat.word ?? 0) - (stat.glossaryTerm ?? 0))
+        case "translation": return max(0, (stat.translation ?? 0) - (stat.glossaryDefinition ?? 0))
         case "pronunciation": return stat.pronunciation ?? 0
         default: return 0
         }
@@ -279,6 +273,10 @@ struct StatsView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             barChart(todayBars, labels: styleDomain)
+            Text("\(todayBars.reduce(0) { $0 + $1.count }) cards practised")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
         }
     }
 

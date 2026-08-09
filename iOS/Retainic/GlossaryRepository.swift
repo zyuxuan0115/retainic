@@ -100,6 +100,21 @@ enum GlossaryRepository {
 
     // MARK: - Entries
 
+    /// Every term the user has, across all their glossaries, fetched together
+    /// the way `VocabRepository.fetchAllWords` fetches words.
+    static func fetchAllEntries(uid: String) async throws -> [GlossaryEntry] {
+        let glossaries = try await fetchGlossaries(uid: uid)
+        return try await withThrowingTaskGroup(of: [GlossaryEntry].self) { group in
+            for glossary in glossaries {
+                guard let glossaryId = glossary.id else { continue }
+                group.addTask { try await fetchEntries(uid: uid, glossaryId: glossaryId) }
+            }
+            var all: [GlossaryEntry] = []
+            for try await entries in group { all += entries }
+            return all
+        }
+    }
+
     static func fetchEntries(uid: String, glossaryId: String) async throws -> [GlossaryEntry] {
         let snapshot = try await entriesRef(uid, glossaryId)
             .order(by: "createdAt", descending: true)

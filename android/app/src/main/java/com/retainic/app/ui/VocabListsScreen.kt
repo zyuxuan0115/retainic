@@ -144,7 +144,15 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
                                 }
                             },
                         ) {
-                            ListRow(list, Modifier.clickable { nav.push(ListsRoute.Detail(list)) })
+                            // The row needs a surface of its own: without one it
+                            // is transparent, and the red swipe-to-delete layer
+                            // behind it shows through every list at rest.
+                            ListRow(
+                                list,
+                                Modifier
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .clickable { nav.push(ListsRoute.Detail(list)) },
+                            )
                         }
                         HorizontalDivider()
                     }

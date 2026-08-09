@@ -46,6 +46,7 @@ import com.retainic.app.data.GlossaryEntry
 import com.retainic.app.data.GlossaryRepository
 import com.retainic.app.data.VocabRepository
 import com.retainic.app.data.VocabWord
+import kotlinx.coroutines.async
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -98,22 +99,20 @@ fun StatsScreen(auth: AuthService, modifier: Modifier = Modifier) {
         val uid = auth.uid ?: return@LaunchedEffect
         isLoading = true
         try {
-            val lists = VocabRepository.fetchLists(uid)
-            val all = mutableListOf<VocabWord>()
-            for (list in lists) {
-                val id = list.id ?: continue
-                all += VocabRepository.fetchWords(uid, id)
+            // Everything this screen needs, fetched at once: the words, the
+            // glossary terms and the week's tallies don't depend on each other,
+            // so waiting for each in turn only added up round trips.
+            val allDeferred = async { VocabRepository.fetchAllWords(uid) }
+            val entriesDeferred = async { GlossaryRepository.fetchAllEntries(uid) }
+            val dailyDeferred = async {
+                runCatching { VocabRepository.fetchDailyStats(uid, 7) }.getOrDefault(emptyList())
             }
-            val glossaries = GlossaryRepository.fetchGlossaries(uid)
-            val allEntries = mutableListOf<GlossaryEntry>()
-            for (glossary in glossaries) {
-                val id = glossary.id ?: continue
-                allEntries += GlossaryRepository.fetchEntries(uid, id)
-            }
+            val all = allDeferred.await()
+            val allEntries = entriesDeferred.await()
             stats = LearningStats(all, allEntries)
-            today = countTodayRemembered(all, allEntries)
+            today = countTodayRemembered(all)
             glossary = glossaryStats(allEntries)
-            val daily = runCatching { VocabRepository.fetchDailyStats(uid, 7) }.getOrDefault(emptyList())
+            val daily = dailyDeferred.await()
             week = buildWeekPoints(daily, today)
             glossaryWeek = buildGlossaryWeekPoints(daily, glossary)
         } catch (e: Exception) {
@@ -179,6 +178,9 @@ private fun StatsContent(
         // Words practice today (bar chart)
         Text(stringResource(R.string.words_practice_today), style = MaterialTheme.typography.titleMedium)
         BarChart(aspectKeys.mapIndexed { i, k -> Triple(aspectLabels[i], today[k] ?: 0, AspectColors[i]) })
+        Text(stringResource(R.string.n_cards_practised, aspectKeys.sumOf { today[it] ?: 0 }),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
         // Words this week (line chart)
         Text(stringResource(R.string.words_this_week), style = MaterialTheme.typography.titleMedium)
@@ -350,14 +352,11 @@ private fun glossaryStats(entries: List<GlossaryEntry>): GlossaryStats {
 }
 
 /**
- * Counts words and glossary terms whose per-aspect last-remembered date is
- * today. A term's two methods line up with a word's first two: recalling the
- * term itself, and recalling what it means.
+ * Counts words whose per-aspect last-remembered date is today. Glossary terms
+ * are counted apart, in [GlossaryStats], so the two sets of charts don't count
+ * the same practice twice.
  */
-private fun countTodayRemembered(
-    words: List<VocabWord>,
-    entries: List<GlossaryEntry> = emptyList(),
-): Map<String, Int> {
+private fun countTodayRemembered(words: List<VocabWord>): Map<String, Int> {
     val now = Date()
     fun isToday(d: Date?) = d != null && VocabWord.isSameDay(d, now)
     var word = 0; var translation = 0; var pronunciation = 0
@@ -365,12 +364,6 @@ private fun countTodayRemembered(
         if (isToday(w.lastWordRemembered)) word++
         if (isToday(w.lastTranslationRemembered)) translation++
         if (isToday(w.lastPronounciationRemembered)) pronunciation++
-    }
-    for (e in entries) {
-        if (isToday(e.lastTermRemembered)) word++
-        // Every definition is a card of its own, so each one recalled today
-        // counts — the same way the daily tallies were written in practice.
-        translation += e.definitionList.count { isToday(it.lastRemembered) }
     }
     return mapOf("word" to word, "translation" to translation, "pronunciation" to pronunciation)
 }
@@ -414,9 +407,13 @@ private fun buildWeekPoints(daily: List<com.retainic.app.data.DailyStat>, today:
         val day = cal.time
         val stat = byKey[VocabRepository.dayKey(day)]
         for (key in aspectKeys) {
+            // A day's shared tally covers both kinds of practice, so the word
+            // series is what's left once the glossary's own tally is taken out.
+            // Days logged before glossaries tallied separately have nothing to
+            // take out, and read as before.
             val value = if (offset == 0) today[key] ?: 0 else when (key) {
-                "word" -> stat?.word ?: 0
-                "translation" -> stat?.translation ?: 0
+                "word" -> maxOf(0, (stat?.word ?: 0) - (stat?.glossaryTerm ?: 0))
+                "translation" -> maxOf(0, (stat?.translation ?: 0) - (stat?.glossaryDefinition ?: 0))
                 "pronunciation" -> stat?.pronunciation ?: 0
                 else -> 0
             }

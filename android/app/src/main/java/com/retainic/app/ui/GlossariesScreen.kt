@@ -127,7 +127,15 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
                                 }
                             },
                         ) {
-                            GlossaryRow(glossary, Modifier.clickable { nav.push(GlossariesRoute.Detail(glossary)) })
+                            // The row needs a surface of its own: without one it
+                            // is transparent, and the red swipe-to-delete layer
+                            // behind it shows through every glossary at rest.
+                            GlossaryRow(
+                                glossary,
+                                Modifier
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .clickable { nav.push(GlossariesRoute.Detail(glossary)) },
+                            )
                         }
                         HorizontalDivider()
                     }

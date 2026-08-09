@@ -115,15 +115,34 @@ enum VocabRepository {
 
     /// Active (non-trashed) lists, newest first. Trashed lists carry a
     /// `deletedAt` timestamp and are filtered out here — see `fetchTrashedLists`.
-    static func fetchLists(uid: String) async throws -> [VocabularyList] {
+    static func fetchLists(uid: String, backfillIds: Bool = true) async throws -> [VocabularyList] {
         let snapshot = try await listsRef(uid)
             .order(by: "createdAt", descending: true)
             .getDocuments()
         var lists = snapshot.documents
             .compactMap { try? $0.data(as: VocabularyList.self) }
             .filter { $0.deletedAt == nil }
-        await backfillPublicIds(uid: uid, lists: &lists)
+        // Read-only screens can skip the backfill: it is a write per list that
+        // has no shareable ID yet, and nothing that only reads needs one.
+        if backfillIds { await backfillPublicIds(uid: uid, lists: &lists) }
         return lists
+    }
+
+    /// Every word the user has, across all their lists — what Statistics is
+    /// built from. The lists are read first, then all of their words at once:
+    /// fetching one list's words after another's is what made that screen slow,
+    /// since each wait is a round trip to Firestore.
+    static func fetchAllWords(uid: String) async throws -> [VocabWord] {
+        let lists = try await fetchLists(uid: uid, backfillIds: false)
+        return try await withThrowingTaskGroup(of: [VocabWord].self) { group in
+            for list in lists {
+                guard let listId = list.id else { continue }
+                group.addTask { try await fetchWords(uid: uid, listId: listId) }
+            }
+            var all: [VocabWord] = []
+            for try await words in group { all += words }
+            return all
+        }
     }
 
     /// Lists currently in the trash, most recently deleted first.
