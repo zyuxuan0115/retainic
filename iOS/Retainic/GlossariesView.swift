@@ -67,8 +67,13 @@ struct GlossariesView: View {
                 }
             }
             .navigationTitle("Glossaries".localized(preferredLanguage))
+            // Inline, so the title shares the bar with the trash and plus
+            // buttons; a large title would sit on its own line beneath them.
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                // Both actions sit at the trailing edge, leaving the title
+                // the whole leading side. The plus stays rightmost.
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingTrash = true
                     } label: {

@@ -79,23 +79,19 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
     Scaffold(
         modifier = modifier,
         topBar = {
-            // The title has the first row to itself, so it starts at the left
-            // edge instead of being pushed across by a leading icon. The two
-            // actions sit on a row of their own beneath it.
-            Column {
-                TopAppBar(title = { Text(stringResource(R.string.glossaries)) })
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
+            // Both actions sit at the trailing edge, leaving the title the
+            // whole leading side. The plus stays rightmost.
+            TopAppBar(
+                title = { Text(stringResource(R.string.glossaries)) },
+                actions = {
                     IconButton(onClick = { nav.push(GlossariesRoute.Trash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.trash))
                     }
                     IconButton(onClick = { showNewGlossary = true }) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_glossary))
                     }
-                }
-            }
+                },
+            )
         },
     ) { inner ->
         Box(Modifier.padding(inner).fillMaxSize()) {
@@ -141,7 +137,7 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
                                     .clickable { nav.push(GlossariesRoute.Detail(glossary)) },
                             )
                         }
-                        HorizontalDivider()
+                        RowDivider()
                     }
                 }
             }

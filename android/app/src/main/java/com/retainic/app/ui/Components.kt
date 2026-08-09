@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,6 +25,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.retainic.app.R
+
+/**
+ * The rule between two rows of a list: four-fifths of the width, centred, so it
+ * reads as a separator within the list rather than a cut across the screen.
+ */
+@Composable
+fun RowDivider() {
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        HorizontalDivider(Modifier.fillMaxWidth(0.8f))
+    }
+}
 
 /** Centered empty-state placeholder, mirroring iOS ContentUnavailableView. */
 @Composable

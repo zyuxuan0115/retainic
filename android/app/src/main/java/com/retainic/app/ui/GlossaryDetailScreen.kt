@@ -217,7 +217,7 @@ fun GlossaryDetailScreen(
                                     }
                                 },
                             )
-                            HorizontalDivider()
+                            RowDivider()
                         }
                     }
                 }

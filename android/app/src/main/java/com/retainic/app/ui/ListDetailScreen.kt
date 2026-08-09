@@ -239,7 +239,7 @@ fun ListDetailScreen(
                                     }
                                 },
                             )
-                            HorizontalDivider()
+                            RowDivider()
                         }
                     }
                 }
