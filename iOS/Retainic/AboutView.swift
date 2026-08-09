@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct AboutView: View {
-    @AppStorage(AppStorageKey.preferredLanguage) private var preferredLanguage = Language.systemDefault
-
     private static let repoURL = URL(string: "https://github.com/zyuxuan0115/retainic")!
 
     /// Marketing version from the bundle (e.g. "1.0"), falling back if absent.
@@ -64,7 +62,11 @@ struct AboutView: View {
             }
             .listRowBackground(Color.clear)
         }
-        .navigationTitle("About".localized(preferredLanguage))
+        // No title text: the tab is already labelled "About", so the large
+        // title only said it twice. The title itself stays (empty), which keeps
+        // the bar's large-title area laid out and everything below it exactly
+        // where it was.
+        .navigationTitle(Text(verbatim: ""))
     }
 }
 

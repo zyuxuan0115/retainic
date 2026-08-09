@@ -3,6 +3,7 @@ package com.retainic.app.ui
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -77,9 +78,25 @@ fun SettingsScreen(auth: AuthService, modifier: Modifier = Modifier) {
             }
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            TextButton(onClick = { showChangePassword = true }) { Text(stringResource(R.string.change_password)) }
-            TextButton(onClick = { showSignOut = true }) {
-                Text(stringResource(R.string.sign_out), color = MaterialTheme.colorScheme.error)
+            // A TextButton indents its label by its own content padding, which
+            // left these two sitting to the right of every other row. Clearing
+            // that padding and letting the label fill the width lines them up
+            // with Account and Language, and gives them the same full-width
+            // tap target as the language row.
+            TextButton(
+                onClick = { showChangePassword = true },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                Text(stringResource(R.string.change_password), Modifier.weight(1f))
+            }
+            TextButton(
+                onClick = { showSignOut = true },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                Text(stringResource(R.string.sign_out), Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.error)
             }
         }
     }
