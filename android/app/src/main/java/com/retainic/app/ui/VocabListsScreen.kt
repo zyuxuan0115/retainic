@@ -94,19 +94,23 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.lists)) },
-                navigationIcon = {
+            // The title has the first row to itself, so it starts at the left
+            // edge instead of being pushed across by a leading icon. The two
+            // actions sit on a row of their own beneath it.
+            Column {
+                TopAppBar(title = { Text(stringResource(R.string.lists)) })
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
                     IconButton(onClick = { nav.push(ListsRoute.Trash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.trash))
                     }
-                },
-                actions = {
                     IconButton(onClick = { showNewList = true }) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_list))
                     }
-                },
-            )
+                }
+            }
         },
     ) { inner ->
         Box(Modifier.padding(inner).fillMaxSize()) {
