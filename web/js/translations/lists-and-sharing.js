@@ -21,6 +21,20 @@ export default {
     "ja": "ソースコード",
     "ko": "소스 코드",
   },
+  "Legal": {
+    "en": "Legal",
+    "es": "Legal",
+    "zh": "法律",
+    "ja": "法的情報",
+    "ko": "법적 고지",
+  },
+  "Privacy policy": {
+    "en": "Privacy policy",
+    "es": "Política de privacidad",
+    "zh": "隐私政策",
+    "ja": "プライバシーポリシー",
+    "ko": "개인정보 처리방침",
+  },
   "Vocabulary learning with spaced-repetition flashcards.": {
     "en": "Vocabulary learning with spaced-repetition flashcards.",
     "es": "Aprende vocabulario con tarjetas de repetición espaciada.",

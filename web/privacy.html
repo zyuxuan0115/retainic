@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Privacy Policy — Retainic</title>
+  <meta name="description" content="Privacy policy for the Retainic vocabulary app (iOS, Android and web)." />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Standalone legal page: readable prose on the app's palette. Kept here
+       rather than in styles.css because nothing in the SPA uses it. */
+    .legal { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; color: var(--label); line-height: 1.6; }
+    .legal h1 { font-size: 30px; font-weight: 800; margin-bottom: 8px; }
+    .legal h2 { font-size: 20px; font-weight: 700; margin: 32px 0 8px; }
+    .legal h3 { font-size: 16px; font-weight: 700; margin: 20px 0 6px; }
+    .legal p, .legal li { font-size: 16px; }
+    .legal p { margin: 10px 0; }
+    .legal ul { margin: 10px 0; padding-left: 22px; }
+    .legal li { margin: 6px 0; }
+    .legal a { color: var(--tint); }
+    .legal .updated { color: var(--secondary-label); font-size: 14px; }
+    .legal .back { display: inline-block; margin-bottom: 24px; color: var(--tint); text-decoration: none; font-size: 15px; }
+    .legal hr { border: none; border-top: 0.5px solid var(--separator); margin: 32px 0; }
+    .legal table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px; }
+    .legal th, .legal td { border: 0.5px solid var(--separator); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .legal th { font-weight: 700; background: var(--bg-elevated); }
+  </style>
+</head>
+<body>
+  <main class="legal">
+    <a class="back" href="index.html">&larr; Retainic</a>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Applies to the Retainic apps for Android, iOS and the web.<br />
+      Last updated: 11 August 2026 &middot; Effective: 11 August 2026</p>
+
+    <p>Retainic ("the app", "we", "us") is a vocabulary-learning app that lets you build
+      word lists and glossaries, record pronunciations and practice them with
+      spaced-repetition flashcards. This policy explains what personal data the app
+      collects, why, who it is shared with, how long it is kept and how you can have it
+      deleted. It covers every version of Retainic — the Android app, the iOS app and the
+      web app at this site — which all share one account and one backend.</p>
+
+    <h2>1. Who we are</h2>
+    <p>Retainic is an independent project developed and operated by the developer of the
+      open-source repository at
+      <a href="https://github.com/zyuxuan0115/retainic" target="_blank" rel="noopener">github.com/zyuxuan0115/retainic</a>,
+      who is the data controller for the personal data described here.</p>
+    <p><strong>Privacy contact:</strong>
+      <a href="mailto:retainic.app@gmail.com">retainic.app@gmail.com</a>. Please use this
+      address for any question about this policy, for a copy of your data, or to have your
+      account and data deleted.</p>
+
+    <h2>2. Data we collect</h2>
+    <p>We only collect data you provide by using the app. There is no advertising, no
+      analytics or tracking SDK, no advertising identifier, and no third-party marketing.
+      We do not collect your location, contacts, calendar, photos, device identifiers or
+      browsing activity outside the app.</p>
+
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Why we collect it</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Account data</strong> — your email address, a username you choose,
+            your password, and the date your account was created.</td>
+          <td>To create your account, sign you in, keep your data attached to you across
+            devices, and let you reset or change your password. Passwords are handled by
+            Firebase Authentication and are stored only as salted hashes; we never see or
+            store your password ourselves.</td>
+        </tr>
+        <tr>
+          <td><strong>Invitation code</strong> — the code you enter when registering.</td>
+          <td>To verify that sign-up is permitted. It is checked at registration and is not
+            attached to your profile.</td>
+        </tr>
+        <tr>
+          <td><strong>Learning content</strong> — the vocabulary lists, glossaries, words,
+            terms, translations, definitions, readings, parts of speech and notes you
+            create, plus any file you import.</td>
+          <td>This is the content of the app: it is stored so it is there the next time you
+            sign in, on any device.</td>
+        </tr>
+        <tr>
+          <td><strong>Audio recordings</strong> — pronunciation clips you record with your
+            microphone.</td>
+          <td>To play a word's pronunciation back to you during practice. Recording is
+            entirely optional; the microphone is used only while you are actively recording
+            a clip, never in the background, and only after you grant permission.</td>
+        </tr>
+        <tr>
+          <td><strong>Practice and progress data</strong> — review history, per-word
+            scheduling state, daily practice counts and statistics.</td>
+          <td>To run the spaced-repetition schedule and to draw your statistics charts.</td>
+        </tr>
+        <tr>
+          <td><strong>Custom review algorithm</strong> — the Python snippet you write, if
+            you replace the built-in schedule.</td>
+          <td>To compute when your cards are next due.</td>
+        </tr>
+        <tr>
+          <td><strong>Local settings</strong> — your preferred interface language and
+            similar preferences.</td>
+          <td>Stored on your own device (browser local storage or app storage) to remember
+            how you like the app. Not sent to us.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>We do not knowingly collect personal data from children under 13 (or the equivalent
+      minimum age in your country). If you believe a child has created an account, contact
+      us and we will delete it.</p>
+
+    <h2>3. How the data is used</h2>
+    <p>Your data is used only to provide the app: to authenticate you, to store and
+      synchronise your lists, glossaries, recordings and progress across your devices, to
+      schedule your reviews, to show your statistics, and to respond to you if you contact
+      support. We do not sell or rent personal data, we do not share it with data brokers,
+      and we do not use it for advertising, profiling or automated decision-making.</p>
+
+    <h2>4. Who your data is shared with</h2>
+    <h3>Service providers</h3>
+    <p>Retainic has no servers of its own. All account, content and audio data is stored in
+      <strong>Google Firebase</strong> (Firebase Authentication, Cloud Firestore and Cloud
+      Storage for Firebase), operated by Google LLC and its affiliates, which processes the
+      data on our behalf as our sole sub-processor. Google's handling of that data is
+      governed by the
+      <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase Privacy and Security</a>
+      documentation and the
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</p>
+
+    <h3>Sharing you choose</h3>
+    <p>The app lets you share a vocabulary list by giving someone its share code. Anyone
+      who is signed in to Retainic and has that code can view and import a copy of that
+      list's words — so do not put anything private in a list you share. Sharing is
+      entirely under your control; nothing is shared unless you hand out the code, and
+      your account details, recordings for other lists, and progress are never exposed this
+      way.</p>
+
+    <h3>Text-to-speech</h3>
+    <p>When a word has no recording, the app can read it aloud using the speech engine
+      built into your device or browser. In that case the word being spoken is passed to
+      that system component, which is governed by your device or browser vendor's own
+      privacy policy.</p>
+
+    <h3>Legal</h3>
+    <p>We may disclose data if we are legally required to do so, or where it is necessary
+      to investigate abuse or protect the rights and safety of users.</p>
+
+    <h2>5. International transfers</h2>
+    <p>Firebase stores and processes data on Google's infrastructure, which may be located
+      in the United States and other countries. Where required, these transfers rely on
+      Google's standard contractual clauses and safeguards described in the Firebase
+      documentation linked above.</p>
+
+    <h2>6. How your data is protected</h2>
+    <ul>
+      <li>All traffic between the app and Firebase is encrypted in transit with HTTPS/TLS,
+        and data is encrypted at rest by Google.</li>
+      <li>Access is enforced by server-side security rules: your profile, lists,
+        glossaries, words, progress and audio files can only be read or written by your own
+        signed-in account (the one exception being a list you deliberately share, as
+        described above).</li>
+      <li>Passwords are never stored in plain text and are never visible to us; changing a
+        password requires re-entering your current one.</li>
+      <li>No system is perfectly secure, so we cannot guarantee absolute security, but we
+        will inform affected users of any breach that puts their data at risk, as required
+        by applicable law.</li>
+    </ul>
+
+    <h2>7. How long we keep data</h2>
+    <p>Your account data, content, recordings and progress are kept for as long as your
+      account exists, because the app's purpose is to preserve them between sessions.
+      Items you delete inside the app go to the Trash and are removed when you empty it.
+      When an account is deleted, its data is removed from our live systems promptly and
+      purged from Firebase's encrypted backups within 90 days.</p>
+
+    <h2>8. Your rights and choices</h2>
+    <p>You can, at any time:</p>
+    <ul>
+      <li><strong>Access and correct</strong> your content directly in the app, and export
+        any list or glossary to a CSV file.</li>
+      <li><strong>Delete individual items</strong> — words, terms, lists, glossaries and
+        recordings — from within the app.</li>
+      <li><strong>Change your password</strong> in Settings.</li>
+      <li><strong>Withdraw microphone permission</strong> in your device or browser
+        settings; the rest of the app continues to work.</li>
+      <li><strong>Delete your account and all associated data.</strong> Email
+        <a href="mailto:retainic.app@gmail.com">retainic.app@gmail.com</a> from the address
+        your account uses, with the subject "Delete my account". We will verify the request
+        and erase your profile, lists, glossaries, words, progress and audio recordings
+        within 30 days, and confirm by email when it is done. There is no charge, and you
+        do not need to give a reason.</li>
+      <li><strong>Request a copy of your data</strong>, or ask us to restrict or object to
+        our processing of it, using the same address.</li>
+    </ul>
+    <p>Depending on where you live (for example under the GDPR in the EU/UK or the CCPA in
+      California) you may have further statutory rights, including the right to lodge a
+      complaint with your local data protection authority. Where the GDPR applies, our
+      legal basis for processing your account and content data is the performance of our
+      contract with you (providing the app), and consent for optional microphone access,
+      which you may withdraw at any time.</p>
+
+    <h2>9. Changes to this policy</h2>
+    <p>If this policy changes materially, we will update the "Last updated" date above and,
+      where the change affects how your data is used, give notice in the app before it
+      takes effect. The current version is always available at this URL and from the app's
+      About screen.</p>
+
+    <h2>10. Contact</h2>
+    <p>Questions, requests or complaints about this policy or your data:
+      <a href="mailto:retainic.app@gmail.com">retainic.app@gmail.com</a>.</p>
+
+    <hr />
+    <p class="updated">&copy; 2026 Retainic</p>
+  </main>
+</body>
+</html>

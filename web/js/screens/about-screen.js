@@ -9,6 +9,7 @@ import { navBar, formSection, icon } from "../ui.js";
 
 const APP_VERSION = "1.0";
 const REPO_URL = "https://github.com/zyuxuan0115/retainic";
+const PRIVACY_URL = "privacy.html";
 
 export function AboutScreen(content) {
   content.appendChild(navBar(t("About"), {}));
@@ -30,6 +31,13 @@ export function AboutScreen(content) {
         el("a.form-action.link", { href: REPO_URL, target: "_blank", rel: "noopener" },
           icon("code", 20),
           el("span", { style: "flex:1" }, "github.com/zyuxuan0115/retainic"),
+          icon("open_in_new", 18),
+        ),
+      )),
+      formSection(t("Legal"), el(".form-card", {},
+        el("a.form-action.link", { href: PRIVACY_URL, target: "_blank", rel: "noopener" },
+          icon("shield", 20),
+          el("span", { style: "flex:1" }, t("Privacy policy")),
           icon("open_in_new", 18),
         ),
       )),
