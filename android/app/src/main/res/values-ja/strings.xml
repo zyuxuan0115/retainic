@@ -178,6 +178,8 @@
     <string name="about_section">アプリについて</string>
     <string name="about_body">Retainic では単語リストを作成し、翻訳・読み・品詞・録音した発音付きの単語を追加して、項目ごとの間隔反復で練習できます。この Android アプリは Retainic の iOS およびウェブアプリと同じアカウントとデータを共有します。</string>
     <string name="source_code">ソースコード</string>
+    <string name="legal">法的情報</string>
+    <string name="privacy_policy">プライバシーポリシー</string>
 
     <!-- Glossaries -->
     <string name="new_glossary">新しい用語集</string>

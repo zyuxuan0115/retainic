@@ -178,6 +178,8 @@
     <string name="about_section">정보</string>
     <string name="about_body">Retainic에서는 단어 목록을 만들고 번역, 읽기, 품사, 녹음된 발음이 포함된 단어를 추가한 다음 항목별 간격 반복으로 연습할 수 있습니다. 이 Android 앱은 Retainic iOS 및 웹 앱과 동일한 계정 및 데이터를 공유합니다.</string>
     <string name="source_code">소스 코드</string>
+    <string name="legal">법적 고지</string>
+    <string name="privacy_policy">개인정보 처리방침</string>
 
     <!-- Glossaries -->
     <string name="new_glossary">새 용어집</string>

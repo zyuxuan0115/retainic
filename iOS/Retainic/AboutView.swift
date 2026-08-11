@@ -54,6 +54,17 @@ struct AboutView: View {
                 }
             }
 
+            Section("Legal") {
+                NavigationLink {
+                    PrivacyPolicyView()
+                } label: {
+                    HStack {
+                        Image(systemName: "hand.raised")
+                        Text("Privacy policy")
+                    }
+                }
+            }
+
             Section {
                 Text(verbatim: "© 2026 Retainic")
                     .font(.caption)

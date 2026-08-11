@@ -178,6 +178,8 @@
     <string name="about_section">关于</string>
     <string name="about_body">Retainic 让你创建词汇表，添加带有翻译、读音、词性和录音发音的单词，然后通过分项的间隔重复来练习它们。此 Android 应用与 Retainic 的 iOS 和网页应用共享相同的账户和数据。</string>
     <string name="source_code">源代码</string>
+    <string name="legal">法律</string>
+    <string name="privacy_policy">隐私政策</string>
 
     <!-- Glossaries -->
     <string name="new_glossary">新建术语表</string>
