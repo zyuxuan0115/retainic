@@ -19,14 +19,18 @@ struct VocabListsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.isLoading && vm.lists.isEmpty {
-                    ProgressView("Loading…")
-                } else if vm.lists.isEmpty {
-                    emptyState
-                } else {
-                    listContent
+            VStack(spacing: 0) {
+                OfflineBanner(language: preferredLanguage)
+                Group {
+                    if vm.isLoading && vm.lists.isEmpty {
+                        ProgressView("Loading…")
+                    } else if vm.lists.isEmpty {
+                        emptyState
+                    } else {
+                        listContent
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Lists".localized(preferredLanguage))
             .toolbar {

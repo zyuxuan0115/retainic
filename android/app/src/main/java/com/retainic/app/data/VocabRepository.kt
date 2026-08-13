@@ -37,7 +37,7 @@ object VocabRepository {
         val trimmed = code.trim()
         if (trimmed.isEmpty()) return false
         return try {
-            db.collection("invitationCodes").document(trimmed).get().await().exists()
+            db.collection("invitationCodes").document(trimmed).getDocOfflineSafe().exists()
         } catch (e: Exception) {
             false
         }
@@ -76,7 +76,7 @@ object VocabRepository {
         if (update.size == 1) return
         dailyStatsRef(uid).document(key).set(
             update, com.google.firebase.firestore.SetOptions.merge()
-        ).await()
+        ).awaitWrite()
     }
 
     /** Most recent `days` daily-stat documents (chronological order). */
@@ -84,7 +84,7 @@ object VocabRepository {
         val snapshot = dailyStatsRef(uid)
             .orderBy("date", Query.Direction.DESCENDING)
             .limit(days.toLong())
-            .get().await()
+            .getOfflineSafe()
         return snapshot.documents.mapNotNull { it.toObject(DailyStat::class.java) }
             .sortedBy { it.date }
     }
@@ -106,7 +106,7 @@ object VocabRepository {
             val publicId = generateListPublicId()
             lists[i] = lists[i].copy(publicId = publicId)
             try {
-                listsRef(uid).document(id).update("publicId", publicId).await()
+                listsRef(uid).document(id).update("publicId", publicId).awaitWrite()
             } catch (_: Exception) { /* best-effort */ }
         }
     }
@@ -115,7 +115,7 @@ object VocabRepository {
     suspend fun fetchLists(uid: String, backfillIds: Boolean = true): List<VocabularyList> {
         val snapshot = listsRef(uid)
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get().await()
+            .getOfflineSafe()
         val lists = snapshot.documents
             .mapNotNull { it.toObject(VocabularyList::class.java) }
             .filter { it.deletedAt == null }
@@ -142,7 +142,7 @@ object VocabRepository {
 
     /** Lists currently in the trash, most recently deleted first. */
     suspend fun fetchTrashedLists(uid: String): List<VocabularyList> {
-        val snapshot = listsRef(uid).get().await()
+        val snapshot = listsRef(uid).getOfflineSafe()
         val lists = snapshot.documents
             .mapNotNull { it.toObject(VocabularyList::class.java) }
             .filter { it.deletedAt != null }
@@ -161,16 +161,19 @@ object VocabRepository {
             originalLanguage = originalLanguage,
             publicId = generateListPublicId(),
         )
-        val ref = listsRef(uid).add(list).await()
+        // document() mints the id locally, so a list created offline is
+        // usable at once instead of waiting on a round trip to learn its id.
+        val ref = listsRef(uid).document()
+        ref.set(list).awaitWrite()
         return ref.id
     }
 
     suspend fun renameList(uid: String, listId: String, name: String) {
-        listsRef(uid).document(listId).update("name", name).await()
+        listsRef(uid).document(listId).update("name", name).awaitWrite()
     }
 
     suspend fun setListTTS(uid: String, listId: String, enabled: Boolean) {
-        listsRef(uid).document(listId).update("ttsEnabled", enabled).await()
+        listsRef(uid).document(listId).update("ttsEnabled", enabled).awaitWrite()
     }
 
     /** Finds any user's list by its shared publicId and returns it with its words. */
@@ -180,27 +183,27 @@ object VocabRepository {
         val snapshot = db.collectionGroup("lists")
             .whereEqualTo("publicId", trimmed)
             .limit(1)
-            .get().await()
+            .getOfflineSafe()
         val doc = snapshot.documents.firstOrNull() ?: return null
         val list = doc.toObject(VocabularyList::class.java) ?: return null
-        val wordsSnapshot = doc.reference.collection("words").get().await()
+        val wordsSnapshot = doc.reference.collection("words").getOfflineSafe()
         val words = wordsSnapshot.documents.mapNotNull { it.toObject(VocabWord::class.java) }
         return SharedList(list, words)
     }
 
     /** Soft-delete: move a list to the trash by stamping deletedAt. */
     suspend fun trashList(uid: String, listId: String) {
-        listsRef(uid).document(listId).update("deletedAt", FieldValue.serverTimestamp()).await()
+        listsRef(uid).document(listId).update("deletedAt", FieldValue.serverTimestamp()).awaitWrite()
     }
 
     /** Restore a trashed list by clearing its deletedAt stamp. */
     suspend fun restoreList(uid: String, listId: String) {
-        listsRef(uid).document(listId).update("deletedAt", FieldValue.delete()).await()
+        listsRef(uid).document(listId).update("deletedAt", FieldValue.delete()).awaitWrite()
     }
 
     /** Permanently delete a list, its words, and any pronunciation audio. */
     suspend fun purgeList(uid: String, listId: String) {
-        val words = wordsRef(uid, listId).get().await()
+        val words = wordsRef(uid, listId).getOfflineSafe()
         // Only a word with a recording has anything in Storage, and those
         // deletes don't have to wait on each other — emptying the Trash of a
         // list that never had audio now costs no Storage requests at all.
@@ -229,7 +232,7 @@ object VocabRepository {
      */
     private suspend fun deleteDocuments(refs: List<DocumentReference>, parent: DocumentReference) {
         if (refs.isEmpty()) {
-            parent.delete().await()
+            parent.delete().awaitWrite()
             return
         }
         val chunks = refs.chunked(DELETE_BATCH_LIMIT)
@@ -237,7 +240,7 @@ object VocabRepository {
             val batch = db.batch()
             for (ref in chunk) batch.delete(ref)
             if (index == chunks.lastIndex) batch.delete(parent)
-            batch.commit().await()
+            batch.commit().awaitWrite()
         }
     }
 
@@ -246,7 +249,7 @@ object VocabRepository {
     suspend fun fetchWords(uid: String, listId: String): List<VocabWord> {
         val snapshot = wordsRef(uid, listId)
             .orderBy("createdAt", Query.Direction.DESCENDING)
-            .get().await()
+            .getOfflineSafe()
         return snapshot.documents.mapNotNull { it.toObject(VocabWord::class.java) }
     }
 
@@ -258,8 +261,8 @@ object VocabRepository {
             uploadAudio(audioFile, path)
             toSave.audioPath = path
         }
-        ref.set(toSave).await()
-        listsRef(uid).document(listId).update("wordCount", FieldValue.increment(1)).await()
+        ref.set(toSave).awaitWrite()
+        listsRef(uid).document(listId).update("wordCount", FieldValue.increment(1)).awaitWrite()
     }
 
     /**
@@ -279,7 +282,7 @@ object VocabRepository {
             val batch = db.batch()
             for (word in chunk) batch.set(wordsRef(uid, listId).document(), word.copy(id = null))
             batch.update(listsRef(uid).document(listId), "wordCount", FieldValue.increment(chunk.size.toLong()))
-            batch.commit().await()
+            batch.commit().awaitWrite()
         }
     }
 
@@ -309,13 +312,13 @@ object VocabRepository {
         }
         // Full overwrite (no merge) so a cleared audioPath is actually removed.
         // Null the @DocumentId field so it isn't written into the document body.
-        wordsRef(uid, listId).document(id).set(word.copy(id = null)).await()
+        wordsRef(uid, listId).document(id).set(word.copy(id = null)).awaitWrite()
     }
 
     suspend fun deleteWord(uid: String, listId: String, wordId: String) {
         deleteAudio(audioStoragePath(uid, listId, wordId))
-        wordsRef(uid, listId).document(wordId).delete().await()
-        listsRef(uid).document(listId).update("wordCount", FieldValue.increment(-1)).await()
+        wordsRef(uid, listId).document(wordId).delete().awaitWrite()
+        listsRef(uid).document(listId).update("wordCount", FieldValue.increment(-1)).awaitWrite()
     }
 
     /** Moves a word between lists, preserving fields, progress and audio. */
@@ -349,12 +352,29 @@ object VocabRepository {
             .setCacheControl("public, max-age=604800")
             .build()
         storage.reference.child(path).putFile(Uri.fromFile(localFile), metadata).await()
+        // Keep a copy against its final path, so the clip is playable offline
+        // from the moment it's recorded instead of only once it's been fetched.
+        AudioCache.store(localFile, path)
     }
 
-    suspend fun downloadAudioData(path: String): ByteArray =
-        storage.reference.child(path).getBytes(10L * 1024 * 1024).await()
+    /**
+     * A word's recording, from the on-disk cache when it's there. Storage has no
+     * offline mode of its own, so a clip that has never been fetched simply
+     * isn't available until there's a connection again.
+     */
+    suspend fun downloadAudioData(path: String): ByteArray {
+        AudioCache.cached(path)?.let { return it }
+        val data = storage.reference.child(path).getBytes(10L * 1024 * 1024).await()
+        AudioCache.store(data, path)
+        return data
+    }
 
     private suspend fun deleteAudio(path: String) {
+        AudioCache.remove(path)
+        // Storage deletes have no offline queue, and awaiting one with no
+        // connection never returns — which would hang deleting a word. The
+        // object is left behind to be cleaned up next time instead.
+        if (!Connectivity.isOnlineNow) return
         try {
             storage.reference.child(path).delete().await()
         } catch (_: Exception) { /* ignore missing audio */ }

@@ -24,7 +24,7 @@ enum VocabRepository {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         do {
-            let snapshot = try await db.collection("invitationCodes").document(trimmed).getDocument()
+            let snapshot = try await db.collection("invitationCodes").document(trimmed).getDocumentOfflineSafe()
             return snapshot.exists
         } catch {
             return false
@@ -80,7 +80,7 @@ enum VocabRepository {
         default: break
         }
         guard update.count > 1 else { return }
-        try await dailyStatsRef(uid).document(key).setData(update, merge: true)
+        try await dailyStatsRef(uid).document(key).setDataOfflineSafe(update, merge: true)
     }
 
     /// Most recent `days` daily-stat documents (chronological order).
@@ -88,7 +88,7 @@ enum VocabRepository {
         let snapshot = try await dailyStatsRef(uid)
             .order(by: "date", descending: true)
             .limit(to: days)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         let stats = snapshot.documents.compactMap { try? $0.data(as: DailyStat.self) }
         return stats.sorted { $0.date < $1.date }
     }
@@ -109,7 +109,7 @@ enum VocabRepository {
             guard let id = lists[i].id else { continue }
             let publicId = generateListPublicId()
             lists[i].publicId = publicId
-            try? await listsRef(uid).document(id).updateData(["publicId": publicId])
+            try? await listsRef(uid).document(id).updateDataOfflineSafe(["publicId": publicId])
         }
     }
 
@@ -118,7 +118,7 @@ enum VocabRepository {
     static func fetchLists(uid: String, backfillIds: Bool = true) async throws -> [VocabularyList] {
         let snapshot = try await listsRef(uid)
             .order(by: "createdAt", descending: true)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         var lists = snapshot.documents
             .compactMap { try? $0.data(as: VocabularyList.self) }
             .filter { $0.deletedAt == nil }
@@ -147,7 +147,7 @@ enum VocabRepository {
 
     /// Lists currently in the trash, most recently deleted first.
     static func fetchTrashedLists(uid: String) async throws -> [VocabularyList] {
-        let snapshot = try await listsRef(uid).getDocuments()
+        let snapshot = try await listsRef(uid).getDocumentsOfflineSafe()
         var lists = snapshot.documents
             .compactMap { try? $0.data(as: VocabularyList.self) }
             .filter { $0.deletedAt != nil }
@@ -176,12 +176,12 @@ enum VocabRepository {
     }
 
     static func renameList(uid: String, listId: String, name: String) async throws {
-        try await listsRef(uid).document(listId).updateData(["name": name])
+        try await listsRef(uid).document(listId).updateDataOfflineSafe(["name": name])
     }
 
     /// Turns the per-list text-to-speech fallback on or off.
     static func setListTTS(uid: String, listId: String, enabled: Bool) async throws {
-        try await listsRef(uid).document(listId).updateData(["ttsEnabled": enabled])
+        try await listsRef(uid).document(listId).updateDataOfflineSafe(["ttsEnabled": enabled])
     }
 
     /// Finds any user's list by its shared `publicId` and returns its metadata
@@ -194,10 +194,10 @@ enum VocabRepository {
         let snapshot = try await db.collectionGroup("lists")
             .whereField("publicId", isEqualTo: trimmed)
             .limit(to: 1)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         guard let doc = snapshot.documents.first,
               let list = try? doc.data(as: VocabularyList.self) else { return nil }
-        let wordsSnapshot = try await doc.reference.collection("words").getDocuments()
+        let wordsSnapshot = try await doc.reference.collection("words").getDocumentsOfflineSafe()
         let words = wordsSnapshot.documents.compactMap { try? $0.data(as: VocabWord.self) }
         return SharedList(list: list, words: words)
     }
@@ -206,20 +206,20 @@ enum VocabRepository {
     /// and audio are left untouched so the list can be restored intact.
     static func trashList(uid: String, listId: String) async throws {
         try await listsRef(uid).document(listId)
-            .updateData(["deletedAt": FieldValue.serverTimestamp()])
+            .updateDataOfflineSafe(["deletedAt": FieldValue.serverTimestamp()])
     }
 
     /// Restore a trashed list by clearing its `deletedAt` stamp.
     static func restoreList(uid: String, listId: String) async throws {
         try await listsRef(uid).document(listId)
-            .updateData(["deletedAt": FieldValue.delete()])
+            .updateDataOfflineSafe(["deletedAt": FieldValue.delete()])
     }
 
     /// Permanently delete a list, its words, and any pronunciation audio.
     static func purgeList(uid: String, listId: String) async throws {
         // Remove the words subcollection (and any pronunciation audio) first,
         // then the list document.
-        let words = try await wordsRef(uid, listId).getDocuments()
+        let words = try await wordsRef(uid, listId).getDocumentsOfflineSafe()
         // Only a word with a recording has anything in Storage, and those
         // deletes don't have to wait on each other — emptying the Trash of a
         // list that never had audio now costs no Storage requests at all.
@@ -244,7 +244,7 @@ enum VocabRepository {
     /// the documents still under it.
     private static func deleteDocuments(_ refs: [DocumentReference], parent: DocumentReference) async throws {
         guard !refs.isEmpty else {
-            try await parent.delete()
+            try await parent.deleteOfflineSafe()
             return
         }
         var start = refs.startIndex
@@ -253,7 +253,7 @@ enum VocabRepository {
             let batch = db.batch()
             for ref in refs[start ..< end] { batch.deleteDocument(ref) }
             if end == refs.endIndex { batch.deleteDocument(parent) }
-            try await batch.commit()
+            try await batch.commitOfflineSafe()
             start = end
         }
     }
@@ -263,7 +263,7 @@ enum VocabRepository {
     static func fetchWords(uid: String, listId: String) async throws -> [VocabWord] {
         let snapshot = try await wordsRef(uid, listId)
             .order(by: "createdAt", descending: true)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         return snapshot.documents.compactMap { try? $0.data(as: VocabWord.self) }
     }
 
@@ -277,7 +277,7 @@ enum VocabRepository {
         }
         try ref.setData(from: word)
         try await listsRef(uid).document(listId)
-            .updateData(["wordCount": FieldValue.increment(Int64(1))])
+            .updateDataOfflineSafe(["wordCount": FieldValue.increment(Int64(1))])
     }
 
     /// The most words one batch writes. A batch takes 500 operations, and each
@@ -298,7 +298,7 @@ enum VocabRepository {
             }
             batch.updateData(["wordCount": FieldValue.increment(Int64(chunk.count))],
                              forDocument: listsRef(uid).document(listId))
-            try await batch.commit()
+            try await batch.commitOfflineSafe()
             start += wordBatchLimit
         }
     }
@@ -334,9 +334,9 @@ enum VocabRepository {
 
     static func deleteWord(uid: String, listId: String, wordId: String) async throws {
         await deleteAudio(path: audioStoragePath(uid: uid, listId: listId, wordId: wordId))
-        try await wordsRef(uid, listId).document(wordId).delete()
+        try await wordsRef(uid, listId).document(wordId).deleteOfflineSafe()
         try await listsRef(uid).document(listId)
-            .updateData(["wordCount": FieldValue.increment(Int64(-1))])
+            .updateDataOfflineSafe(["wordCount": FieldValue.increment(Int64(-1))])
     }
 
     /// Moves a word from one list to another, preserving its fields, review
@@ -376,13 +376,28 @@ enum VocabRepository {
         metadata.cacheControl = "public, max-age=604800"
         _ = try await Storage.storage().reference(withPath: path)
             .putFileAsync(from: localURL, metadata: metadata)
+        // Keep a copy against its final path, so the clip is playable offline
+        // from the moment it's recorded instead of only once it's been fetched.
+        AudioCache.store(contentsOf: localURL, for: path)
     }
 
+    /// A word's recording, from the on-disk cache when it's there. Storage has
+    /// no offline mode of its own, so a clip that has never been fetched simply
+    /// isn't available until there's a connection again.
     static func downloadAudioData(path: String) async throws -> Data {
-        try await Storage.storage().reference(withPath: path).data(maxSize: 10 * 1024 * 1024)
+        if let cached = AudioCache.cached(path) { return cached }
+        let data = try await Storage.storage().reference(withPath: path)
+            .data(maxSize: 10 * 1024 * 1024)
+        AudioCache.store(data, for: path)
+        return data
     }
 
     private static func deleteAudio(path: String) async {
+        AudioCache.remove(path)
+        // Storage deletes have no offline queue, and awaiting one with no
+        // connection never returns — which would hang deleting a word. The
+        // object is left behind to be cleaned up next time instead.
+        guard Connectivity.shared.isOnlineNow else { return }
         try? await Storage.storage().reference(withPath: path).delete()
     }
 }

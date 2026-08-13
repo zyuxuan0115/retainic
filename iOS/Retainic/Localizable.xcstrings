@@ -3472,6 +3472,34 @@
         }
       }
     },
+    "Offline — showing your saved copy." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin conexión: se muestra tu copia guardada."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オフライン — 保存済みのデータを表示しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오프라인 — 저장된 사본을 표시하고 있습니다."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离线 — 正在显示已保存的副本。"
+          }
+        }
+      }
+    },
     "Part of speech" : {
       "localizations" : {
         "es" : {

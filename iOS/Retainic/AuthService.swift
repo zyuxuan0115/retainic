@@ -127,7 +127,7 @@ final class AuthService: ObservableObject {
 
     func loadProfile(uid: String) async {
         do {
-            let snapshot = try await VocabRepository.userDoc(uid).getDocument()
+            let snapshot = try await VocabRepository.userDoc(uid).getDocumentOfflineSafe()
             profile = try? snapshot.data(as: UserProfile.self)
         } catch {
             // Non-fatal: the UI falls back to the Firebase displayName/email.

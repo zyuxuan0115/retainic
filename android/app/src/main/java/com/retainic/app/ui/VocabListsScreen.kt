@@ -109,52 +109,57 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
             )
         },
     ) { inner ->
-        Box(Modifier.padding(inner).fillMaxSize()) {
-            when {
-                isLoading && lists.isEmpty() -> LoadingView(stringResource(R.string.loading))
-                lists.isEmpty() -> EmptyState(
-                    icon = Icons.Filled.Layers,
-                    title = stringResource(R.string.no_lists_yet),
-                    description = stringResource(R.string.create_first_list),
-                    actionLabel = stringResource(R.string.create_a_list),
-                    onAction = { showNewList = true },
-                )
-                else -> LazyColumn(Modifier.fillMaxSize()) {
-                    items(lists, key = { it.id ?: it.name }) { list ->
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    pendingTrash = listOf(list)
-                                }
-                                false // never auto-dismiss; the dialog performs the trash
-                            },
-                        )
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            enableDismissFromStartToEnd = false,
-                            backgroundContent = {
-                                Box(
-                                    Modifier.fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.errorContainer)
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd,
-                                ) {
-                                    Icon(Icons.Filled.Delete, contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer)
-                                }
-                            },
-                        ) {
-                            // The row needs a surface of its own: without one it
-                            // is transparent, and the red swipe-to-delete layer
-                            // behind it shows through every list at rest.
-                            ListRow(
-                                list,
-                                Modifier
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .clickable { nav.push(ListsRoute.Detail(list)) },
+        // The banner sits above the list rather than over it, so the saved
+        // copy below is never partly hidden by the notice explaining it.
+        Column(Modifier.padding(inner).fillMaxSize()) {
+            OfflineBanner()
+            Box(Modifier.fillMaxSize()) {
+                when {
+                    isLoading && lists.isEmpty() -> LoadingView(stringResource(R.string.loading))
+                    lists.isEmpty() -> EmptyState(
+                        icon = Icons.Filled.Layers,
+                        title = stringResource(R.string.no_lists_yet),
+                        description = stringResource(R.string.create_first_list),
+                        actionLabel = stringResource(R.string.create_a_list),
+                        onAction = { showNewList = true },
+                    )
+                    else -> LazyColumn(Modifier.fillMaxSize()) {
+                        items(lists, key = { it.id ?: it.name }) { list ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value == SwipeToDismissBoxValue.EndToStart) {
+                                        pendingTrash = listOf(list)
+                                    }
+                                    false // never auto-dismiss; the dialog performs the trash
+                                },
                             )
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false,
+                                backgroundContent = {
+                                    Box(
+                                        Modifier.fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.errorContainer)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd,
+                                    ) {
+                                        Icon(Icons.Filled.Delete, contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    }
+                                },
+                            ) {
+                                // The row needs a surface of its own: without one it
+                                // is transparent, and the red swipe-to-delete layer
+                                // behind it shows through every list at rest.
+                                ListRow(
+                                    list,
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .clickable { nav.push(ListsRoute.Detail(list)) },
+                                )
+                            }
+                            RowDivider()
                         }
-                        RowDivider()
                     }
                 }
             }

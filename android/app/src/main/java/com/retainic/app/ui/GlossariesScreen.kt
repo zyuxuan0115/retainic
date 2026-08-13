@@ -94,50 +94,55 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
             )
         },
     ) { inner ->
-        Box(Modifier.padding(inner).fillMaxSize()) {
-            when {
-                isLoading && glossaries.isEmpty() -> LoadingView(stringResource(R.string.loading))
-                glossaries.isEmpty() -> EmptyState(
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
-                    title = stringResource(R.string.no_glossaries_yet),
-                    description = stringResource(R.string.create_first_glossary),
-                    actionLabel = stringResource(R.string.create_a_glossary),
-                    onAction = { showNewGlossary = true },
-                )
-                else -> LazyColumn(Modifier.fillMaxSize()) {
-                    items(glossaries, key = { it.id ?: it.name }) { glossary ->
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) pendingTrash = glossary
-                                false // never auto-dismiss; the dialog performs the trash
-                            },
-                        )
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            enableDismissFromStartToEnd = false,
-                            backgroundContent = {
-                                Box(
-                                    Modifier.fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.errorContainer)
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd,
-                                ) {
-                                    Icon(Icons.Filled.Delete, contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer)
-                                }
-                            },
-                        ) {
-                            // The row needs a surface of its own: without one it
-                            // is transparent, and the red swipe-to-delete layer
-                            // behind it shows through every glossary at rest.
-                            GlossaryRow(
-                                glossary,
-                                Modifier
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .clickable { nav.push(GlossariesRoute.Detail(glossary)) },
+        // The banner sits above the list rather than over it, so the saved
+        // copy below is never partly hidden by the notice explaining it.
+        Column(Modifier.padding(inner).fillMaxSize()) {
+            OfflineBanner()
+            Box(Modifier.fillMaxSize()) {
+                when {
+                    isLoading && glossaries.isEmpty() -> LoadingView(stringResource(R.string.loading))
+                    glossaries.isEmpty() -> EmptyState(
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
+                        title = stringResource(R.string.no_glossaries_yet),
+                        description = stringResource(R.string.create_first_glossary),
+                        actionLabel = stringResource(R.string.create_a_glossary),
+                        onAction = { showNewGlossary = true },
+                    )
+                    else -> LazyColumn(Modifier.fillMaxSize()) {
+                        items(glossaries, key = { it.id ?: it.name }) { glossary ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = { value ->
+                                    if (value == SwipeToDismissBoxValue.EndToStart) pendingTrash = glossary
+                                    false // never auto-dismiss; the dialog performs the trash
+                                },
                             )
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false,
+                                backgroundContent = {
+                                    Box(
+                                        Modifier.fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.errorContainer)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd,
+                                    ) {
+                                        Icon(Icons.Filled.Delete, contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    }
+                                },
+                            ) {
+                                // The row needs a surface of its own: without one it
+                                // is transparent, and the red swipe-to-delete layer
+                                // behind it shows through every glossary at rest.
+                                GlossaryRow(
+                                    glossary,
+                                    Modifier
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .clickable { nav.push(GlossariesRoute.Detail(glossary)) },
+                                )
+                            }
+                            RowDivider()
                         }
-                        RowDivider()
                     }
                 }
             }

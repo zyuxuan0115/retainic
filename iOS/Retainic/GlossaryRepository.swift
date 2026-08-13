@@ -27,7 +27,7 @@ enum GlossaryRepository {
     static func fetchGlossaries(uid: String) async throws -> [Glossary] {
         let snapshot = try await glossariesRef(uid)
             .order(by: "createdAt", descending: true)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         return snapshot.documents
             .compactMap { try? $0.data(as: Glossary.self) }
             .filter { $0.deletedAt == nil }
@@ -35,7 +35,7 @@ enum GlossaryRepository {
 
     /// Glossaries currently in the trash, most recently deleted first.
     static func fetchTrashedGlossaries(uid: String) async throws -> [Glossary] {
-        let snapshot = try await glossariesRef(uid).getDocuments()
+        let snapshot = try await glossariesRef(uid).getDocumentsOfflineSafe()
         return snapshot.documents
             .compactMap { try? $0.data(as: Glossary.self) }
             .filter { $0.deletedAt != nil }
@@ -50,25 +50,25 @@ enum GlossaryRepository {
     }
 
     static func renameGlossary(uid: String, glossaryId: String, name: String) async throws {
-        try await glossariesRef(uid).document(glossaryId).updateData(["name": name])
+        try await glossariesRef(uid).document(glossaryId).updateDataOfflineSafe(["name": name])
     }
 
     /// Soft-delete: move a glossary to the trash by stamping `deletedAt`. Its
     /// entries are left untouched so it can be restored intact.
     static func trashGlossary(uid: String, glossaryId: String) async throws {
         try await glossariesRef(uid).document(glossaryId)
-            .updateData(["deletedAt": FieldValue.serverTimestamp()])
+            .updateDataOfflineSafe(["deletedAt": FieldValue.serverTimestamp()])
     }
 
     /// Restore a trashed glossary by clearing its `deletedAt` stamp.
     static func restoreGlossary(uid: String, glossaryId: String) async throws {
         try await glossariesRef(uid).document(glossaryId)
-            .updateData(["deletedAt": FieldValue.delete()])
+            .updateDataOfflineSafe(["deletedAt": FieldValue.delete()])
     }
 
     /// Permanently delete a glossary and its entries.
     static func purgeGlossary(uid: String, glossaryId: String) async throws {
-        let entries = try await entriesRef(uid, glossaryId).getDocuments()
+        let entries = try await entriesRef(uid, glossaryId).getDocumentsOfflineSafe()
         try await deleteDocuments(entries.documents.map(\.reference),
                                   parent: glossariesRef(uid).document(glossaryId))
     }
@@ -84,7 +84,7 @@ enum GlossaryRepository {
     /// rather than orphaning the terms still under it.
     private static func deleteDocuments(_ refs: [DocumentReference], parent: DocumentReference) async throws {
         guard !refs.isEmpty else {
-            try await parent.delete()
+            try await parent.deleteOfflineSafe()
             return
         }
         var start = refs.startIndex
@@ -93,7 +93,7 @@ enum GlossaryRepository {
             let batch = db.batch()
             for ref in refs[start ..< end] { batch.deleteDocument(ref) }
             if end == refs.endIndex { batch.deleteDocument(parent) }
-            try await batch.commit()
+            try await batch.commitOfflineSafe()
             start = end
         }
     }
@@ -118,14 +118,14 @@ enum GlossaryRepository {
     static func fetchEntries(uid: String, glossaryId: String) async throws -> [GlossaryEntry] {
         let snapshot = try await entriesRef(uid, glossaryId)
             .order(by: "createdAt", descending: true)
-            .getDocuments()
+            .getDocumentsOfflineSafe()
         return snapshot.documents.compactMap { try? $0.data(as: GlossaryEntry.self) }
     }
 
     static func addEntry(uid: String, glossaryId: String, entry: GlossaryEntry) async throws {
         try entriesRef(uid, glossaryId).addDocument(from: entry)
         try await glossariesRef(uid).document(glossaryId)
-            .updateData(["entryCount": FieldValue.increment(Int64(1))])
+            .updateDataOfflineSafe(["entryCount": FieldValue.increment(Int64(1))])
     }
 
     static func updateEntry(uid: String, glossaryId: String, entry: GlossaryEntry) async throws {
@@ -134,8 +134,8 @@ enum GlossaryRepository {
     }
 
     static func deleteEntry(uid: String, glossaryId: String, entryId: String) async throws {
-        try await entriesRef(uid, glossaryId).document(entryId).delete()
+        try await entriesRef(uid, glossaryId).document(entryId).deleteOfflineSafe()
         try await glossariesRef(uid).document(glossaryId)
-            .updateData(["entryCount": FieldValue.increment(Int64(-1))])
+            .updateDataOfflineSafe(["entryCount": FieldValue.increment(Int64(-1))])
     }
 }

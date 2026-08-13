@@ -135,7 +135,7 @@ class AuthService(app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadProfile(uid: String) {
         try {
-            val snapshot = VocabRepository.userDoc(uid).get().await()
+            val snapshot = VocabRepository.userDoc(uid).getDocOfflineSafe()
             profile = snapshot.toObject(UserProfile::class.java)
         } catch (_: Exception) {
             // Non-fatal: UI falls back to the Firebase displayName/email.

@@ -57,14 +57,18 @@ struct GlossariesView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.isLoading && vm.glossaries.isEmpty {
-                    ProgressView("Loading…")
-                } else if vm.glossaries.isEmpty {
-                    emptyState
-                } else {
-                    glossaryContent
+            VStack(spacing: 0) {
+                OfflineBanner(language: preferredLanguage)
+                Group {
+                    if vm.isLoading && vm.glossaries.isEmpty {
+                        ProgressView("Loading…")
+                    } else if vm.glossaries.isEmpty {
+                        emptyState
+                    } else {
+                        glossaryContent
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Glossaries".localized(preferredLanguage))
             .toolbar {

@@ -179,6 +179,7 @@
     <string name="about_body">Retainic te permite crear listas de vocabulario, añadir palabras con traducciones, lecturas, categorías gramaticales y pronunciación grabada, y practicarlas con repetición espaciada por aspecto. Esta aplicación para Android comparte la misma cuenta y los mismos datos que las apps de Retainic para iOS y web.</string>
     <string name="source_code">Código fuente</string>
     <string name="legal">Legal</string>
+    <string name="offline_cached_copy">Sin conexión: se muestra tu copia guardada.</string>
     <string name="privacy_policy">Política de privacidad</string>
 
     <!-- Glossaries -->

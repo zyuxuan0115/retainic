@@ -14,6 +14,11 @@ struct RetainicApp: App {
 
     init() {
         FirebaseApp.configure()
+        // Both before anything reads or writes: the cache settings only take
+        // effect while Firestore is untouched, and the repositories consult
+        // the network path on their very first call.
+        FirestoreOffline.configure()
+        Connectivity.shared.start()
     }
 
     var body: some Scene {
