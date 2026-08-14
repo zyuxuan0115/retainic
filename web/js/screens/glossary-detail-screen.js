@@ -15,6 +15,7 @@ import { presentEntrySheet } from "./entry-sheet.js";
 import { downloadGlossaryCSV } from "./glossary-actions.js";
 import { presentAlgorithmSheet } from "./algorithm-sheet.js";
 import { useGlossaryAlgorithm } from "../algorithm.js";
+import { masonry } from "../masonry.js";
 
 export async function GlossaryDetailScreen(content, glossary, { onBack, onPracticeChange }) {
   let entries = [];
@@ -23,6 +24,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   let searchText = "";
   let filter = "all"; // all | remembered | unremembered
   let glossaryName = glossary.name;
+  let cards = null; // Masonry handle for the card list, while one is on screen.
 
   const header = el(".navbar-host");
   const body = el(".scroll");
@@ -64,6 +66,8 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
 
   function renderAll() {
     syncPractice();
+    // The body is rebuilt below, so the card list this was watching is gone.
+    dropCards();
     // Nav bar
     clear(header);
     const title = selecting
@@ -84,7 +88,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
       );
     }
     header.appendChild(navBar(title, {
-      leading: selecting ? null : iconButton(icon("arrow_back", 22), onBack, { label: "Back" }),
+      leading: selecting ? null : iconButton(icon("arrow_back", 22), () => { dropCards(); onBack(); }, { label: "Back" }),
       trailing,
     }));
 
@@ -102,12 +106,19 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
     const rowsHost = el(".list", { id: "rows-host" });
     body.appendChild(rowsHost);
     renderRows();
+    cards = masonry(rowsHost);
 
     function renderRows() {
       const host = body.querySelector("#rows-host");
       clear(host);
       for (const entry of filteredEntries()) host.appendChild(entryRow(entry));
+      cards?.update();
     }
+  }
+
+  function dropCards() {
+    cards?.dispose();
+    cards = null;
   }
 
   function entryRow(entry) {

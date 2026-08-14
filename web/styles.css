@@ -147,11 +147,11 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
    when it doesn't fit, so every card in a grid row is the same height. */
 .word-list-row .row-sub { white-space: nowrap; }
 
-/* Glossary term cards. On wide screens the list is a grid, so every card in a
-   row stretches to the tallest one; centring would then float the term down
-   with it. Pinning the text block to the top keeps every term the same
-   distance below the card's top edge, and the definitions under it stop after
-   five lines so one long entry can't stretch its whole row. */
+/* Glossary term cards. Pinning the text block to the top keeps every term the
+   same distance below the card's top edge — it only stretches away from there
+   on the plain grid, which is what the cards fall back to if masonry.js hasn't
+   run. The definitions under it stop after five lines, so a long entry makes a
+   taller card rather than an endless one. */
 .term-row .row-main { align-self: flex-start; }
 .term-row .row-sub {
   display: -webkit-box;
@@ -522,11 +522,15 @@ a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: e
   .content { min-width: 0; }
   .scroll { padding-left: 6px; padding-right: 6px; }
 
-  /* Lists become a responsive card grid that fills the width */
+  /* Lists become a responsive card grid that fills the width. The column
+     width and gap are custom properties because masonry.js packs the glossary
+     cards by hand and needs the same two numbers. */
   .list {
+    --card-min: 290px;
+    --card-gap: 14px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
+    gap: var(--card-gap);
     margin: 22px;
     background: transparent;
     border-radius: 0;
@@ -540,6 +544,12 @@ a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: e
   }
   .list .row.tappable:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
   .list .row-chevron { display: none; }
+
+  /* Masonry lists: each card is as tall as its own text and sits wherever
+     masonry.js puts it. The class comes from the script, so without it the
+     list stays the grid above. */
+  .list.masonry { display: block; position: relative; }
+  .list.masonry .row { position: absolute; top: 0; left: 0; }
 
   /* Search bar + forms: comfortable, centered reading width */
   .search-wrap { max-width: 1120px; margin: 0 auto; }
