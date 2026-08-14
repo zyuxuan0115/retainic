@@ -109,7 +109,7 @@ export async function ListDetailScreen(content, list, { onBack, onPracticeChange
     const posChips = M.partOfSpeechValues(w).map((p) =>
       el(".chip", {}, M.posLabel(p, preferredLanguage())));
     const audioBtn = pronunciationButton(w, list);
-    const row = el(".row.word-row" + (selecting && checked ? ".selected" : ""), {
+    const row = el(".row.word-row.word-list-row" + (selecting && checked ? ".selected" : ""), {
       onclick: () => {
         if (selecting) { toggleSelect(w.id); }
         else openEdit(w);

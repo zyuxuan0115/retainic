@@ -143,6 +143,10 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .word-row .word-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .word-term { font-weight: 600; }
 .word-reading { color: var(--secondary-label); font-size: 14px; }
+/* Word list cards: the translation stays on one line, cut with an ellipsis
+   when it doesn't fit, so every card in a grid row is the same height. */
+.word-list-row .row-sub { white-space: nowrap; }
+
 /* Glossary term cards. On wide screens the list is a grid, so every card in a
    row stretches to the tallest one; centring would then float the term down
    with it. Pinning the text block to the top keeps every term the same
