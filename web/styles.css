@@ -143,6 +143,18 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 .word-row .word-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .word-term { font-weight: 600; }
 .word-reading { color: var(--secondary-label); font-size: 14px; }
+/* Glossary term cards. On wide screens the list is a grid, so every card in a
+   row stretches to the tallest one; centring would then float the term down
+   with it. Pinning the text block to the top keeps every term the same
+   distance below the card's top edge, and the definitions under it stop after
+   five lines so one long entry can't stretch its whole row. */
+.term-row .row-main { align-self: flex-start; }
+.term-row .row-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
 .select-dot { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--secondary-label); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; flex: none; }
 .select-dot.on { background: var(--tint); border-color: var(--tint); }
 .row.selected { background: color-mix(in srgb, var(--tint) 8%, transparent); }

@@ -62,6 +62,9 @@ struct AboutView: View {
                         Image(systemName: "hand.raised")
                         Text("Privacy policy")
                     }
+                    // Match the tinted look of the source-code Link above,
+                    // which SwiftUI colours with the accent by default.
+                    .foregroundStyle(.tint)
                 }
             }
 

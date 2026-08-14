@@ -112,7 +112,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
 
   function entryRow(entry) {
     const checked = selection.has(entry.id);
-    return el(".row.word-row" + (selecting && checked ? ".selected" : ""), {
+    return el(".row.word-row.term-row" + (selecting && checked ? ".selected" : ""), {
       onclick: () => {
         if (selecting) toggleSelect(entry.id);
         else openEdit(entry);
