@@ -215,6 +215,10 @@
     <string name="select_terms">Seleccionar términos</string>
     <string name="glossary_settings">Ajustes del glosario</string>
     <string name="show_terms">Mostrar términos</string>
+    <string name="review_direction">Dirección del repaso</string>
+    <string name="both_directions">Ambas direcciones</string>
+    <string name="term_to_definition_only">Solo de término a definición</string>
+    <string name="review_direction_footer">En una sola dirección solo ves el término y recuerdas su significado: cinco aciertos así y el término queda recordado.</string>
     <string name="mark_all_terms_not_remembered_title">¿Marcar todos los términos como no recordados?</string>
     <string name="mark_all_terms_not_remembered_footer">Todos los términos de este glosario volverán a aparecer en la práctica.</string>
     <string name="nothing_to_practice_glossary_desc">Primero añade algunos términos a un glosario y luego vuelve para repasarlos.</string>

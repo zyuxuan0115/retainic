@@ -28,6 +28,20 @@ export const ASPECTS = [
   { id: "definition", labelKey: "Definition", dailyAspect: "translation" },
 ];
 
+/** Which way round a glossary is practised. By default both: shown the term
+ *  you recall what it means, and shown a definition you recall the term. A
+ *  glossary can be set to the first direction alone, and then a term is
+ *  finished once that one side is — its definitions are never a prompt, so
+ *  waiting on them would leave the term stuck for good. */
+export const BOTH_DIRECTIONS = "both";
+export const TERM_TO_DEFINITION = "termToDefinition";
+
+/** The direction a glossary is practised in. Glossaries saved before the
+ *  setting existed have no field, and read as both. */
+export function directionOf(glossary) {
+  return glossary?.reviewDirection === TERM_TO_DEFINITION ? TERM_TO_DEFINITION : BOTH_DIRECTIONS;
+}
+
 /** A definition with no review progress yet. */
 export function newDefinition(text) {
   return { text, timesCorrect: 0, lastRemembered: null };
@@ -146,12 +160,25 @@ export function isRemembered(entry) {
 /** An entry is memorized once every side of it is finished — the algorithm
  *  says -1 (never again) for the term and for each definition. On the built-in
  *  schedule that means five recalls apiece, so a term that means five things
- *  isn't done until all five meanings are. */
-function updateRememberFinal(entry) {
+ *  isn't done until all five meanings are. Practised in one direction only,
+ *  the term side is the whole of it: five recalls of what the term means and
+ *  the entry is done. */
+function updateRememberFinal(entry, direction) {
+  const termFinished = activeReview(entryState(entry)).term < 0;
+  if (direction === TERM_TO_DEFINITION) { entry.remember_final = termFinished; return; }
   const defs = definitions(entry);
-  entry.remember_final = activeReview(entryState(entry)).term < 0
+  entry.remember_final = termFinished
     && defs.length > 0
     && defs.every((_, i) => activeReview(entryState(entry, i)).definition < 0);
+}
+
+/** Re-decides whether the entry counts as memorized under `direction`, for
+ *  when a glossary's direction changes: the progress that was enough one way
+ *  round may not be the other. Returns whether the answer moved. */
+export function applyDirection(entry, direction) {
+  const before = entry.remember_final === true;
+  updateRememberFinal(entry, direction);
+  return entry.remember_final !== before;
 }
 
 function record(entry, aspect, correct, now) {
@@ -168,8 +195,10 @@ function record(entry, aspect, correct, now) {
 
 /** Records a correct recall of `aspect` ("term" | "definition"), mutating the
  *  entry the way `markCorrect` does for words. A definition recall advances
- *  only the definition that was practised. */
-export function markCorrect(entry, aspect, definitionIndex = 0) {
+ *  only the definition that was practised. `direction` is the glossary's, and
+ *  decides how much of the entry has to be finished for it to count as
+ *  memorized. */
+export function markCorrect(entry, aspect, definitionIndex = 0, direction = BOTH_DIRECTIONS) {
   const now = new Date();
   entry.timesSeen = (entry.timesSeen ?? 0) + 1;
   if (aspect === "term") {
@@ -185,7 +214,7 @@ export function markCorrect(entry, aspect, definitionIndex = 0) {
     entry.definitions = defs;
     syncLegacyFields(entry);
   }
-  updateRememberFinal(entry);
+  updateRememberFinal(entry, direction);
   entry.lastReviewed = now;
   record(entry, aspect, true, now);
 }
@@ -201,7 +230,7 @@ export function markIncorrect(entry, aspect) {
  *  at each position: editing the wording of a definition leaves its schedule
  *  alone, a new one starts unlearned, and a removed one takes its progress
  *  with it. */
-export function setDefinitions(entry, texts) {
+export function setDefinitions(entry, texts, direction = BOTH_DIRECTIONS) {
   const previous = definitions(entry);
   entry.definitions = texts.map((text, i) => ({
     text,
@@ -209,7 +238,7 @@ export function setDefinitions(entry, texts) {
     lastRemembered: previous[i]?.lastRemembered ?? null,
   }));
   syncLegacyFields(entry);
-  updateRememberFinal(entry);
+  updateRememberFinal(entry, direction);
   return entry;
 }
 

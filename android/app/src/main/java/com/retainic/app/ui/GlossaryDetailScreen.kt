@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -56,7 +58,14 @@ import com.retainic.app.data.Glossary
 import com.retainic.app.data.GlossaryEntry
 import com.retainic.app.data.GlossaryPracticeCard
 import com.retainic.app.data.GlossaryRepository
+import com.retainic.app.data.GlossaryReviewDirection
 import kotlinx.coroutines.launch
+
+private val GlossaryReviewDirection.labelRes: Int
+    get() = when (this) {
+        GlossaryReviewDirection.BOTH -> R.string.both_directions
+        GlossaryReviewDirection.TERM_TO_DEFINITION -> R.string.term_to_definition_only
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +87,7 @@ fun GlossaryDetailScreen(
     var glossaryName by remember { mutableStateOf(glossary.name) }
     var searchText by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(WordFilter.ALL) }
+    var direction by remember { mutableStateOf(glossary.direction) }
 
     var selecting by remember { mutableStateOf(false) }
     val selection = remember { mutableStateListOf<String>() }
@@ -168,7 +178,7 @@ fun GlossaryDetailScreen(
                     if (entries.isNotEmpty()) {
                         TextButton(onClick = {
                             val cards = entries.map { GlossaryPracticeCard(it, glossaryId) }
-                            nav.push(GlossariesRoute.Practice(cards))
+                            nav.push(GlossariesRoute.Practice(cards, direction))
                         }) {
                             Icon(Icons.Outlined.Style, contentDescription = null)
                             Spacer(Modifier.width(4.dp)); Text(stringResource(R.string.practice))
@@ -178,7 +188,7 @@ fun GlossaryDetailScreen(
                     IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.glossary_settings))
                     }
-                    IconButton(onClick = { nav.push(GlossariesRoute.Editor(glossaryId, language, null)) }) {
+                    IconButton(onClick = { nav.push(GlossariesRoute.Editor(glossaryId, language, null, direction)) }) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_term))
                     }
                 }
@@ -193,7 +203,7 @@ fun GlossaryDetailScreen(
                     title = stringResource(R.string.no_terms_yet),
                     description = stringResource(R.string.add_terms_to_glossary, glossaryName),
                     actionLabel = stringResource(R.string.add_first_term),
-                    onAction = { nav.push(GlossariesRoute.Editor(glossaryId, language, null)) },
+                    onAction = { nav.push(GlossariesRoute.Editor(glossaryId, language, null, direction)) },
                 )
                 else -> Column(Modifier.fillMaxSize()) {
                     OutlinedTextField(
@@ -213,7 +223,7 @@ fun GlossaryDetailScreen(
                                         val id = entry.id ?: return@GlossaryEntryRow
                                         if (selection.contains(id)) selection.remove(id) else selection.add(id)
                                     } else {
-                                        nav.push(GlossariesRoute.Editor(glossaryId, language, entry))
+                                        nav.push(GlossariesRoute.Editor(glossaryId, language, entry, direction))
                                     }
                                 },
                             )
@@ -267,6 +277,34 @@ fun GlossaryDetailScreen(
             initialName = glossaryName,
             filter = filter,
             onFilterChange = { filter = it },
+            direction = direction,
+            onDirectionChange = { chosen ->
+                if (chosen != direction) {
+                    direction = chosen
+                    val uid = auth.uid
+                    if (uid != null) scope.launch {
+                        isBusy = true
+                        try {
+                            GlossaryRepository.setGlossaryDirection(uid, glossaryId, chosen)
+                            // Progress that finishes a term one way round may
+                            // not the other, so re-judge every term and write
+                            // back only the ones whose answer moved.
+                            val current = entries.toList()
+                            val moved = current.filter { it.applyDirection(chosen) }
+                            for (entry in moved) {
+                                GlossaryRepository.updateEntry(uid, glossaryId, entry)
+                            }
+                            // The entries were edited in place, so hand the list
+                            // fresh copies for the remembered filter to re-read.
+                            if (moved.isNotEmpty()) {
+                                entries.clear()
+                                entries.addAll(current.map { it.copy() })
+                            }
+                        } catch (e: Exception) { error = e.localizedMessage }
+                        isBusy = false
+                    }
+                }
+            },
             onDismiss = { showSettings = false },
             onSave = { newName ->
                 val trimmed = newName.trim()
@@ -331,6 +369,8 @@ private fun GlossarySettingsDialog(
     initialName: String,
     filter: WordFilter,
     onFilterChange: (WordFilter) -> Unit,
+    direction: GlossaryReviewDirection,
+    onDirectionChange: (GlossaryReviewDirection) -> Unit,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
     onResetMemory: () -> Unit,
@@ -359,7 +399,10 @@ private fun GlossarySettingsDialog(
             },
         ) { inner ->
             Column(
-                Modifier.padding(inner).fillMaxSize().padding(16.dp),
+                // The settings run past the bottom of a short screen, so the
+                // whole sheet scrolls.
+                Modifier.padding(inner).fillMaxSize()
+                    .verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedTextField(name, { name = it },
@@ -374,6 +417,19 @@ private fun GlossarySettingsDialog(
                         Text(stringResource(option.labelRes))
                     }
                 }
+
+                HorizontalDivider()
+                Text(stringResource(R.string.review_direction), style = MaterialTheme.typography.titleSmall)
+                GlossaryReviewDirection.entries.forEach { option ->
+                    Row(Modifier.fillMaxWidth().clickable { onDirectionChange(option) },
+                        verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = direction == option, onClick = { onDirectionChange(option) })
+                        Text(stringResource(option.labelRes))
+                    }
+                }
+                Text(stringResource(R.string.review_direction_footer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 HorizontalDivider()
                 TextButton(onClick = { showResetConfirm = true }) {

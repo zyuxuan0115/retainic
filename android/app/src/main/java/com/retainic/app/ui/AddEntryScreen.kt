@@ -43,6 +43,7 @@ import com.retainic.app.R
 import com.retainic.app.data.AuthService
 import com.retainic.app.data.GlossaryEntry
 import com.retainic.app.data.GlossaryRepository
+import com.retainic.app.data.GlossaryReviewDirection
 import com.retainic.app.i18n.Language
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -55,6 +56,11 @@ fun AddEntryScreen(
     glossaryId: String,
     language: String,
     existing: GlossaryEntry?,
+    /**
+     * The glossary's review direction, which decides what editing the
+     * definitions does to a term's remembered state.
+     */
+    direction: GlossaryReviewDirection,
     nav: GlossariesNav,
     modifier: Modifier = Modifier,
 ) {
@@ -92,11 +98,11 @@ fun AddEntryScreen(
             try {
                 if (existing != null) {
                     val updated = existing.copy(term = term.trim(), notes = notes.trim())
-                    updated.replaceDefinitions(filledDefinitions)
+                    updated.replaceDefinitions(filledDefinitions, direction)
                     GlossaryRepository.updateEntry(uid, glossaryId, updated)
                 } else {
                     val entry = GlossaryEntry(term = term.trim(), notes = notes.trim(), createdAt = Date())
-                    entry.replaceDefinitions(filledDefinitions)
+                    entry.replaceDefinitions(filledDefinitions, direction)
                     GlossaryRepository.addEntry(uid, glossaryId, entry)
                 }
                 nav.pop()

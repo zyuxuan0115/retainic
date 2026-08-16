@@ -2,20 +2,26 @@
 
 A browser port of the Retainic iOS vocabulary app, with the **same features** and
 backed by the **same Firebase project** (`retainic-85b91`) — so accounts and data
-are shared across iOS and the web. Sign in with the account you use on iOS and
-your lists, words, pronunciations, review progress and stats are all there.
+are shared across iOS, Android and the web. Sign in with the account you use on a
+phone and your lists, words, pronunciations, review progress and stats are all
+there.
 
 It's a dependency-free single-page app: plain ES modules plus the Firebase Web
 SDK loaded from a CDN. No build step.
 
 ## Features (parity with iOS)
 
-- **Accounts** — email/password sign up & login (Firebase Auth).
+- **Accounts** — email/password sign up & login (Firebase Auth); registration is
+  gated on an **invitation code**, as on iOS and Android.
 - **Localized UI** — English, Spanish, Chinese, Japanese, Korean (strings
   extracted from the iOS `Localizable.xcstrings`). Change it in **Settings ▸
   Preferred language**; it defaults to the browser language.
 - **Vocabulary lists** — create decks with a learning + original language; rename,
-  delete, filter (all / remembered / unremembered).
+  delete, filter (all / remembered / unremembered), and **share or import a list
+  by its public ID**. A list can also switch on **text-to-speech**, which reads
+  each term with a system voice so pronunciation is practised (and counts
+  towards mastery) even for words with no recording. Deleted lists and
+  glossaries go to a shared **Trash** to be restored or purged.
 - **Create from a CSV** *(web only)* — **New List ▸ Import CSV** seeds a new list
   from a file. Columns are `word, translation, notes, part of speech, hiragana,
   pinyin`; a header row is optional and, when present, columns are matched by
@@ -33,7 +39,12 @@ SDK loaded from a CDN. No build step.
   vocabulary lists — their own documents, screens and practice — but they share
   the Trash, practising two methods (*Term* and *Definition*) instead of three
   on a schedule of their own: five correct recalls finish the term and five
-  finish each definition, and only then is the term memorized. Glossaries have their own CSV pair:
+  finish each definition, and only then is the term memorized. **Glossary
+  Settings → Review direction** narrows that to one direction — *Term to
+  definition only* shows just the term and asks what it means, so practice
+  offers that method alone and five recalls that way finish the term whatever
+  its definitions' own counts say. Switching direction re-judges the terms it
+  disagrees about. Glossaries have their own CSV pair:
   **New Glossary → Import CSV** fills a new glossary from a file (columns: term,
   definitions, notes — several definitions separated by semicolons, or the same
   term repeated on another row, which merges into one entry), and **Glossary
@@ -54,6 +65,8 @@ SDK loaded from a CDN. No build step.
 - **Statistics** — words and glossary terms memorized, *Words practice today* and
   *Glossary practice today* bar charts, *Words this week* and *Glossary this week*
   trend lines, and average pace per day / week / month (SVG charts, no library).
+- **About** — app version, a link to the source repository, and the **privacy
+  policy**, which also stands alone at `privacy.html` for app-store listings.
 
 ## Running it
 
@@ -89,15 +102,21 @@ console and paste its `appId` for a dedicated web client.
   review progress always sync regardless.
 - **Storage downloads** (moving a word with audio across lists) fetch the file;
   Firebase Storage download URLs are CORS-friendly for this by default.
+- **No offline mode.** Unlike the iOS and Android apps, the web app doesn't turn
+  on Firestore's persistent cache, so it needs a connection to load your data.
+- **Custom review algorithms need a connection too**: the Python you write for a
+  glossary runs in [Pyodide](https://pyodide.org/), loaded from a CDN on first
+  use and sandboxed (no `js`/`pyodide` imports, no `eval`/`exec`).
 
 ## Project structure
 
 ```
 web/
 ├── index.html              Entry point
+├── privacy.html            Standalone privacy policy, linked from About
 ├── styles.css              iOS-flavored styling (light/dark)
 ├── package.json            Dependency-free Node test command
-├── tests/                  Translation and module-size regression checks
+├── tests/                  CSV, glossary, translation, and module-size checks
 └── js/
     ├── app.js              App boot, tab shell, and navigation coordinator
     ├── ui.js               Shared DOM controls, feedback, audio, and icons
@@ -106,8 +125,10 @@ web/
     ├── auth.js             Email/password auth + profile (AuthService.swift)
     ├── repository.js       Firestore/Storage CRUD (VocabRepository.swift)
     ├── models.js           Word model + spaced-repetition logic (FirestoreModels.swift)
-    ├── glossary.js         Glossary entry model on the same review schedule
+    ├── glossary.js         Glossary entry model, review schedule, and direction
+    ├── algorithm.js        Runs a glossary's custom Python schedule under Pyodide
     ├── csv.js              CSV escaping/parsing shared by the list export and import
+    ├── masonry.js          Column packing for the glossary term cards
     ├── audio.js            Recording + playback (AudioManager.swift)
     ├── i18n.js             Language list + string lookup (Language/AppLanguage.swift)
     ├── translations.js     Locale-dictionary index
@@ -115,5 +136,6 @@ web/
     └── dom.js              Tiny DOM/sheet helpers
 ```
 
-Run the dependency-free regression suite with `npm test`; it checks translation
-parity and enforces the repository's 600-line source-module ceiling.
+Run the dependency-free regression suite with `npm test`; it checks CSV and
+glossary-schedule behaviour (including one-direction review), translation
+parity, and the repository's 600-line source-module ceiling.

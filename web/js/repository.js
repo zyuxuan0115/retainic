@@ -23,6 +23,7 @@ import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject,
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-storage.js";
 import { refreshMemorization } from "./models.js";
+import { TERM_TO_DEFINITION } from "./glossary.js";
 
 // MARK: - Date / document normalization
 
@@ -405,6 +406,15 @@ export async function renameGlossary(uid, glossaryId, name) {
  *  the built-in default) when `code` is null. */
 export async function setGlossaryAlgorithm(uid, glossaryId, code) {
   await updateDoc(doc(glossariesRef(uid), glossaryId), { algorithmCode: code == null ? deleteField() : code });
+}
+
+/** Stores which direction this glossary is practised in. The default — both
+ *  ways round — is the absence of the field, so older clients keep reading the
+ *  glossary the way they always have. */
+export async function setGlossaryDirection(uid, glossaryId, direction) {
+  await updateDoc(doc(glossariesRef(uid), glossaryId), {
+    reviewDirection: direction === TERM_TO_DEFINITION ? direction : deleteField(),
+  });
 }
 
 export async function trashGlossary(uid, glossaryId) {

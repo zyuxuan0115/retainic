@@ -215,6 +215,10 @@
     <string name="select_terms">选择术语</string>
     <string name="glossary_settings">术语表设置</string>
     <string name="show_terms">显示术语</string>
+    <string name="review_direction">复习方向</string>
+    <string name="both_directions">双向</string>
+    <string name="term_to_definition_only">仅从术语到释义</string>
+    <string name="review_direction_footer">单向复习时只显示术语，由你回忆它的释义；这样答对五次即视为已记住。</string>
     <string name="mark_all_terms_not_remembered_title">将所有术语标记为未记住？</string>
     <string name="mark_all_terms_not_remembered_footer">此术语表中的所有术语将在练习中再次出现。</string>
     <string name="nothing_to_practice_glossary_desc">请先向术语表添加一些术语，然后回来复习。</string>

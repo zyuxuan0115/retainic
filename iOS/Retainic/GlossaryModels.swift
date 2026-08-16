@@ -35,6 +35,9 @@ struct Glossary: Codable, Identifiable {
     var language: String?
     /// When the glossary was moved to the trash, or nil if it's active.
     var deletedAt: Date?
+    /// Which way round its terms are practised. Absent on glossaries saved
+    /// before the setting existed, which read as both directions.
+    var reviewDirection: String?
 
     init(
         id: String? = nil,
@@ -42,7 +45,8 @@ struct Glossary: Codable, Identifiable {
         createdAt: Date,
         entryCount: Int,
         language: String? = nil,
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        reviewDirection: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -50,6 +54,40 @@ struct Glossary: Codable, Identifiable {
         self.entryCount = entryCount
         self.language = language
         self.deletedAt = deletedAt
+        self.reviewDirection = reviewDirection
+    }
+
+    /// The direction this glossary is practised in.
+    var direction: GlossaryReviewDirection {
+        GlossaryReviewDirection(rawValue: reviewDirection ?? "") ?? .both
+    }
+}
+
+/// Which way round a glossary's terms are reviewed.
+enum GlossaryReviewDirection: String, CaseIterable, Identifiable {
+    /// Both the term and every definition are practised, and a term is
+    /// remembered only once each side of it is finished.
+    case both
+
+    /// Only the term is shown, and you recall what it means: five recalls that
+    /// way and the term is done, whatever its definitions' own counts say.
+    case termToDefinition
+
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .both: return "Both directions"
+        case .termToDefinition: return "Term to definition only"
+        }
+    }
+
+    /// The methods practice offers in this direction.
+    var aspects: [GlossaryAspect] {
+        switch self {
+        case .both: return GlossaryAspect.allCases
+        case .termToDefinition: return [.term]
+        }
     }
 }
 
@@ -216,8 +254,10 @@ extension GlossaryEntry {
     }
 
     /// Records a correct recall for the given method. A definition recall
-    /// advances only the definition that was practised.
-    mutating func markCorrect(aspect: GlossaryAspect, definitionIndex: Int = 0) {
+    /// advances only the definition that was practised. `direction` is the
+    /// glossary's, and decides what finishing the entry takes.
+    mutating func markCorrect(aspect: GlossaryAspect, definitionIndex: Int = 0,
+                              direction: GlossaryReviewDirection = .both) {
         let now = Date()
         timesSeen += 1
         switch aspect {
@@ -233,7 +273,7 @@ extension GlossaryEntry {
             definitions = list
             syncDefinitionFields()
         }
-        updateRememberFinal()
+        updateRememberFinal(direction: direction)
         lastReviewed = now
         record(aspect: aspect, correct: true, now: now)
     }
@@ -242,7 +282,8 @@ extension GlossaryEntry {
     /// progress at each position: editing the wording of a definition leaves
     /// its schedule alone, a new one starts unlearned, and a removed one takes
     /// its progress with it.
-    mutating func setDefinitions(_ texts: [String]) {
+    mutating func setDefinitions(_ texts: [String],
+                                 direction: GlossaryReviewDirection = .both) {
         let previous = definitionList
         definitions = texts.enumerated().map { index, text in
             GlossaryDefinition(text: text,
@@ -250,7 +291,17 @@ extension GlossaryEntry {
                                lastRemembered: previous.indices.contains(index) ? previous[index].lastRemembered : nil)
         }
         syncDefinitionFields()
-        updateRememberFinal()
+        updateRememberFinal(direction: direction)
+    }
+
+    /// Re-decides whether the entry counts as memorized under `direction`, for
+    /// when the glossary's direction changes: progress that is enough one way
+    /// round may not be the other. Returns whether the answer moved, so only
+    /// the entries that disagree are written back.
+    mutating func applyDirection(_ direction: GlossaryReviewDirection) -> Bool {
+        let before = remember_final == true
+        updateRememberFinal(direction: direction)
+        return (remember_final == true) != before
     }
 
     /// Mirrors the definition list onto the fields that predate it: the joined
@@ -287,9 +338,17 @@ extension GlossaryEntry {
     /// recalled its five times, and each definition its own five. A term that
     /// means five things isn't done until all five meanings are. Entries carry
     /// no audio, so the pronunciation requirement words can have never applies.
-    private mutating func updateRememberFinal() {
+    ///
+    /// A glossary practised in one direction only asks for the term side, so
+    /// that side alone finishes the entry.
+    private mutating func updateRememberFinal(direction: GlossaryReviewDirection = .both) {
+        let termFinished = (timesTermCorrect ?? 0) >= Self.requiredRecalls
+        guard direction == .both else {
+            remember_final = termFinished
+            return
+        }
         let list = definitionList
-        remember_final = (timesTermCorrect ?? 0) >= Self.requiredRecalls
+        remember_final = termFinished
             && !list.isEmpty
             && list.allSatisfy { $0.timesCorrect >= Self.requiredRecalls }
     }

@@ -50,6 +50,7 @@ import com.retainic.app.data.AuthService
 import com.retainic.app.data.GlossaryAspect
 import com.retainic.app.data.GlossaryPracticeCard
 import com.retainic.app.data.GlossaryRepository
+import com.retainic.app.data.GlossaryReviewDirection
 import com.retainic.app.data.VocabRepository
 import kotlinx.coroutines.launch
 
@@ -79,6 +80,11 @@ private val GlossaryAspect.labelRes: Int
 fun GlossaryFlashcardScreen(
     auth: AuthService,
     cards: List<GlossaryPracticeCard>,
+    /**
+     * The glossary's review direction. One-way glossaries only ever show the
+     * term, so that is the only method this session offers.
+     */
+    direction: GlossaryReviewDirection,
     nav: GlossariesNav,
     modifier: Modifier = Modifier,
 ) {
@@ -111,15 +117,17 @@ fun GlossaryFlashcardScreen(
     }
 
     fun deck(): List<GlossarySessionItem> {
-        if (selectedAspects.isEmpty()) return emptyList()
+        val aspects = selectedAspects.filter { it in direction.aspects }
+        if (aspects.isEmpty()) return emptyList()
         val out = mutableListOf<GlossarySessionItem>()
-        for (aspect in selectedAspects) {
+        for (aspect in aspects) {
             for (card in cards) out.addAll(items(card, aspect))
         }
         return out.shuffled()
     }
 
-    val dueCount = selectedAspects.sumOf { aspect -> cards.flatMap { items(it, aspect) }.size }
+    val dueCount = selectedAspects.filter { it in direction.aspects }
+        .sumOf { aspect -> cards.flatMap { items(it, aspect) }.size }
 
     fun startSession() {
         val d = deck()
@@ -140,7 +148,7 @@ fun GlossaryFlashcardScreen(
         // doesn't affect schedules or stats.
         if (dueOnly) {
             if (correct) {
-                item.card.entry.markCorrect(item.aspect, item.definitionIndex)
+                item.card.entry.markCorrect(item.aspect, item.definitionIndex, direction)
                 // Glossary practice shares the daily tallies with list practice,
                 // so the Statistics charts count both.
                 auth.uid?.let { uid ->
@@ -196,6 +204,7 @@ fun GlossaryFlashcardScreen(
                 session.isEmpty() -> GlossarySetupView(
                     dueOnly = dueOnly, onDueOnlyChange = { dueOnly = it },
                     dueCount = dueCount,
+                    aspects = direction.aspects,
                     selectedAspects = selectedAspects,
                     canStart = deck().isNotEmpty(),
                     onStart = { startSession() },
@@ -219,6 +228,7 @@ private fun GlossarySetupView(
     dueOnly: Boolean,
     onDueOnlyChange: (Boolean) -> Unit,
     dueCount: Int,
+    aspects: List<GlossaryAspect>,
     selectedAspects: MutableList<GlossaryAspect>,
     canStart: Boolean,
     onStart: () -> Unit,
@@ -245,7 +255,7 @@ private fun GlossarySetupView(
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.show_first), style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            GlossaryAspect.entries.forEach { aspect ->
+            aspects.forEach { aspect ->
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         if (selectedAspects.contains(aspect)) selectedAspects.remove(aspect)

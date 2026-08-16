@@ -184,3 +184,41 @@ test("clearing the override puts the built-in schedule back", () => {
   assert.equal(G.isRemembered(entry), false);
   assert.deepEqual(G.defaultGlossaryReview({ times_term: 5, times_definition: 0 }), { term: -1, definition: 0 });
 });
+
+test("a one-direction glossary finishes a term on its term side alone", () => {
+  const entry = G.newEntry({ term: "escheat", definitions: ["property reverting to the state", "a lapsed inheritance"] });
+  assert.equal(G.directionOf({}), G.BOTH_DIRECTIONS);
+  assert.equal(G.directionOf({ reviewDirection: G.TERM_TO_DEFINITION }), G.TERM_TO_DEFINITION);
+
+  for (let i = 0; i < G.REQUIRED_RECALLS - 1; i++) G.markCorrect(entry, "term", 0, G.TERM_TO_DEFINITION);
+  assert.equal(G.isRemembered(entry), false);
+  G.markCorrect(entry, "term", 0, G.TERM_TO_DEFINITION);
+  // Five recalls of what the term means, and neither definition ever asked for.
+  assert.equal(G.isRemembered(entry), true);
+  assert.equal(entry.timesDefinitionCorrect, 0);
+  assert.equal(G.isTermDue(entry, new Date(Date.now() + 365 * 86400000)), false);
+});
+
+test("changing direction re-judges the terms it disagrees about", () => {
+  const entry = G.newEntry({ term: "replevin", definitions: ["recovery of goods"] });
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "term");
+  assert.equal(G.isRemembered(entry), false);
+
+  // Going one-way finishes it: the definition side is no longer practised, so
+  // waiting on it would leave the term unfinished and never due again.
+  assert.equal(G.applyDirection(entry, G.TERM_TO_DEFINITION), true);
+  assert.equal(G.isRemembered(entry), true);
+  // Going back wants the definition too, and says so only once.
+  assert.equal(G.applyDirection(entry, G.BOTH_DIRECTIONS), true);
+  assert.equal(G.isRemembered(entry), false);
+  assert.equal(G.applyDirection(entry, G.BOTH_DIRECTIONS), false);
+});
+
+test("editing definitions keeps a one-direction term remembered", () => {
+  const entry = G.newEntry({ term: "novation", definitions: ["replacing a contract party"] });
+  for (let i = 0; i < G.REQUIRED_RECALLS; i++) G.markCorrect(entry, "term", 0, G.TERM_TO_DEFINITION);
+  G.setDefinitions(entry, ["replacing a contract party", "a fresh contract for an old one"], G.TERM_TO_DEFINITION);
+  // The new definition is unlearned, but it is never a prompt in this
+  // direction, so the term stays finished.
+  assert.equal(G.isRemembered(entry), true);
+});

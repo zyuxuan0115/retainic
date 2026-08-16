@@ -215,6 +215,10 @@
     <string name="select_terms">용어 선택</string>
     <string name="glossary_settings">용어집 설정</string>
     <string name="show_terms">용어 표시</string>
+    <string name="review_direction">복습 방향</string>
+    <string name="both_directions">양방향</string>
+    <string name="term_to_definition_only">용어에서 뜻 방향만</string>
+    <string name="review_direction_footer">한 방향에서는 용어만 보고 뜻을 떠올립니다. 이 방향으로 다섯 번 기억하면 외운 것으로 처리됩니다.</string>
     <string name="mark_all_terms_not_remembered_title">모든 용어를 기억 안 함으로 표시할까요?</string>
     <string name="mark_all_terms_not_remembered_footer">이 용어집의 모든 용어가 연습에서 다시 나타납니다.</string>
     <string name="nothing_to_practice_glossary_desc">먼저 용어집에 용어를 추가한 다음 복습하러 돌아오세요.</string>

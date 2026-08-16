@@ -37,7 +37,40 @@ data class Glossary(
     var language: String? = null,
     /** When the glossary was moved to the trash, or null if it's active. */
     var deletedAt: Date? = null,
-)
+    /**
+     * Which way round its terms are practised. Absent on glossaries saved
+     * before the setting existed, which read as both directions.
+     */
+    var reviewDirection: String? = null,
+) {
+    /** The direction this glossary is practised in. */
+    @get:Exclude
+    val direction: GlossaryReviewDirection
+        get() = GlossaryReviewDirection.entries.firstOrNull { it.raw == reviewDirection }
+            ?: GlossaryReviewDirection.BOTH
+}
+
+/** Which way round a glossary's terms are reviewed. */
+enum class GlossaryReviewDirection(val raw: String) {
+    /**
+     * Both the term and every definition are practised, and a term is
+     * remembered only once each side of it is finished.
+     */
+    BOTH("both"),
+
+    /**
+     * Only the term is shown, and you recall what it means: five recalls that
+     * way and the term is done, whatever its definitions' own counts say.
+     */
+    TERM_TO_DEFINITION("termToDefinition");
+
+    /** The methods practice offers in this direction. */
+    val aspects: List<GlossaryAspect>
+        get() = when (this) {
+            BOTH -> GlossaryAspect.entries
+            TERM_TO_DEFINITION -> listOf(GlossaryAspect.TERM)
+        }
+}
 
 /** The two things a glossary entry is practised on. */
 enum class GlossaryAspect(val raw: String, val dailyAspect: String) {
@@ -145,9 +178,14 @@ data class GlossaryEntry(
 
     /**
      * Records a correct recall for the given method. A definition recall
-     * advances only the definition that was practised.
+     * advances only the definition that was practised. [direction] is the
+     * glossary's, and decides what finishing the entry takes.
      */
-    fun markCorrect(aspect: GlossaryAspect, definitionIndex: Int = 0) {
+    fun markCorrect(
+        aspect: GlossaryAspect,
+        definitionIndex: Int = 0,
+        direction: GlossaryReviewDirection = GlossaryReviewDirection.BOTH,
+    ) {
         val now = Date()
         timesSeen += 1
         when (aspect) {
@@ -162,7 +200,7 @@ data class GlossaryEntry(
                 syncDefinitionFields()
             }
         }
-        updateRememberFinal()
+        updateRememberFinal(direction)
         lastReviewed = now
         record(aspect, correct = true, now)
     }
@@ -176,14 +214,29 @@ data class GlossaryEntry(
      * Not named `setDefinitions` (as it is on the other clients): that is the
      * JVM signature of the [definitions] property's own setter.
      */
-    fun replaceDefinitions(texts: List<String>) {
+    fun replaceDefinitions(
+        texts: List<String>,
+        direction: GlossaryReviewDirection = GlossaryReviewDirection.BOTH,
+    ) {
         val previous = definitionList
         definitions = texts.mapIndexed { index, text ->
             val old = previous.getOrNull(index)
             GlossaryDefinition(text, old?.timesCorrect ?: 0, old?.lastRemembered)
         }
         syncDefinitionFields()
-        updateRememberFinal()
+        updateRememberFinal(direction)
+    }
+
+    /**
+     * Re-decides whether the entry counts as memorized under [direction], for
+     * when the glossary's direction changes: progress that is enough one way
+     * round may not be the other. Returns whether the answer moved, so only the
+     * entries that disagree are written back.
+     */
+    fun applyDirection(direction: GlossaryReviewDirection): Boolean {
+        val before = remember_final == true
+        updateRememberFinal(direction)
+        return (remember_final == true) != before
     }
 
     /**
@@ -222,10 +275,18 @@ data class GlossaryEntry(
      * recalled its five times, and each definition its own five. A term that
      * means five things isn't done until all five meanings are. Entries carry
      * no audio, so the pronunciation requirement words can have never applies.
+     *
+     * A glossary practised in one direction only asks for the term side, so
+     * that side alone finishes the entry.
      */
-    private fun updateRememberFinal() {
+    private fun updateRememberFinal(direction: GlossaryReviewDirection = GlossaryReviewDirection.BOTH) {
+        val termFinished = (timesTermCorrect ?: 0) >= requiredRecalls
+        if (direction != GlossaryReviewDirection.BOTH) {
+            remember_final = termFinished
+            return
+        }
         val list = definitionList
-        remember_final = (timesTermCorrect ?: 0) >= requiredRecalls &&
+        remember_final = termFinished &&
             list.isNotEmpty() && list.all { it.timesCorrect >= requiredRecalls }
     }
 

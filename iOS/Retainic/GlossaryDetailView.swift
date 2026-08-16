@@ -43,6 +43,26 @@ final class GlossaryEntriesViewModel: ObservableObject {
         }
     }
 
+    /// Stores a new review direction, then re-judges the terms: progress that
+    /// finishes a term one way round may not the other, so the entries whose
+    /// answer moves are written back. Only those — the rest are untouched.
+    func setDirection(uid: String, glossaryId: String, to direction: GlossaryReviewDirection) async {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            try await GlossaryRepository.setGlossaryDirection(
+                uid: uid, glossaryId: glossaryId, direction: direction)
+            var updated = entries
+            for i in updated.indices {
+                guard updated[i].applyDirection(direction) else { continue }
+                try await GlossaryRepository.updateEntry(uid: uid, glossaryId: glossaryId, entry: updated[i])
+            }
+            entries = updated
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     /// Resets every entry's progress so the whole glossary counts as not
     /// remembered.
     func resetAllMemory(uid: String, glossaryId: String) async {
@@ -75,6 +95,7 @@ struct GlossaryDetailView: View {
     @State private var selection = Set<String>()
     @State private var showingSettings = false
     @State private var entryFilter: WordFilter = .all
+    @State private var reviewDirection: GlossaryReviewDirection
     @State private var pendingDeleteEntries: [GlossaryEntry] = []
     @State private var pendingDeleteIsSelection = false
     @State private var showingDeleteConfirm = false
@@ -82,6 +103,7 @@ struct GlossaryDetailView: View {
     init(glossary: Glossary) {
         self.glossary = glossary
         _glossaryName = State(initialValue: glossary.name)
+        _reviewDirection = State(initialValue: glossary.direction)
     }
 
     private var glossaryId: String { glossary.id ?? "" }
@@ -133,7 +155,8 @@ struct GlossaryDetailView: View {
         }
         .sheet(isPresented: $showingAdd, onDismiss: reload) {
             NavigationStack {
-                AddEntryView(glossaryId: glossaryId, language: glossary.language ?? "")
+                AddEntryView(glossaryId: glossaryId, language: glossary.language ?? "",
+                             direction: reviewDirection)
             }
             .preferredLocale(preferredLanguage)
         }
@@ -141,6 +164,7 @@ struct GlossaryDetailView: View {
             GlossarySettingsSheet(
                 name: glossaryName,
                 filter: $entryFilter,
+                direction: Binding(get: { reviewDirection }, set: { setDirection(to: $0) }),
                 onSave: { renameGlossary(to: $0) },
                 onResetMemory: { resetMemory() }
             )
@@ -204,7 +228,7 @@ struct GlossaryDetailView: View {
             ToolbarItemGroup(placement: .bottomBar) {
                 if !vm.entries.isEmpty {
                     NavigationLink {
-                        GlossaryFlashcardView(cards: practiceCards)
+                        GlossaryFlashcardView(cards: practiceCards, direction: reviewDirection)
                     } label: {
                         Label("Practice", systemImage: "rectangle.on.rectangle.angled")
                     }
@@ -227,7 +251,8 @@ struct GlossaryDetailView: View {
         List(selection: $selection) {
             ForEach(filteredEntries, id: \.idValue) { entry in
                 NavigationLink {
-                    AddEntryView(glossaryId: glossaryId, language: glossary.language ?? "", entry: entry, onDelete: reload)
+                    AddEntryView(glossaryId: glossaryId, language: glossary.language ?? "",
+                                 entry: entry, direction: reviewDirection, onDelete: reload)
                 } label: {
                     GlossaryEntryRow(entry: entry)
                 }
@@ -285,6 +310,13 @@ struct GlossaryDetailView: View {
         Task { await vm.rename(uid: uid, glossaryId: glossaryId, to: trimmed) }
     }
 
+    private func setDirection(to direction: GlossaryReviewDirection) {
+        guard direction != reviewDirection else { return }
+        reviewDirection = direction
+        guard let uid = auth.uid else { return }
+        Task { await vm.setDirection(uid: uid, glossaryId: glossaryId, to: direction) }
+    }
+
     private func resetMemory() {
         guard let uid = auth.uid else { return }
         Task { await vm.resetAllMemory(uid: uid, glossaryId: glossaryId) }
@@ -325,14 +357,17 @@ struct GlossarySettingsSheet: View {
 
     @State private var name: String
     @Binding private var filter: WordFilter
+    @Binding private var direction: GlossaryReviewDirection
     @State private var showingResetConfirm = false
     private let originalName: String
     let onSave: (String) -> Void
     let onResetMemory: () -> Void
 
-    init(name: String, filter: Binding<WordFilter>, onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
+    init(name: String, filter: Binding<WordFilter>, direction: Binding<GlossaryReviewDirection>,
+         onSave: @escaping (String) -> Void, onResetMemory: @escaping () -> Void) {
         _name = State(initialValue: name)
         _filter = filter
+        _direction = direction
         self.originalName = name
         self.onSave = onSave
         self.onResetMemory = onResetMemory
@@ -359,6 +394,18 @@ struct GlossarySettingsSheet: View {
                         }
                     }
                     .labelsHidden()
+                }
+
+                Section {
+                    Picker("Review direction", selection: $direction) {
+                        ForEach(GlossaryReviewDirection.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                } header: {
+                    Text("Practice")
+                } footer: {
+                    Text("In one direction you only see the term and recall what it means — five recalls that way and the term is remembered.")
                 }
 
                 Section {

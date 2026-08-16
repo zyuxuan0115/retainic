@@ -233,6 +233,10 @@
     <string name="select_terms">Select Terms</string>
     <string name="glossary_settings">Glossary Settings</string>
     <string name="show_terms">Show terms</string>
+    <string name="review_direction">Review direction</string>
+    <string name="both_directions">Both directions</string>
+    <string name="term_to_definition_only">Term to definition only</string>
+    <string name="review_direction_footer">In one direction you only see the term and recall what it means — five recalls that way and the term is remembered.</string>
     <string name="mark_all_terms_not_remembered_title">Mark all terms as not remembered?</string>
     <string name="mark_all_terms_not_remembered_footer">Every term in this glossary will show up again in practice.</string>
     <string name="nothing_to_practice_glossary_desc">Add some terms to a glossary first, then come back to review them.</string>

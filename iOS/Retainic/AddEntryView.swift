@@ -14,6 +14,9 @@ struct AddEntryView: View {
     let language: String
     /// Existing entry when editing; nil when creating.
     private let existingEntry: GlossaryEntry?
+    /// The glossary's review direction, which decides what editing the
+    /// definitions does to a term's remembered state.
+    private let direction: GlossaryReviewDirection
     /// Called after the entry is deleted, so the presenter can refresh its list.
     private let onDelete: (() -> Void)?
 
@@ -31,10 +34,12 @@ struct AddEntryView: View {
     @State private var errorMessage: String?
     @State private var showingDeleteConfirm = false
 
-    init(glossaryId: String, language: String, entry: GlossaryEntry? = nil, onDelete: (() -> Void)? = nil) {
+    init(glossaryId: String, language: String, entry: GlossaryEntry? = nil,
+         direction: GlossaryReviewDirection = .both, onDelete: (() -> Void)? = nil) {
         self.glossaryId = glossaryId
         self.language = language
         self.existingEntry = entry
+        self.direction = direction
         self.onDelete = onDelete
         _term = State(initialValue: entry?.term ?? "")
         let saved = entry?.definitionTexts ?? []
@@ -172,7 +177,7 @@ struct AddEntryView: View {
             do {
                 if var entry = existingEntry {
                     entry.term = trimmedTerm
-                    entry.setDefinitions(trimmedDefinitions)
+                    entry.setDefinitions(trimmedDefinitions, direction: direction)
                     entry.notes = trimmedNotes
                     try await GlossaryRepository.updateEntry(uid: uid, glossaryId: glossaryId, entry: entry)
                 } else {

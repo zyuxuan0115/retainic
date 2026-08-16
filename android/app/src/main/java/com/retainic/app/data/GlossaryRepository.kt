@@ -57,6 +57,17 @@ object GlossaryRepository {
         glossariesRef(uid).document(glossaryId).update("name", name).awaitWrite()
     }
 
+    /**
+     * Sets which way round the glossary is practised. The default direction is
+     * stored as no field at all, so clients that predate the setting — and the
+     * glossaries that never left it — read exactly as they always did.
+     */
+    suspend fun setGlossaryDirection(uid: String, glossaryId: String, direction: GlossaryReviewDirection) {
+        val value: Any =
+            if (direction == GlossaryReviewDirection.BOTH) FieldValue.delete() else direction.raw
+        glossariesRef(uid).document(glossaryId).update("reviewDirection", value).awaitWrite()
+    }
+
     /** Soft-delete: move a glossary to the trash by stamping deletedAt. */
     suspend fun trashGlossary(uid: String, glossaryId: String) {
         glossariesRef(uid).document(glossaryId).update("deletedAt", FieldValue.serverTimestamp()).awaitWrite()

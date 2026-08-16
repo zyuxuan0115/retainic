@@ -30,6 +30,7 @@ import com.retainic.app.data.AuthService
 import com.retainic.app.data.Glossary
 import com.retainic.app.data.GlossaryEntry
 import com.retainic.app.data.GlossaryPracticeCard
+import com.retainic.app.data.GlossaryReviewDirection
 import com.retainic.app.data.PracticeCard
 import com.retainic.app.data.VocabWord
 import com.retainic.app.data.VocabularyList
@@ -65,8 +66,12 @@ sealed interface GlossariesRoute {
         val glossaryId: String,
         val language: String,
         val entry: GlossaryEntry?,
+        val direction: GlossaryReviewDirection = GlossaryReviewDirection.BOTH,
     ) : GlossariesRoute
-    data class Practice(val cards: List<GlossaryPracticeCard>) : GlossariesRoute
+    data class Practice(
+        val cards: List<GlossaryPracticeCard>,
+        val direction: GlossaryReviewDirection = GlossaryReviewDirection.BOTH,
+    ) : GlossariesRoute
 }
 
 /** Push/pop helpers handed to each Glossaries-tab screen. */
@@ -191,8 +196,9 @@ private fun GlossariesTabContent(
         GlossariesRoute.Trash -> TrashScreen(auth, nav.pop, modifier)
         is GlossariesRoute.Detail -> GlossaryDetailScreen(auth, route.glossary, nav, modifier)
         is GlossariesRoute.Editor -> AddEntryScreen(
-            auth, route.glossaryId, route.language, route.entry, nav, modifier
+            auth, route.glossaryId, route.language, route.entry, route.direction, nav, modifier
         )
-        is GlossariesRoute.Practice -> GlossaryFlashcardScreen(auth, route.cards, nav, modifier)
+        is GlossariesRoute.Practice ->
+            GlossaryFlashcardScreen(auth, route.cards, route.direction, nav, modifier)
     }
 }

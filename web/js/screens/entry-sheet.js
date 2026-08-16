@@ -73,7 +73,7 @@ export function presentEntrySheet({ glossary, entry, onSaved }) {
       try {
         if (isEditing) {
           const updated = { ...entry, term: term.value.trim(), notes: notes.value.trim() };
-          G.setDefinitions(updated, filledDefinitions());
+          G.setDefinitions(updated, filledDefinitions(), G.directionOf(glossary));
           await Repo.updateEntry(authState.uid, glossary.id, updated);
         } else {
           await Repo.addEntry(authState.uid, glossary.id, G.newEntry({

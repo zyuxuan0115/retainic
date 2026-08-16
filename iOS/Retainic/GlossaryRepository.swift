@@ -53,6 +53,16 @@ enum GlossaryRepository {
         try await glossariesRef(uid).document(glossaryId).updateDataOfflineSafe(["name": name])
     }
 
+    /// Sets which way round the glossary is practised. The default direction is
+    /// stored as no field at all, so clients that predate the setting — and the
+    /// glossaries that never left it — read exactly as they always did.
+    static func setGlossaryDirection(uid: String, glossaryId: String,
+                                     direction: GlossaryReviewDirection) async throws {
+        let value: Any = direction == .both ? FieldValue.delete() : direction.rawValue
+        try await glossariesRef(uid).document(glossaryId)
+            .updateDataOfflineSafe(["reviewDirection": value])
+    }
+
     /// Soft-delete: move a glossary to the trash by stamping `deletedAt`. Its
     /// entries are left untouched so it can be restored intact.
     static func trashGlossary(uid: String, glossaryId: String) async throws {

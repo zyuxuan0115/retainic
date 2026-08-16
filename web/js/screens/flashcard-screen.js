@@ -101,10 +101,12 @@ function wordDeck({ learningLanguage = "", ttsEnabled = false, algorithmCode = n
 /** Adapter for a glossary's entries: term and definitions, no audio. A term
  *  that means several things is one card per meaning when the definition is
  *  shown first — each definition has its own schedule — and a single card the
- *  other way round, revealing them all. */
-function glossaryDeck({ algorithmCode = null } = {}) {
+ *  other way round, revealing them all. A glossary practised in one direction
+ *  only offers the one method: the term is always the prompt. */
+function glossaryDeck({ algorithmCode = null, direction = G.BOTH_DIRECTIONS } = {}) {
+  const oneWay = direction === G.TERM_TO_DEFINITION;
   return {
-    modes: GLOSSARY_MODES,
+    modes: oneWay ? GLOSSARY_MODES.filter((mode) => mode.id === "term") : GLOSSARY_MODES,
     emptyDescription: t("Add some terms to a glossary first, then come back to review them."),
     // Like a list's, a glossary's own Python must be compiled before scheduling
     // can run; without one the built-in schedule is ready immediately.
@@ -146,7 +148,7 @@ function glossaryDeck({ algorithmCode = null } = {}) {
     audioSide() { return false; },
     audioControl() { return null; },
     grade({ card, mode, definitionIndex }, correct) {
-      if (correct) G.markCorrect(card.entry, mode.aspect, definitionIndex ?? 0);
+      if (correct) G.markCorrect(card.entry, mode.aspect, definitionIndex ?? 0, direction);
       else G.markIncorrect(card.entry, mode.aspect);
       if (correct) Repo.recordRemembered(authState.uid, mode.dailyAspect, { glossaryAspect: mode.aspect }).catch(() => {});
       Repo.updateEntry(authState.uid, card.glossaryId, card.entry).catch(() => {});

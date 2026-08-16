@@ -23,6 +23,9 @@ private struct GlossarySessionItem {
 
 struct GlossaryFlashcardView: View {
     let cards: [GlossaryPracticeCard]
+    /// The glossary's review direction. One-way glossaries only ever show the
+    /// term, so that is the only method this session offers.
+    var direction: GlossaryReviewDirection = .both
 
     @EnvironmentObject private var auth: AuthService
 
@@ -109,7 +112,7 @@ struct GlossaryFlashcardView: View {
                     Text("Show first")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    ForEach(GlossaryAspect.allCases) { aspect in
+                    ForEach(direction.aspects) { aspect in
                         Button {
                             toggleAspect(aspect)
                         } label: {
@@ -259,9 +262,10 @@ struct GlossaryFlashcardView: View {
     }
 
     private func deck(shuffled: Bool = true) -> [GlossarySessionItem] {
-        guard !selectedAspects.isEmpty else { return [] }
+        let aspects = selectedAspects.intersection(direction.aspects)
+        guard !aspects.isEmpty else { return [] }
         var items: [GlossarySessionItem] = []
-        for aspect in selectedAspects {
+        for aspect in aspects {
             for card in cards {
                 items.append(contentsOf: self.items(for: card, aspect: aspect))
             }
@@ -286,7 +290,8 @@ struct GlossaryFlashcardView: View {
         // doesn't affect schedules or stats.
         if dueOnly {
             if correct {
-                item.card.entry.markCorrect(aspect: item.aspect, definitionIndex: item.definitionIndex)
+                item.card.entry.markCorrect(aspect: item.aspect, definitionIndex: item.definitionIndex,
+                                            direction: direction)
                 recordDailyStat(aspect: item.aspect)
             } else {
                 item.card.entry.markIncorrect(aspect: item.aspect)

@@ -27,6 +27,11 @@ It reproduces the iOS app's interface and functionality:
   Statistics, and practised on two methods — **Term** and **Definition** —
   instead of three, on a schedule of their own: five correct recalls finish the
   term and five finish each definition, and only then is the term memorized.
+  **Glossary settings → Review direction** narrows that to one direction: with
+  *Term to definition only* you are shown the term and recall what it means, so
+  practice offers that method alone and five recalls that way finish the term
+  whatever its definitions' own counts say. Switching direction re-judges the
+  terms it disagrees about.
 - **Flashcard practice** — Daily assignment (only cards due today under each
   aspect's spaced-repetition schedule) or Free practice; multi-select "Show
   first" (Word / Translation / Audio); flip, grade "Got It" / "Practice Again",
@@ -35,6 +40,13 @@ It reproduces the iOS app's interface and functionality:
   the exact same review-gap schedules and mastery thresholds as iOS.
 - **Statistics** — total memorized, "Remembered today" bar chart, "This week"
   trend lines, and average pace per day / week / month.
+- **Works offline** — Firestore's persistent on-disk cache is enabled with its
+  size cap lifted, reads fall back to the cache when the network is gone, and
+  pronunciations are cached on the device. A list or glossary you have already
+  opened stays browsable and practisable with no connection; edits and review
+  progress recorded offline are applied locally and sync when you're back.
+- **About** — an **About** tab with the app version, a link to the source
+  repository, and the **privacy policy**, matching the iOS and web pages.
 
 ## Requirements
 
@@ -89,26 +101,42 @@ app/src/main/java/com/retainic/app/
 ├── MainActivity.kt           Locale override + Compose entry, language CompositionLocals
 ├── data/
 │   ├── Models.kt             Firestore models + per-aspect spaced-repetition logic
-│   ├── GlossaryModels.kt     Glossary + entry models and their review schedule
+│   ├── GlossaryModels.kt     Glossary + entry models, review schedule, direction
 │   ├── VocabRepository.kt    Firestore + Storage read/write helpers
 │   ├── GlossaryRepository.kt Firestore read/write helpers for glossaries
 │   ├── AuthService.kt        Firebase Auth + profile (ViewModel)
+│   ├── FirestoreOffline.kt   Persistent cache setup + offline-safe reads/writes
+│   ├── Connectivity.kt       Network reachability used by the offline helpers
+│   ├── AudioCache.kt         On-device cache of downloaded pronunciations
 │   └── PartOfSpeech.kt       Parts of speech + localized labels
 ├── audio/AudioManager.kt     Recording, playback, and text-to-speech
 ├── i18n/
 │   ├── Language.kt           Supported languages + display names
 │   └── Prefs.kt              Preferred-language storage + locale wrapping
 └── ui/                       Compose screens and navigation
-    ├── ListDetailScreen.kt       Word-list state and interaction coordinator
-    ├── ListDetailComponents.kt   Word row, settings, and bulk-move dialogs
-    ├── GlossariesScreen.kt       Glossary overview, row, and creation dialog
-    ├── GlossaryDetailScreen.kt   Terms in a glossary, plus glossary settings
-    ├── AddEntryScreen.kt         Create/edit a term
+    ├── RootView.kt              Auth gate: sign in → main scaffold
+    ├── MainScaffold.kt          Bottom bar + each tab's own navigation stack
+    ├── VocabListsScreen.kt      List overview, creation, and share/import
+    ├── ListDetailScreen.kt      Word-list state and interaction coordinator
+    ├── ListDetailComponents.kt  Word row, settings, and bulk-move dialogs
+    ├── AddWordScreen.kt         Create/edit a word
+    ├── FlashcardScreen.kt       Word practice (daily / free, multi-method)
+    ├── GlossariesScreen.kt      Glossary overview, row, and creation dialog
+    ├── GlossaryDetailScreen.kt  Terms in a glossary, plus glossary settings
+    ├── AddEntryScreen.kt        Create/edit a term
     ├── GlossaryFlashcardScreen.kt  Glossary practice (term / definition)
-    └── Components.kt             Shared empty, loading, error, and POS controls
+    ├── TrashScreen.kt           Restore and permanent delete (lists + glossaries)
+    ├── StatsScreen.kt           Statistics dashboard (hand-drawn Compose charts)
+    ├── SettingsScreen.kt        Account, language, sign out
+    ├── AboutScreen.kt           App version, source link, privacy policy
+    ├── PrivacyPolicyScreen.kt   Privacy policy text
+    └── Components.kt            Shared empty, loading, error, and POS controls
 app/src/main/res/values*/strings.xml   UI translations (en, es, zh, ja, ko)
 ```
 
 Field names in `Models.kt` match the iOS Firestore documents exactly (including
 the historical `Pronounciation` spellings and the snake_case `remember_final`)
-so both clients read and write the same data.
+so both clients read and write the same data. A glossary's `reviewDirection`
+follows the same rule: it is written only when the glossary is *not* practised
+in both directions and deleted when you switch back, so glossaries saved before
+the setting existed keep the two-way behaviour on every client.

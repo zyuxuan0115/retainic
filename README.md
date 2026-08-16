@@ -8,7 +8,9 @@ reviewed along three independent tracks — **spelling**, **translation**, and
 lists you can keep **glossaries**: single-language decks of terms and their
 definitions, practised on a schedule of their own with two tracks instead of
 three. A term can carry several definitions, and each one is a flashcard of its
-own, finished after five correct recalls — as is the term itself.
+own, finished after five correct recalls — as is the term itself. A glossary can
+also be reviewed in **one direction only** (shown the term, recall what it
+means), in which case those five recalls finish the term on their own.
 
 There are three clients — native iOS and Android apps plus a browser app — that
 share the **same Firebase project** (`retainic-85b91`), so your accounts, lists,
@@ -44,6 +46,11 @@ All three clients talk directly to Firebase:
 - **Cloud Firestore** — vocabulary lists, words, glossaries, and daily stats,
   scoped per user (`users/{uid}/...`).
 - **Cloud Storage** — recorded pronunciations.
+
+The iOS and Android apps keep Firestore's persistent on-disk cache (with its size
+cap lifted) and cache pronunciation audio on the device, so a deck you have
+already opened stays browsable and practisable with no connection; writes made
+offline are applied locally and sync when you're back.
 
 Access is restricted per user by the security rules in `firebase/`, which are the
 single source of truth shared by all three clients. App-level SDK config

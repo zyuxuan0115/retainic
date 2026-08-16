@@ -48,6 +48,7 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
           cards: entries.map((e) => ({ entry: e, glossaryId: glossary.id })),
           language: glossary.language || "",
           algorithmCode: glossary.algorithmCode || null,
+          direction: G.directionOf(glossary),
         }
       : null);
   }
@@ -175,11 +176,29 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
     renderAll();
   }
 
+  /** Switches which direction this glossary is practised in. A term that has
+   *  been recalled from its term side but not the other way round is finished
+   *  one way and unfinished the other, so every entry is re-judged here and the
+   *  ones that changed their mind are written back. */
+  async function setDirection(direction) {
+    if (direction === G.directionOf(glossary)) return;
+    glossary.reviewDirection = direction === G.TERM_TO_DEFINITION ? direction : null;
+    try {
+      await Repo.setGlossaryDirection(authState.uid, glossary.id, direction);
+      for (const entry of entries) {
+        if (G.applyDirection(entry, direction)) await Repo.updateEntry(authState.uid, glossary.id, entry);
+      }
+    } catch (e) { toast(Auth.friendlyMessage(e)); }
+    renderAll();
+  }
+
   function openGlossarySettings() {
     presentGlossarySettingsSheet({
       name: glossaryName,
       filter,
       onFilter: (f) => { filter = f; renderAll(); },
+      direction: G.directionOf(glossary),
+      onDirection: setDirection,
       onDownload: () => downloadGlossaryCSV({ ...glossary, name: glossaryName }),
       onEditAlgorithm: () => {
         presentAlgorithmSheet({
@@ -223,13 +242,17 @@ export async function GlossaryDetailScreen(content, glossary, { onBack, onPracti
   }
 }
 
-function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onEditAlgorithm, onRename, onReset, onTrash }) {
+function presentGlossarySettingsSheet({ name, filter, onFilter, direction, onDirection, onDownload, onEditAlgorithm, onRename, onReset, onTrash }) {
   presentSheet((api) => {
     const nameInput = el("input.field-input", { type: "text", value: name });
     const filterSel = el("select.picker", { onchange: (e) => onFilter(e.target.value) },
       el("option", { value: "all", selected: filter === "all" }, t("Show all")),
       el("option", { value: "remembered", selected: filter === "remembered" }, t("Show remembered only")),
       el("option", { value: "unremembered", selected: filter === "unremembered" }, t("Show unremembered only")),
+    );
+    const directionSel = el("select.picker", { onchange: (e) => onDirection(e.target.value) },
+      el("option", { value: G.BOTH_DIRECTIONS, selected: direction === G.BOTH_DIRECTIONS }, t("Both directions")),
+      el("option", { value: G.TERM_TO_DEFINITION, selected: direction === G.TERM_TO_DEFINITION }, t("Term to definition only")),
     );
     const saveBtn = el("button.icon-btn", {
       onclick: () => { if (!saveBtn.disabled) { onRename(nameInput.value); api.close(); } },
@@ -256,6 +279,9 @@ function presentGlossarySettingsSheet({ name, filter, onFilter, onDownload, onEd
       el(".form", {},
         formSection(t("Glossary name"), el(".form-card", {}, nameInput)),
         formSection(t("Show terms"), el(".form-card", {}, pickerRow(t("Show terms"), filterSel))),
+        formSection(t("Practice"),
+          el(".form-card", {}, pickerRow(t("Review direction"), directionSel)),
+          el(".form-note", {}, t("In one direction you only see the term and recall what it means — five recalls that way and the term is remembered."))),
         formSection(null,
           el(".form-card", {},
             el("button.form-action", {

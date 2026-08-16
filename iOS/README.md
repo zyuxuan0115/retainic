@@ -7,19 +7,26 @@ with spaced-repetition flashcards. Each word is reviewed along three independent
 tracks — spelling, translation, and pronunciation — and the app charts your
 progress over time.
 
+It shares the Firebase project (`retainic-85b91`) with the Android app
+(`../android`) and the web app (`../web`), so one account carries the same
+lists, glossaries, recordings, review progress and stats across all three.
+
 ---
 
 ## Features
 
 - **Accounts** — email/password sign up and login (Firebase Authentication).
-  Each user's data is private to them.
+  Registration is gated on an **invitation code**, and each user's data is
+  private to them.
 - **Localized interface** — the whole UI is available in English, Spanish,
   Chinese, Japanese, and Korean. The **Preferred language** (in Settings)
   controls the interface language and defaults to the device's system language.
 - **Vocabulary lists** — create as many lists ("decks") as you like. Each list
   has its own **learning language** (the words you study) and **original
   language** (the language you translate into, defaulting to your native
-  language).
+  language). **Share List** copies a list's unique ID, and **New List ▸ Import
+  by ID** recreates that list — words and all — in your own account. Deleted
+  lists and glossaries go to the **Trash**, where they can be restored or purged.
 - **Rich word entries** — every word can include:
   - the term and its translation,
   - one or more **parts of speech**,
@@ -36,7 +43,16 @@ progress over time.
   and practice) but share the Trash, the review schedule and the Statistics
   dashboard, practising two methods — **Term** and **Definition** — instead of
   three, on a schedule of their own: five correct recalls finish the term and
-  five finish each definition, and only then is the term memorized.
+  five finish each definition, and only then is the term memorized. **Glossary
+  settings ▸ Review direction** narrows that to one direction: with *Term to
+  definition only* you are shown the term and recall what it means, so practice
+  offers that method alone and five recalls that way finish the term whatever
+  its definitions' own counts say. Switching direction re-judges the terms it
+  disagrees about.
+- **Text-to-speech** — a list whose words have no recordings can be practised by
+  ear anyway: turn on **Text-to-speech** in the list's settings and the system
+  voice reads each term aloud, which also makes pronunciation count towards
+  mastery for every word in the list.
 - **Bulk editing** — multi-select words in a list to **delete** them or **move**
   them to another list (only lists with a matching learning + original language
   are offered as destinations). Moving a word preserves its review progress and
@@ -67,6 +83,15 @@ progress over time.
   - a **Remembered today** bar chart broken down by aspect,
   - a **This week** trend line per aspect, and
   - your **average pace** per day / week / month since you started.
+- **Works offline** — Firestore's persistent on-disk cache is enabled with its
+  size cap lifted, reads fall back to the cache when the network is gone, and
+  pronunciation audio is cached on the device. A list or glossary you have
+  already opened stays browsable and practisable with no connection; edits and
+  review progress recorded offline are applied locally and sync when you're
+  back.
+- **About** — an **About** tab with the app version, a link to the source
+  repository, and the **privacy policy** (`PrivacyPolicyView`), which is also
+  published as `web/privacy.html`.
 
 ---
 
@@ -88,7 +113,8 @@ users/{uid}                                 -> UserProfile (username, email)
 users/{uid}/lists/{listId}                  -> VocabularyList (name, languages, wordCount)
 users/{uid}/lists/{listId}/words/{wordId}   -> VocabWord (term, translation, …,
                                                  per-aspect review progress)
-users/{uid}/glossaries/{glossaryId}         -> Glossary (name, language, entryCount)
+users/{uid}/glossaries/{glossaryId}         -> Glossary (name, language, entryCount,
+                                                 optional reviewDirection)
 users/{uid}/glossaries/{glossaryId}/entries/{entryId}
                                             -> GlossaryEntry (term, definitions,
                                                  notes, per-definition review
@@ -103,6 +129,11 @@ Each word tracks its review progress per aspect (correct counts and last-correct
 dates for spelling, translation, and pronunciation), plus a legacy Leitner box
 used by the "memorized" statistic. `dailyStats` documents are keyed by date and
 hold how many words were remembered per aspect that day, feeding the trend chart.
+
+`reviewDirection` is written only when a glossary is *not* practised in both
+directions (the field is deleted when you switch back), so glossaries saved
+before the setting existed — and clients that don't know about it — keep the
+two-way behaviour.
 
 Access is restricted per user by the Firestore and Storage security rules in
 `firestore.rules` and `storage.rules`.
@@ -203,7 +234,7 @@ firebase deploy --only firestore:rules,storage
 ```
 
 The rules and CLI config now live in the top-level `firebase/` folder (shared
-by the iOS and web apps). `firebase.json` there already points at
+by the iOS, Android and web apps). `firebase.json` there already points at
 `firestore.rules` and `storage.rules`.
 
 ---
@@ -216,7 +247,7 @@ Retainic/
 ├── ContentView.swift        Root gate: sign in → main tabs; applies UI locale
 ├── AuthService.swift        Firebase Auth + user profile
 ├── AuthView.swift           Register / login UI
-├── MainTabView.swift        Tab bar: My Lists · My Glossaries · Statistics · Settings
+├── MainTabView.swift        Tab bar: Lists · Glossaries · Statistics · Settings · About
 ├── VocabListsView.swift     List overview and navigation
 ├── ListsViewModel.swift     Repository state for active lists
 ├── NewListSheet.swift       Create-list and shared-list import flow
@@ -225,7 +256,7 @@ Retainic/
 ├── GlossaryDetailView.swift Terms in a glossary, plus glossary settings
 ├── AddEntryView.swift       Create/edit a term
 ├── GlossaryFlashcardView.swift  Glossary practice session (term / definition)
-├── GlossaryModels.swift     Glossary + entry models and their review schedule
+├── GlossaryModels.swift     Glossary + entry models, review schedule, direction
 ├── GlossaryRepository.swift Firestore read/write helpers for glossaries
 ├── ListDetailView.swift     Word-list screen and interaction coordinator
 ├── WordsViewModel.swift     Repository state and filtering for a list's words
@@ -235,9 +266,14 @@ Retainic/
 ├── FlashcardView.swift      Spaced-repetition practice session (daily / free, multi-mode)
 ├── StatsView.swift          Statistics dashboard (Swift Charts)
 ├── SettingsView.swift       Account, language, sign out
+├── AboutView.swift          App version, source link, privacy policy
+├── PrivacyPolicyView.swift  Privacy policy text (mirrors web/privacy.html)
 ├── VocabRepository.swift    Firestore + Storage read/write helpers (incl. daily stats)
 ├── FirestoreModels.swift    Data models + per-aspect spaced-repetition helpers
-├── AudioManager.swift       Pronunciation recording/playback
+├── FirestoreOffline.swift   Persistent cache setup + offline-safe reads/writes
+├── Connectivity.swift       Network reachability used by the offline helpers
+├── AudioManager.swift       Pronunciation recording/playback and text-to-speech
+├── AudioCache.swift         On-device cache of downloaded pronunciations
 ├── Language.swift           Supported languages
 ├── AppLanguage.swift        Looks up UI strings in a specific language's bundle
 ├── PartOfSpeech.swift       Parts of speech + localized labels
@@ -245,8 +281,8 @@ Retainic/
 └── GoogleService-Info.plist Firebase config (replace with your own)
 ```
 
-The Firebase CLI config and security rules are shared with the web app and live
-in the top-level `firebase/` folder:
+The Firebase CLI config and security rules are shared with the Android and web
+apps and live in the top-level `firebase/` folder:
 
 ```
 firebase/

@@ -215,6 +215,10 @@
     <string name="select_terms">用語を選択</string>
     <string name="glossary_settings">用語集の設定</string>
     <string name="show_terms">用語の表示</string>
+    <string name="review_direction">復習の方向</string>
+    <string name="both_directions">両方向</string>
+    <string name="term_to_definition_only">用語から意味の一方向のみ</string>
+    <string name="review_direction_footer">一方向では用語だけが表示され、その意味を思い出します。この向きで5回思い出せば記憶済みになります。</string>
     <string name="mark_all_terms_not_remembered_title">すべての用語を未記憶にしますか？</string>
     <string name="mark_all_terms_not_remembered_footer">この用語集のすべての用語が、練習で再び表示されます。</string>
     <string name="nothing_to_practice_glossary_desc">まず用語集に用語を追加してから、復習に戻りましょう。</string>

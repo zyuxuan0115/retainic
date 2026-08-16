@@ -907,6 +907,34 @@
         }
       }
     },
+    "Both directions" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambas direcciones"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "両方向"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "양방향"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "双向"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "es" : {
@@ -2364,6 +2392,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "导入成功"
+          }
+        }
+      }
+    },
+    "In one direction you only see the term and recall what it means — five recalls that way and the term is remembered." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En una sola dirección solo ves el término y recuerdas su significado: cinco aciertos así y el término queda recordado."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一方向では用語だけが表示され、その意味を思い出します。この向きで5回思い出せば記憶済みになります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "한 방향에서는 용어만 보고 뜻을 떠올립니다. 이 방향으로 다섯 번 기억하면 외운 것으로 처리됩니다."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单向复习时只显示术语，由你回忆它的释义；这样答对五次即视为已记住。"
           }
         }
       }
@@ -4217,6 +4273,34 @@
         }
       }
     },
+    "Review direction" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dirección del repaso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "復習の方向"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "복습 방향"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复习方向"
+          }
+        }
+      }
+    },
     "Save" : {
       "localizations" : {
         "es" : {
@@ -5059,6 +5143,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "术语"
+          }
+        }
+      }
+    },
+    "Term to definition only" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo de término a definición"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用語から意味の一方向のみ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "용어에서 뜻 방향만"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅从术语到释义"
           }
         }
       }
