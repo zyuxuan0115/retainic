@@ -59,7 +59,7 @@ struct AboutView: View {
                     PrivacyPolicyView()
                 } label: {
                     HStack {
-                        Image(systemName: "hand.raised")
+                        Image(systemName: "doc.text")
                         Text("Privacy policy")
                     }
                     // Match the tinted look of the source-code Link above,

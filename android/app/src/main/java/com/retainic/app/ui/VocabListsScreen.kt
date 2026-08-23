@@ -97,7 +97,7 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
             // Both actions sit at the trailing edge, leaving the title the
             // whole leading side. The plus stays rightmost.
             TopAppBar(
-                title = { Text(stringResource(R.string.lists)) },
+                title = { Text(stringResource(R.string.wordlists)) },
                 actions = {
                     IconButton(onClick = { nav.push(ListsRoute.Trash) }) {
                         Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.trash))

@@ -212,6 +212,7 @@
     <string name="terms_are_in">Terms are in</string>
     <string name="glossary_language_footer">Terms and definitions are both written in this language.</string>
     <string name="lists">Lists</string>
+    <string name="wordlists">Wordlists</string>
     <string name="glossaries">Glossaries</string>
     <string name="term">Term</string>
     <string name="definition">Definition</string>

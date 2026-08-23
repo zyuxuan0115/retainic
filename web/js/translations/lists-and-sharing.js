@@ -139,6 +139,13 @@ export default {
     "ja": "音声は録音された発音がある単語にのみ使用されます。",
     "ko": "오디오는 발음이 녹음된 단어에만 사용됩니다.",
   },
+  "Wordlists": {
+    "en": "Wordlists",
+    "es": "Listas de palabras",
+    "zh": "单词表",
+    "ja": "単語リスト",
+    "ko": "단어 목록",
+  },
   "Words average pace": {
     "en": "Words average pace",
     "es": "Ritmo medio de palabras",

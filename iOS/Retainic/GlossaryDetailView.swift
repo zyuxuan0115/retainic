@@ -213,6 +213,9 @@ struct GlossaryDetailView: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                // Toolbar buttons ignore the destructive role, so the trash
+                // glyph needs the tint to read as a deletion.
+                .tint(.red)
                 .disabled(selection.isEmpty || vm.isBusy)
             }
         } else {

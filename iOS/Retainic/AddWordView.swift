@@ -163,6 +163,9 @@ struct AddWordView: View {
                         Label("Delete Word", systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }
+                    // The destructive role reddens the title but leaves the
+                    // trash glyph on the accent color, so tint it to match.
+                    .tint(.red)
                     .disabled(isSaving)
                 }
             }

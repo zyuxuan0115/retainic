@@ -194,6 +194,7 @@
     <string name="terms_are_in">Los términos están en</string>
     <string name="glossary_language_footer">Los términos y las definiciones se escriben en este idioma.</string>
     <string name="lists">Listas</string>
+    <string name="wordlists">Listas de palabras</string>
     <string name="glossaries">Glosarios</string>
     <string name="term">Término</string>
     <string name="definition">Definición</string>

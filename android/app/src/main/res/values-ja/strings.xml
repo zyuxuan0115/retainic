@@ -194,6 +194,7 @@
     <string name="terms_are_in">用語の言語</string>
     <string name="glossary_language_footer">用語も定義もこの言語で書きます。</string>
     <string name="lists">リスト</string>
+    <string name="wordlists">単語リスト</string>
     <string name="glossaries">用語集</string>
     <string name="term">用語</string>
     <string name="definition">定義</string>

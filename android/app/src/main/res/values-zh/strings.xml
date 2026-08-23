@@ -194,6 +194,7 @@
     <string name="terms_are_in">术语语言</string>
     <string name="glossary_language_footer">术语和释义都使用这种语言。</string>
     <string name="lists">词表</string>
+    <string name="wordlists">单词表</string>
     <string name="glossaries">术语表</string>
     <string name="term">术语</string>
     <string name="definition">释义</string>

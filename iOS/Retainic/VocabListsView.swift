@@ -32,7 +32,7 @@ struct VocabListsView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle("Lists".localized(preferredLanguage))
+            .navigationTitle("Wordlists".localized(preferredLanguage))
             .toolbar {
                 // Both actions sit at the trailing edge, leaving the title
                 // the whole leading side. The plus stays rightmost.
