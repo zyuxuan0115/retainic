@@ -4,6 +4,7 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.Source
@@ -37,7 +38,7 @@ object FirestoreOffline {
         FirebaseFirestore.getInstance().firestoreSettings = firestoreSettings {
             setLocalCacheSettings(
                 persistentCacheSettings {
-                    setSizeBytes(FirebaseFirestore.CACHE_SIZE_UNLIMITED)
+                    setSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
                 }
             )
         }
