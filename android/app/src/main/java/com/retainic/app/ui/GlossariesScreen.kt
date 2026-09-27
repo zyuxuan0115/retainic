@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -108,7 +110,11 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
                         actionLabel = stringResource(R.string.create_a_glossary),
                         onAction = { showNewGlossary = true },
                     )
-                    else -> LazyColumn(Modifier.fillMaxSize()) {
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         items(glossaries, key = { it.id ?: it.name }) { glossary ->
                             val dismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { value ->
@@ -117,6 +123,7 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
                                 },
                             )
                             SwipeToDismissBox(
+                                modifier = Modifier.clip(MaterialTheme.shapes.medium),
                                 state = dismissState,
                                 enableDismissFromStartToEnd = false,
                                 backgroundContent = {
@@ -141,7 +148,6 @@ fun GlossariesScreen(auth: AuthService, nav: GlossariesNav, modifier: Modifier =
                                         .clickable { nav.push(GlossariesRoute.Detail(glossary)) },
                                 )
                             }
-                            RowDivider()
                         }
                     }
                 }
@@ -197,13 +203,12 @@ fun GlossaryRow(glossary: Glossary, modifier: Modifier = Modifier) {
     val preferred = LocalAppLanguage.current
     val language = glossary.language?.let { Language.named(it)?.displayName(preferred) }
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary)
-        Column {
+        CollectionIcon(Icons.AutoMirrored.Filled.MenuBook)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(glossary.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 listOfNotNull(stringResource(R.string.n_terms, glossary.entryCount), language).joinToString(" · "),

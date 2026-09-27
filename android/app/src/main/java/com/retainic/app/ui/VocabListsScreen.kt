@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -123,7 +125,11 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
                         actionLabel = stringResource(R.string.create_a_list),
                         onAction = { showNewList = true },
                     )
-                    else -> LazyColumn(Modifier.fillMaxSize()) {
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         items(lists, key = { it.id ?: it.name }) { list ->
                             val dismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { value ->
@@ -134,6 +140,7 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
                                 },
                             )
                             SwipeToDismissBox(
+                                modifier = Modifier.clip(MaterialTheme.shapes.medium),
                                 state = dismissState,
                                 enableDismissFromStartToEnd = false,
                                 backgroundContent = {
@@ -158,7 +165,6 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
                                         .clickable { nav.push(ListsRoute.Detail(list)) },
                                 )
                             }
-                            RowDivider()
                         }
                     }
                 }
@@ -212,12 +218,12 @@ fun VocabListsScreen(auth: AuthService, nav: ListsNav, modifier: Modifier = Modi
 @Composable
 fun ListRow(list: VocabularyList, modifier: Modifier = Modifier) {
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(Icons.Filled.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column {
+        CollectionIcon(Icons.Filled.Layers)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(list.name, style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.n_words, list.wordCount),
                 style = MaterialTheme.typography.bodySmall,

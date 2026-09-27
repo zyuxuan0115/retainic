@@ -1,18 +1,19 @@
 /* Retainic Web — an iOS-flavored look for the browser port. */
 
 :root {
-  --tint: #2f6bff;
-  --bg: #f2f2f7;
+  --tint: #245edb;
+  color-scheme: light dark;
+  --bg: #f4f6fa;
   --bg-elevated: #ffffff;
   --secondary-bg: #ffffff;
-  --grouped-bg: #f2f2f7;
+  --grouped-bg: #f4f6fa;
   --label: #1c1c1e;
-  --secondary-label: #8a8a8e;
-  --separator: #e5e5ea;
-  --good: #1fb56a;
-  --warn: #ff8a1f;
-  --danger: #ff3b30;
-  --radius: 14px;
+  --secondary-label: #626b7a;
+  --separator: #e2e7ef;
+  --good: #16804d;
+  --warn: #a6530b;
+  --danger: #c93230;
+  --radius: 18px;
   /* Every Statistics chart is drawn in a box this tall. */
   --chart-h: 240px;
   --maxw: 640px;
@@ -29,13 +30,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #000000;
-    --bg-elevated: #1c1c1e;
-    --secondary-bg: #1c1c1e;
-    --grouped-bg: #000000;
+    --tint: #91b7ff;
+    --bg: #101216;
+    --bg-elevated: #1c2027;
+    --secondary-bg: #1c2027;
+    --grouped-bg: #101216;
     --label: #ffffff;
-    --secondary-label: #98989f;
-    --separator: #38383a;
+    --secondary-label: #a5aebe;
+    --separator: #343c49;
     /* Python syntax highlighting (One Dark palette). */
     --tok-kw: #c678dd;
     --tok-str: #98c379;
@@ -60,7 +62,8 @@ body {
   background: var(--grouped-bg);
   color: var(--label);
   font-size: 16px;
-  line-height: 1.35;
+  line-height: 1.5;
+  font-optical-sizing: auto;
 }
 #app { height: 100%; }
 h1, h2, h3 { margin: 0; }
@@ -88,10 +91,12 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
   align-items: center;
   gap: 8px;
   padding: calc(10px + var(--safe-top)) 12px 10px;
-  background: transparent;
+  background: color-mix(in srgb, var(--grouped-bg) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   position: sticky; top: 0; z-index: 5;
 }
-.navbar-title { font-size: 27px; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.navbar-title { font-size: 24px; font-weight: 700; letter-spacing: -.025em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .navbar-side { display: flex; align-items: center; }
 .navbar-side.trailing { justify-content: flex-end; }
 .navbar-actions { display: flex; align-items: center; gap: 2px; }
@@ -130,7 +135,7 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 /* Heading above a group of rows (the Trash lists its lists and glossaries
    separately); aligns with the .list card below it and hugs it. */
 .list-section-title { margin: 20px 20px -6px; }
-.row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--separator); }
+.row { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 0.5px solid var(--separator); }
 .row:last-child { border-bottom: none; }
 .row.tappable { cursor: pointer; }
 .row.tappable:active { background: var(--separator); }
@@ -232,20 +237,20 @@ input, textarea, select { font-family: inherit; font-size: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Auth */
-.auth-wrap { justify-content: center; padding: 24px; }
-.auth-card { width: 100%; max-width: 380px; margin: auto; display: flex; flex-direction: column; gap: 20px; }
+.auth-wrap { justify-content: center; padding: 24px; min-height: 100%; height: auto; background: transparent; }
+.auth-card { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; gap: 24px; padding: clamp(20px, 4vw, 36px); background: var(--bg-elevated); border: 1px solid var(--separator); border-radius: 28px; box-shadow: 0 20px 60px rgb(20 35 65 / 7%); }
 .auth-lang { align-self: flex-end; display: inline-flex; align-items: center; gap: 4px; color: var(--secondary-label); }
 .auth-lang .picker { max-width: none; text-align: left; padding: 2px 4px; }
 .auth-header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .auth-logo { color: var(--tint); }
-.auth-header h1 { font-size: 32px; font-weight: 800; }
+.auth-header h1 { font-size: 36px; font-weight: 700; letter-spacing: -.04em; }
 .auth-header p { color: var(--secondary-label); }
 .segmented { display: flex; background: color-mix(in srgb, var(--secondary-label) 16%, transparent); border-radius: 10px; padding: 2px; }
 .seg { flex: 1; border: none; background: transparent; padding: 8px; border-radius: 8px; color: var(--label); font-weight: 500; }
 .seg.active { background: var(--bg-elevated); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .auth-fields { display: flex; flex-direction: column; gap: 12px; }
 .field-row { display: flex; align-items: center; gap: 10px; background: var(--bg-elevated); border-radius: 12px; padding: 12px 14px; }
-.field-icon { width: 22px; text-align: center; }
+.field-icon { width: 22px; text-align: center; color: var(--secondary-label); }
 .field-input { flex: 1; width: 100%; border: none; background: transparent; color: var(--label); outline: none; }
 textarea.field-input { resize: vertical; }
 .form-error { color: var(--danger); font-size: 14px; }
@@ -472,112 +477,4 @@ textarea.field-input { resize: vertical; }
 .about-text { padding: 14px; color: var(--label); line-height: 1.5; }
 a.form-action.link { text-decoration: none; }
 a.form-action.link span { color: var(--tint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* ===========================================================================
-   Wide screens: sidebar navigation + content that uses the browser's width.
-   Phones (below the breakpoint) keep the bottom tab bar above.
-   =========================================================================== */
-@media (min-width: 860px) {
-  .shell {
-    max-width: none;
-    margin: 0;
-    flex-direction: row;
-  }
-
-  /* Bottom tab bar -> left sidebar */
-  .tabbar {
-    order: -1;
-    flex: none;
-    width: 72px;
-    height: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding: 14px 10px calc(14px + var(--safe-bottom));
-    border-top: none;
-    border-right: 0.5px solid var(--separator);
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    overflow-y: auto;
-  }
-  .tabbar-brand {
-    display: flex; align-items: center; justify-content: center;
-    padding: 10px 0 18px; color: var(--tint);
-  }
-  .tabbar-brand span { display: none; }
-  .tab {
-    flex-direction: row;
-    justify-content: center;
-    gap: 0;
-    padding: 11px 0;
-    border-radius: 10px;
-    color: var(--label);
-  }
-  .tab.active { background: color-mix(in srgb, var(--tint) 12%, transparent); color: var(--tint); }
-  .tab:hover:not(.active) { background: color-mix(in srgb, var(--secondary-label) 10%, transparent); }
-  .tab-icon { justify-content: center; }
-  .tab-label { display: none; }
-
-  .content { min-width: 0; }
-  .scroll { padding-left: 6px; padding-right: 6px; }
-
-  /* Lists become a responsive card grid that fills the width. The column
-     width and gap are custom properties because masonry.js packs the glossary
-     cards by hand and needs the same two numbers. */
-  .list {
-    --card-min: 290px;
-    --card-gap: 14px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
-    gap: var(--card-gap);
-    margin: 22px;
-    background: transparent;
-    border-radius: 0;
-    overflow: visible;
-  }
-  .list .row {
-    border: 0.5px solid var(--separator);
-    border-radius: var(--radius);
-    background: var(--bg-elevated);
-    transition: box-shadow .15s, transform .15s;
-  }
-  .list .row.tappable:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
-  .list .row-chevron { display: none; }
-
-  /* Masonry lists: each card is as tall as its own text and sits wherever
-     masonry.js puts it. The class comes from the script, so without it the
-     list stays the grid above. */
-  .list.masonry { display: block; position: relative; }
-  .list.masonry .row { position: absolute; top: 0; left: 0; }
-
-  /* Search bar + forms: comfortable, centered reading width */
-  .search-wrap { max-width: 1120px; margin: 0 auto; }
-  .form { max-width: 720px; margin-left: auto; margin-right: auto; }
-
-  /* Statistics: a two-column dashboard, matching the Settings/About page width */
-  .stats {
-    max-width: 720px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start;
-  }
-  /* With only words or only terms to show, the one column stands alone — kept
-     near a column's usual width so the charts don't stretch across the page. */
-  .stats.one-column { grid-template-columns: 1fr; max-width: 460px; }
-  .stat-total { grid-column: 1 / -1; }
-  .stats > p.caption { grid-column: 1 / -1; }
-
-  /* Centered content for the focused screens */
-  .practice-view, .practice-setup, .practice-summary, .center-state { max-width: 720px; margin: 0 auto; }
-
-  /* Sheets become centered modal dialogs */
-  .sheet-overlay { align-items: center; }
-  .sheet {
-    max-width: 540px; max-height: 86%;
-    border-radius: 16px;
-    transform: translateY(14px) scale(.985);
-  }
-  .sheet-overlay.open .sheet { transform: none; }
-
-  .toast { bottom: 28px; }
-}
 

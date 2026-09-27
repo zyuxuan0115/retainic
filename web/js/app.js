@@ -61,7 +61,9 @@ function Shell() {
   return shell;
 
   function tabItem(tab, icon, label) {
-    return el(".tab" + (state.tab === tab ? ".active" : ""), {
+    return el("button.tab" + (state.tab === tab ? ".active" : ""), {
+      type: "button",
+      "aria-current": state.tab === tab ? "page" : null,
       title: label,
       onclick: () => {
         state.tab = tab;
@@ -72,7 +74,7 @@ function Shell() {
   }
 
   function practiceItem() {
-    practiceNavEl = el(".tab.action" + (currentPractice ? "" : ".disabled"), {
+    practiceNavEl = el("button.tab.action" + (currentPractice ? "" : ".disabled"), {
       onclick: startCurrentPractice,
       title: t("Practice"),
     }, el(".tab-icon", {}, icon("style", 24)), el(".tab-label", {}, t("Practice")));
@@ -124,6 +126,7 @@ function updatePracticeNav() {
   if (!practiceNavEl) return;
   const enabled = !!currentPractice;
   practiceNavEl.classList.toggle("disabled", !enabled);
+  practiceNavEl.disabled = !enabled;
   practiceNavEl.setAttribute("aria-disabled", String(!enabled));
 }
 function startCurrentPractice() {

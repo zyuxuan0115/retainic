@@ -41,6 +41,17 @@ fun RowDivider() {
     }
 }
 
+/** A quiet, consistent visual anchor for collection rows. */
+@Composable
+fun CollectionIcon(icon: ImageVector) {
+    Box(
+        Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.small),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
 /** Centered empty-state placeholder, mirroring iOS ContentUnavailableView. */
 @Composable
 fun EmptyState(
@@ -55,7 +66,9 @@ fun EmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(56.dp),
+            Icon(icon, contentDescription = null, modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.large)
+                    .padding(20.dp).size(44.dp),
                 tint = MaterialTheme.colorScheme.primary)
             Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
             if (description != null) {
