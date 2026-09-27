@@ -154,3 +154,19 @@ button, .tab, .row.tappable { touch-action: manipulation; }
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
   :root { --secondary-label: #ddd; --separator: #999; }
 }
+
+/* The new-list modes share a measured sheet, with independently scrollable
+   fields on short screens. Header and mode controls stay reachable. */
+.new-list-sheet > .new-list-mode-picker { flex: none; width: 100%; overflow: visible; padding-bottom: 16px; }
+.sheet-form-body { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-bottom: var(--safe-bottom); }
+.sheet-form-body > .form { flex: none; width: 100%; margin: 0; overflow: visible; padding-bottom: 16px; }
+.new-list-segments { position: relative; isolation: isolate; }
+.new-list-segments > .seg { flex: 1 1 0; min-width: 0; position: relative; }
+.new-list-segments > .seg.active { background: transparent; box-shadow: none; }
+.segment-indicator {
+  position: absolute; inset: 2px auto 2px 2px;
+  width: calc((100% - 4px) / 3); border-radius: 8px;
+  background: var(--bg-elevated); box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  pointer-events: none;
+  transition: transform var(--duration-panel) var(--ease-drawer);
+}

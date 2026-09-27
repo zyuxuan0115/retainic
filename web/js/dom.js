@@ -5,6 +5,8 @@
 //  Tiny DOM helpers so the views read declaratively without a framework.
 //
 
+import { createSheetMotion } from "./sheet-motion.js";
+
 /** el("div.card", { onclick }, child, child, …) → HTMLElement.
  *  The tag string may include .class and #id shorthands. */
 export function el(tag, props = {}, ...children) {
@@ -85,8 +87,17 @@ export function presentSheet(contentBuilder, { variant = "" } = {}) {
   const overlay = el(".sheet-overlay" + (variant ? "." + variant : ""));
   const sheet = el(".sheet");
   let dismissible = true;
+  let closed = false;
+  let motion;
   const api = {
+    animateLayout(update, options) {
+      motion ??= createSheetMotion(sheet);
+      motion.resize(update, options);
+    },
     close() {
+      if (closed) return;
+      closed = true;
+      motion?.dispose();
       // A sheet that closes straight after its write finishes never clears the
       // busy state itself, so undo the page-wide part of it here too.
       window.removeEventListener("beforeunload", warnBeforeUnload);

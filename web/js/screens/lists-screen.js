@@ -163,23 +163,32 @@ function presentNewListSheet(onCreated) {
     }
     updateActionBtn();
 
-    const segCreate = el("button.seg.active", { onclick: () => setMode("create") }, t("Create new"));
-    const segCsv = el("button.seg", { onclick: () => setMode("csv") }, t("Import CSV"));
-    const segImport = el("button.seg", { onclick: () => setMode("import") }, t("Import by ID"));
-    const seg = el(".segmented", {}, segCreate, segCsv, segImport);
+    const segCreate = el("button.seg.active", { "aria-pressed": "true", onclick: (e) => setMode("create", e) }, t("Create new"));
+    const segCsv = el("button.seg", { "aria-pressed": "false", onclick: (e) => setMode("csv", e) }, t("Import CSV"));
+    const segImport = el("button.seg", { "aria-pressed": "false", onclick: (e) => setMode("import", e) }, t("Import by ID"));
+    const indicator = el(".segment-indicator", { "aria-hidden": "true" });
+    const seg = el(".segmented.new-list-segments", {}, indicator, segCreate, segCsv, segImport);
     const segments = [[segCreate, "create"], [segCsv, "csv"], [segImport, "import"]];
 
-    function setMode(m) {
+    function setMode(m, event) {
       if (mode === m) return;
-      mode = m;
-      // A CSV import creates a list, so it needs the name and languages too:
-      // the create form stays visible with the file picker beneath it.
-      createForm.style.display = m === "import" ? "none" : "";
-      csvForm.style.display = m === "csv" ? "" : "none";
-      importForm.style.display = m === "import" ? "" : "none";
-      for (const [btn, key] of segments) btn.classList.toggle("active", m === key);
-      updateActionBtn();
-      validate();
+      const animate = event.detail !== 0; // Keyboard activation stays immediate.
+      api.animateLayout(() => {
+        mode = m;
+        // Keep the same DOM fields (and their values) when the CSV section
+        // expands below the shared name/language form.
+        createForm.style.display = m === "import" ? "none" : "";
+        csvForm.style.display = m === "csv" ? "" : "none";
+        importForm.style.display = m === "import" ? "" : "none";
+        for (const [btn, key] of segments) {
+          btn.classList.toggle("active", m === key);
+          btn.setAttribute("aria-pressed", String(m === key));
+        }
+        indicator.style.transition = animate ? "" : "none";
+        indicator.style.transform = `translateX(${segments.findIndex(([, key]) => key === m) * 100}%)`;
+        updateActionBtn();
+        validate();
+      }, { panels: [createForm, csvForm, importForm], animate });
     }
 
     /** Whether the shared name/languages fields are filled in, showing the
@@ -265,16 +274,14 @@ function presentNewListSheet(onCreated) {
     }
 
     setTimeout(validate, 0);
-    return el(".sheet-content", {},
+    return el(".sheet-content.new-list-sheet", {},
       el(".sheet-header", {},
         el(".sheet-side", {}, cancelBtn),
         el(".sheet-title", {}, t("New List")),
         el(".sheet-side.trailing", {}, actionBtn),
       ),
-      el(".form", {}, formSection(null, seg)),
-      createForm,
-      csvForm,
-      importForm,
+      el(".form.new-list-mode-picker", {}, formSection(null, seg)),
+      el(".sheet-form-body", {}, createForm, csvForm, importForm),
     );
   });
 }
