@@ -277,29 +277,60 @@ export function FlashcardScreen(content, ctx, onBack) {
 
   function renderPractice() {
     const item = session[index];
-    const card = el(".flashcard" + (isFlipped ? ".flipped" : ""), {
-      onclick: () => { isFlipped = !isFlipped; render(); },
-    });
-    card.appendChild(el(".card-corner", {}, isFlipped ? t("Answer") : t("Tap to flip")));
-    card.appendChild(isFlipped ? deck.back(item) : deck.front(item));
+    const front = el(".flashcard-face.flashcard-front", {},
+      el(".card-corner", {}, t("Tap to flip")), deck.front(item));
+    const back = el(".flashcard-face.flashcard-back", {},
+      el(".card-corner", {}, t("Answer")), deck.back(item));
+    const card = el(".flashcard", {
+      role: "button", tabindex: "0",
+      onclick: (event) => flip(event.detail === 0),
+      onkeydown: (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        if (!event.repeat) flip(true);
+      },
+    }, el(".flashcard-turn", {}, front, back));
+    // Build both faces once. A flip updates only presentation; it must not
+    // rebuild the screen, lose keyboard focus, or resubscribe the audio button.
+    const audioBtn = deck.audioControl(item.card);
+    const audioSlot = el(".practice-audio");
+    const hint = el("p.muted.center", {}, t("Tap the card to reveal the answer"));
+    const actions = el(".answer-actions", {},
+      el("button.btn.warn.large", { onclick: () => answer(false) }, icon("replay", 20), t("Practice Again")),
+      el("button.btn.good.large", { onclick: () => answer(true) }, icon("check", 20), t("Got It")),
+    );
 
-    const audioBtn = deck.audioSide(item.mode.id, isFlipped) ? deck.audioControl(item.card) : null;
+    function updateSide() {
+      card.classList.toggle("flipped", isFlipped);
+      card.setAttribute("aria-pressed", String(isFlipped));
+      front.inert = isFlipped;
+      back.inert = !isFlipped;
+      front.setAttribute("aria-hidden", String(isFlipped));
+      back.setAttribute("aria-hidden", String(!isFlipped));
+      actions.inert = !isFlipped;
+      actions.style.visibility = isFlipped ? "visible" : "hidden";
+      hint.style.visibility = isFlipped ? "hidden" : "visible";
+      audioSlot.replaceChildren(...(audioBtn && deck.audioSide(item.mode.id, isFlipped) ? [audioBtn] : []));
+    }
 
+    function flip(instant) {
+      card.classList.toggle("instant-flip", instant);
+      isFlipped = !isFlipped;
+      updateSide();
+    }
+
+    updateSide();
     body.appendChild(el(".practice-view", {},
       el(".progress-track", {}, el(".progress-fill", { style: `width:${(index / session.length) * 100}%` })),
       el("p.caption.center", {}, tf("%lld of %lld", index + 1, session.length)),
       card,
-      audioBtn || el(".audio-placeholder"),
-      isFlipped
-        ? el(".answer-actions", {},
-            el("button.btn.warn.large", { onclick: () => answer(false) }, icon("replay", 20), t("Practice Again")),
-            el("button.btn.good.large", { onclick: () => answer(true) }, icon("check", 20), t("Got It")),
-          )
-        : el("p.muted.center", {}, t("Tap the card to reveal the answer")),
+      audioSlot,
+      el(".practice-feedback", {}, hint, actions),
     ));
   }
 
   function answer(correct) {
+    if (!isFlipped || finished) return;
     const item = session[index];
     // Only the daily assignment counts: free practice never changes a schedule.
     if (dueOnly) {

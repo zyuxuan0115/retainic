@@ -4,6 +4,7 @@
 //
 
 import { el, clear, presentSheet, toast } from "../dom.js";
+import { sheetSegments } from "../sheet-segments.js";
 import { t, tn, tf, preferredLanguage } from "../i18n.js";
 import { wordsFromCsv, nameFromFile } from "../csv.js";
 import * as Repo from "../repository.js";
@@ -163,16 +164,14 @@ function presentNewListSheet(onCreated) {
     }
     updateActionBtn();
 
-    const segCreate = el("button.seg.active", { "aria-pressed": "true", onclick: (e) => setMode("create", e) }, t("Create new"));
-    const segCsv = el("button.seg", { "aria-pressed": "false", onclick: (e) => setMode("csv", e) }, t("Import CSV"));
-    const segImport = el("button.seg", { "aria-pressed": "false", onclick: (e) => setMode("import", e) }, t("Import by ID"));
-    const indicator = el(".segment-indicator", { "aria-hidden": "true" });
-    const seg = el(".segmented.new-list-segments", {}, indicator, segCreate, segCsv, segImport);
-    const segments = [[segCreate, "create"], [segCsv, "csv"], [segImport, "import"]];
+    const seg = sheetSegments([
+      { id: "create", label: t("Create new") },
+      { id: "csv", label: t("Import CSV") },
+      { id: "import", label: t("Import by ID") },
+    ], mode, setMode);
 
-    function setMode(m, event) {
+    function setMode(m, animate) {
       if (mode === m) return;
-      const animate = event.detail !== 0; // Keyboard activation stays immediate.
       api.animateLayout(() => {
         mode = m;
         // Keep the same DOM fields (and their values) when the CSV section
@@ -180,12 +179,6 @@ function presentNewListSheet(onCreated) {
         createForm.style.display = m === "import" ? "none" : "";
         csvForm.style.display = m === "csv" ? "" : "none";
         importForm.style.display = m === "import" ? "" : "none";
-        for (const [btn, key] of segments) {
-          btn.classList.toggle("active", m === key);
-          btn.setAttribute("aria-pressed", String(m === key));
-        }
-        indicator.style.transition = animate ? "" : "none";
-        indicator.style.transform = `translateX(${segments.findIndex(([, key]) => key === m) * 100}%)`;
         updateActionBtn();
         validate();
       }, { panels: [createForm, csvForm, importForm], animate });
@@ -274,13 +267,13 @@ function presentNewListSheet(onCreated) {
     }
 
     setTimeout(validate, 0);
-    return el(".sheet-content.new-list-sheet", {},
+    return el(".sheet-content.creation-sheet", {},
       el(".sheet-header", {},
         el(".sheet-side", {}, cancelBtn),
         el(".sheet-title", {}, t("New List")),
         el(".sheet-side.trailing", {}, actionBtn),
       ),
-      el(".form.new-list-mode-picker", {}, formSection(null, seg)),
+      el(".form.creation-mode-picker", {}, formSection(null, seg)),
       el(".sheet-form-body", {}, createForm, csvForm, importForm),
     );
   });

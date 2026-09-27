@@ -8,6 +8,7 @@
 //
 
 import { el, clear, presentSheet, toast } from "../dom.js";
+import { sheetSegments } from "../sheet-segments.js";
 import { t, tn, tf, displayNameIn } from "../i18n.js";
 import { entriesFromCsv, nameFromFile } from "../csv.js";
 import * as Repo from "../repository.js";
@@ -144,19 +145,19 @@ function presentNewGlossarySheet(onCreated) {
       onclick: () => api.close(), title: t("Cancel"), "aria-label": t("Cancel"),
     }, icon("close", 24));
 
-    const segCreate = el("button.seg.active", { onclick: () => setMode("create") }, t("Create new"));
-    const segCsv = el("button.seg", { onclick: () => setMode("csv") }, t("Import CSV"));
-    const seg = el(".segmented", {}, segCreate, segCsv);
+    const seg = sheetSegments([
+      { id: "create", label: t("Create new") },
+      { id: "csv", label: t("Import CSV") },
+    ], mode, setMode);
 
-    function setMode(m) {
+    function setMode(m, animate) {
       if (mode === m) return;
-      mode = m;
-      // A CSV import creates a glossary too, so the create form stays visible
-      // with the file picker beneath it.
-      csvForm.style.display = m === "csv" ? "" : "none";
-      segCreate.classList.toggle("active", m === "create");
-      segCsv.classList.toggle("active", m === "csv");
-      validate();
+      api.animateLayout(() => {
+        mode = m;
+        // Preserve the shared fields while the CSV section expands below.
+        csvForm.style.display = m === "csv" ? "" : "none";
+        validate();
+      }, { panels: [createForm, csvForm], animate });
     }
 
     function validate() {
@@ -206,15 +207,14 @@ function presentNewGlossarySheet(onCreated) {
     }
 
     setTimeout(validate, 0);
-    return el(".sheet-content", {},
+    return el(".sheet-content.creation-sheet", {},
       el(".sheet-header", {},
         el(".sheet-side", {}, cancelBtn),
         el(".sheet-title", {}, t("New Glossary")),
         el(".sheet-side.trailing", {}, createBtn),
       ),
-      el(".form", {}, formSection(null, seg)),
-      createForm,
-      csvForm,
+      el(".form.creation-mode-picker", {}, formSection(null, seg)),
+      el(".sheet-form-body", {}, createForm, csvForm),
     );
   });
 }

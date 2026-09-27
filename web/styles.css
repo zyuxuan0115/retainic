@@ -3,6 +3,7 @@
 :root {
   --ease-drawer: cubic-bezier(.32,.72,0,1);
   --duration-panel: 240ms;
+  --duration-flip: 260ms;
   --tint: #245edb;
   color-scheme: light dark;
   --bg: #f4f6fa;
@@ -405,12 +406,37 @@ textarea.field-input { resize: vertical; }
 .progress-fill { height: 100%; background: var(--tint); transition: width .25s; }
 .flashcard {
   width: 100%; max-width: 480px; min-height: 280px; border-radius: 24px;
-  background: var(--secondary-bg); box-shadow: 0 10px 24px rgba(0,0,0,.12);
-  display: flex; align-items: center; justify-content: center; position: relative;
-  padding: 32px; text-align: center; cursor: pointer; user-select: none;
-  transition: background .2s;
+  perspective: 1200px; text-align: center; cursor: pointer;
+  user-select: none; touch-action: manipulation;
 }
-.flashcard.flipped { background: color-mix(in srgb, var(--tint) 12%, var(--secondary-bg)); }
+.flashcard-turn {
+  display: grid; min-height: inherit; border-radius: inherit;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-flip) var(--ease-drawer);
+}
+.flashcard.flipped .flashcard-turn { transform: rotateY(180deg); }
+.flashcard-face {
+  grid-area: 1 / 1; min-width: 0; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  padding: 42px 28px 32px; border-radius: inherit;
+  background: var(--secondary-bg); overflow-wrap: anywhere;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.flashcard-back {
+  transform: rotateY(180deg);
+  background: color-mix(in srgb, var(--tint) 12%, var(--secondary-bg));
+}
+.flashcard.instant-flip .flashcard-turn { transition: none; }
+.practice-audio { min-height: 44px; display: flex; justify-content: center; }
+.practice-feedback { display: grid; width: 100%; max-width: 480px; align-items: center; }
+.practice-feedback > * { grid-area: 1 / 1; }
+/* Both faces contribute to the grid's height, so long definitions never move
+   the grading buttons on flip. Reduced motion swaps faces without rotation. */
+@media (prefers-reduced-motion: reduce) {
+  .flashcard .flashcard-turn, .flashcard .flashcard-back { transform: none; transition: none; }
+  .flashcard-face { backface-visibility: visible; }
+  .flashcard:not(.flipped) .flashcard-back, .flashcard.flipped .flashcard-front { visibility: hidden; }
+}
 .card-corner { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--secondary-label); text-transform: uppercase; letter-spacing: .04em; }
 .card-prompt { font-size: 34px; font-weight: 700; }
 .card-front-pron { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--tint); }

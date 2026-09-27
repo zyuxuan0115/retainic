@@ -127,7 +127,7 @@ button, .tab, .row.tappable { touch-action: manipulation; }
 .row-sub { margin-top: 4px; }
 .search { min-height: 46px; border: 1px solid var(--separator); background: var(--bg-elevated); border-radius: 14px; }
 .stat-number { letter-spacing: -.05em; font-variant-numeric: tabular-nums; color: var(--tint); }
-.flashcard { border: 1px solid var(--separator); box-shadow: 0 12px 32px rgb(20 35 65 / 7%); }
+.flashcard-face { border: 1px solid var(--separator); box-shadow: 0 12px 32px rgb(20 35 65 / 7%); }
 .sheet { box-shadow: 0 24px 80px rgb(0 0 0 / 18%); }
 @media (prefers-color-scheme: dark) {
   .btn, .select-dot.on, .radio.on { color: #fff; }
@@ -155,17 +155,17 @@ button, .tab, .row.tappable { touch-action: manipulation; }
   :root { --secondary-label: #ddd; --separator: #999; }
 }
 
-/* The new-list modes share a measured sheet, with independently scrollable
+/* The creation modes share a measured sheet, with independently scrollable
    fields on short screens. Header and mode controls stay reachable. */
-.new-list-sheet > .new-list-mode-picker { flex: none; width: 100%; overflow: visible; padding-bottom: 16px; }
+.creation-sheet > .creation-mode-picker { flex: none; width: 100%; overflow: visible; padding-bottom: 16px; }
 .sheet-form-body { min-height: 0; overflow-y: auto; scrollbar-gutter: stable; padding-bottom: var(--safe-bottom); }
 .sheet-form-body > .form { flex: none; width: 100%; margin: 0; overflow: visible; padding-bottom: 16px; }
-.new-list-segments { position: relative; isolation: isolate; }
-.new-list-segments > .seg { flex: 1 1 0; min-width: 0; position: relative; }
-.new-list-segments > .seg.active { background: transparent; box-shadow: none; }
+.sheet-segments { position: relative; isolation: isolate; }
+.sheet-segments > .seg { flex: 1 1 0; min-width: 0; position: relative; }
+.sheet-segments > .seg.active { background: transparent; box-shadow: none; }
 .segment-indicator {
   position: absolute; inset: 2px auto 2px 2px;
-  width: calc((100% - 4px) / 3); border-radius: 8px;
+  width: calc((100% - 4px) / var(--segment-count, 3)); border-radius: 8px;
   background: var(--bg-elevated); box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
   pointer-events: none;
   transition: transform var(--duration-panel) var(--ease-drawer);
